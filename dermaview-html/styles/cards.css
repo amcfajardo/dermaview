@@ -1,0 +1,51 @@
+/* Cards and Panels */
+
+.panel-card {
+  background: var(--color-white);
+  border-radius: 28px;
+  padding: 28px;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  position: sticky;
+  top: 24px;
+  transition: box-shadow var(--transition-fast);
+}
+
+.panel-card:hover {
+  box-shadow: 0 24px 100px rgba(15, 23, 42, 0.12);
+}
+
+.panel-card h3,
+.panel-card h4 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: var(--color-text);
+}
+
+.panel-card p {
+  color: var(--color-text-secondary);
+}
+
+/* Override sticky positioning for scrolling panels */
+.upload-panel,
+.info-panel,
+.results-panel {
+  position: static;
+  top: auto;
+}
+
+/* Alert Box */
+
+.alert-box {
+  border-radius: var(--radius-xl);
+  padding: 18px 22px;
+  background: var(--color-warning);
+  border: 1px solid var(--color-warning-border);
+  color: var(--color-warning-text);
+  margin-top: 18px;
+  font-size: 0.95rem;
+}
+
+.alert-box strong {
+  font-weight: 700;
+}
