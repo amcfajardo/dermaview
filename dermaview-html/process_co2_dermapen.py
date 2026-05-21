@@ -45,23 +45,23 @@ def process_co2_dermapen(input_path, output_path):
     skin_mask = cv2.GaussianBlur(skin_mask, (35, 35), 0)
 
     skin_float = skin_mask.astype(np.float32) / 255.0
-    skin_float = np.clip(skin_float * 0.95, 0, 0.95)
+    skin_float = np.clip(skin_float * 0.70, 0, 0.70)
     skin_float_3 = cv2.merge([skin_float, skin_float, skin_float])
 
     # STRONGER CLEAR SKIN VERSION
     smooth = cv2.bilateralFilter(
     original,
-    d=35,
-    sigmaColor=120,
-    sigmaSpace=120
-    )
+    d=19,
+    sigmaColor=65,
+    sigmaSpace=65
+)
 
     smooth = cv2.bilateralFilter(
     smooth,
-    d=25,
-    sigmaColor=95,
-    sigmaSpace=95
-    )
+    d=11,
+    sigmaColor=40,
+    sigmaSpace=40
+)
 
     # SOFTEN TEXTURE
     blur = cv2.GaussianBlur(smooth, (0, 0), 1.3)
