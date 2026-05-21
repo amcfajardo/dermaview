@@ -128,6 +128,7 @@ const procedures = [
 const app = document.getElementById("app");
 let selectedProcedureId = null;
 let uploadedImageUrl = null;
+let uploadedImageFile = null;
 let processedImageUrl = null;
 let isProcessing = false;
 let showResults = false;
@@ -389,33 +390,60 @@ function bindTreatmentEvents(id) {
   if (uploadInput) {
     uploadInput.addEventListener("change", (event) => {
       const file = event.target.files[0];
+
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        uploadedImageUrl = reader.result;
-        showResults = false;
-        processedImageUrl = null;
-        renderTreatment(id);
-      };
-      reader.readAsDataURL(file);
+
+      uploadedImageFile = file;
+      uploadedImageUrl = URL.createObjectURL(file);
+      showResults = false;
+      processedImageUrl = null;
+
+      renderTreatment(id);
     });
   }
 
   if (processButton) {
     processButton.addEventListener("click", async () => {
-      if (!uploadedImageUrl || isProcessing) return;
+      if (!uploadedImageFile || isProcessing) return;
+
       isProcessing = true;
       renderTreatment(id);
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-      processedImageUrl = await processImageWithFilters(uploadedImageUrl);
+
+      const formData = new FormData();
+
+      formData.append("image", uploadedImageFile);
+      formData.append("procedure", id);
+
+      try {
+        const response = await fetch("../process-image.php", {
+          method: "POST",
+          body: formData
+        });
+
+        const result = await response.json();
+
+        console.log("PHP result:", result);
+        if (result.success) {
+          processedImageUrl = "../" + result.image + "?v=" + Date.now();
+          showResults = true;
+        } else {
+          alert(result.message || "Image processing failed");
+          console.log(result);
+        }
+
+      } catch (error) {
+        console.error(error);
+        alert("Could not connect to image processing.");
+      }
+
       isProcessing = false;
-      showResults = true;
       renderTreatment(id);
     });
   }
 
   if (clearButton) {
     clearButton.addEventListener("click", () => {
+      uploadedImageFile = null;
       uploadedImageUrl = null;
       processedImageUrl = null;
       showResults = false;
@@ -425,26 +453,7 @@ function bindTreatmentEvents(id) {
   }
 }
 
-function processImageWithFilters(imageUrl) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
 
-      if (ctx) {
-        ctx.filter = "contrast(1.15) brightness(1.08) saturate(0.85) hue-rotate(5deg)";
-        ctx.drawImage(img, 0, 0);
-      }
-
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.src = imageUrl;
-  });
-}
 
 window.addEventListener("hashchange", render);
 window.addEventListener("load", () => {
