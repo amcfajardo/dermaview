@@ -440,14 +440,14 @@ body {
 
 
 .logout-btn {
-  padding: 10px 18px;
-  border-radius: 12px;
-  background: #ef4444;
-  color: white !important;
+  color: #374151 !important;
+  text-decoration: none;
   font-weight: 600;
-  transition: opacity 180ms ease;
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
 }
 
 .logout-btn:hover {
-  opacity: 0.9;
+  color: #1d4ed8 !important;
 }

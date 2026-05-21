@@ -1,76 +1,128 @@
 const procedures = [
   {
-    id: "acne-treatment",
-    name: "Acne Treatment",
-    description: "Advanced laser and light-based treatments for acne-prone skin",
-    category: "Treatment",
+    id: "co2-fractional-laser-dermapen",
+    name: "CO₂ Fractional Laser + Dermapen",
+    description:
+      "A minimally invasive skin resurfacing treatment that improves acne scars, skin texture, and facial clarity.",
+
+    category: "Skin Resurfacing",
+
     details: [
-      "Targets acne-causing bacteria",
-      "Reduces sebum production",
-      "Minimizes scarring",
-      "Safe for all skin types",
+      "Improves acne scars and uneven texture",
+      "Stimulates collagen production",
+      "Enhances skin clarity and smoothness",
+      "Minimally invasive with visible results",
+      "Popular for facial rejuvenation"
     ],
+
+    info:
+      "DermaView simulates realistic skin texture improvements and post-treatment clarity using image processing visualization."
   },
+
   {
-    id: "skin-rejuvenation",
-    name: "Skin Rejuvenation",
-    description: "Comprehensive anti-aging and texture improvement procedures",
-    category: "Rejuvenation",
+    id: "face-slimming",
+    name: "Face Slimming",
+
+    description:
+      "A contour-enhancing treatment designed to improve facial definition and slimming effects.",
+
+    category: "Facial Contouring",
+
     details: [
+      "Enhances jawline definition",
+      "Improves facial contour symmetry",
+      "Creates a slimmer facial appearance",
+      "Minimally invasive procedure",
+      "Ideal for contour visualization"
+    ],
+
+    info:
+      "DermaView previews potential contour and slimming effects on the patient's own facial structure."
+  },
+
+  {
+    id: "diamond-peel-facial",
+    name: "Diamond Peel With Facial",
+
+    description:
+      "A non-invasive exfoliation treatment that brightens skin and improves facial smoothness.",
+
+    category: "Facial Treatment",
+
+    details: [
+      "Removes dead skin cells",
+      "Brightens dull complexion",
+      "Improves facial smoothness",
+      "Enhances skin clarity",
+      "Gentle and non-invasive"
+    ],
+
+    info:
+      "DermaView simulates smoother texture, reduced dullness, and improved skin radiance after treatment."
+  },
+
+  {
+    id: "undereye-lip-filler",
+    name: "Undereye and Lip Filler Procedure",
+
+    description:
+      "A minimally invasive enhancement procedure targeting undereye hollowness and lip volume.",
+
+    category: "Filler Enhancement",
+
+    details: [
+      "Reduces appearance of eye bags",
+      "Enhances lip fullness",
+      "Improves facial balance",
+      "Restores youthful appearance",
+      "Provides natural-looking enhancement"
+    ],
+
+    info:
+      "DermaView visualizes filler enhancement effects such as volume restoration and facial symmetry adjustments."
+  },
+
+  {
+    id: "pico-carbon-laser",
+    name: "PICO Carbon Laser Facial Procedure",
+
+    description:
+      "A laser facial treatment that targets acne, pores, blemishes, and uneven skin texture.",
+
+    category: "Laser Facial",
+
+    details: [
+      "Targets acne and blemishes",
+      "Refines enlarged pores",
       "Improves skin texture",
-      "Reduces fine lines and wrinkles",
-      "Enhances skin tone",
-      "Promotes collagen production",
+      "Brightens overall complexion",
+      "Non-invasive laser technology"
     ],
+
+    info:
+      "DermaView simulates smoother skin, reduced blemishes, and refined pores for treatment visualization."
   },
+
   {
-    id: "scar-reduction",
-    name: "Scar Reduction",
-    description: "Specialized treatments to minimize the appearance of scars",
-    category: "Treatment",
+    id: "lip-chin-jawtox",
+    name: "Lip Filler, Chin Filler, and Jawtox",
+
+    description:
+      "A combination facial contouring procedure using fillers and jawtox enhancements.",
+
+    category: "Advanced Contouring",
+
     details: [
-      "Reduces scar depth",
-      "Improves skin appearance",
-      "Multiple treatment options",
-      "Personalized approach",
+      "Enhances chin projection",
+      "Defines jawline contour",
+      "Improves facial harmony",
+      "Adds lip volume and symmetry",
+      "Visible contour enhancement"
     ],
-  },
-  {
-    id: "pigmentation-correction",
-    name: "Pigmentation Correction",
-    description: "Treatment for hyperpigmentation, melasma, and sun damage",
-    category: "Correction",
-    details: [
-      "Targets excess pigmentation",
-      "Even skin tone",
-      "Prevents recurrence",
-      "Gentle on sensitive skin",
-    ],
-  },
-  {
-    id: "hair-removal",
-    name: "Hair Removal",
-    description: "Permanent and semi-permanent hair removal solutions",
-    category: "Hair",
-    details: [
-      "Long-lasting results",
-      "Minimal discomfort",
-      "Various skin types",
-      "Cost-effective",
-    ],
-  },
-  {
-    id: "wrinkle-reduction",
-    name: "Wrinkle Reduction",
-    description: "Advanced treatments to smooth lines and wrinkles",
-    category: "Rejuvenation",
-    details: [
-      "Natural-looking results",
-      "Immediate effects",
-      "Preventative option",
-      "Customizable intensity",
-    ],
-  },
+
+    info:
+      "DermaView projects contour adjustments and volume enhancement before treatment consultation."
+  }
 ];
 
 const app = document.getElementById("app");
@@ -114,8 +166,8 @@ function renderHome() {
           <p class="hero-copy">Leverage advanced image processing technology to visualize and analyze skin conditions with precision.</p>
           <p class="hero-copy">DermaView helps clinicians and patients understand treatment outcomes through sophisticated image analysis.</p>
           <div class="cta-row">
-            <a href="#procedures" class="button">Get Started</a>
-            <a href="#procedures" class="button-secondary">Browse Procedures</a>
+            <a href="pages/procedures.html" class="button">Get Started</a>
+<a href="pages/procedures.html" class="button-secondary">Browse Procedures</a>
           </div>
         </div>
         <div class="features-grid">
@@ -142,7 +194,7 @@ function renderHome() {
       <div class="panel-card">
         <h3 class="section-heading">Ready to explore treatment options?</h3>
         <p class="section-text">Browse our available procedures and learn how DermaView can help you visualize your treatment journey.</p>
-        <a href="#procedures" class="button" style="margin-top: 24px;">Browse Procedures</a>
+        <a href="pages/procedures.html" class="button" style="margin-top: 24px;">Browse Procedures</a>
       </div>
     </section>
   `;
@@ -181,26 +233,66 @@ function renderProcedures() {
   `;
 
   document.querySelectorAll(".procedure-card").forEach((button) => {
-    button.addEventListener("click", () => {
-      const id = button.getAttribute("data-procedure");
-      selectedProcedureId = id;
-      window.location.href = `pages/treatment.html#${id}`;
-    });
+  button.addEventListener("click", () => {
+    const id = button.getAttribute("data-procedure");
+
+    selectedProcedureId = id;
+
+    renderProcedures();
   });
+});
 }
 
 function renderProcedureDetails(procedure) {
   return `
     <div>
+
       <h3>${procedure.name}</h3>
-      <p class="section-text">${procedure.description}</p>
+
+      <p class="section-text">
+        ${procedure.description}
+      </p>
+
       <div style="margin: 24px 0;">
-        <h4>Key Benefits</h4>
+
+        <h4>Procedure Benefits</h4>
+
         <ul class="detail-list">
-          ${procedure.details.map((detail) => `<li>${detail}</li>`).join("")}
+          ${procedure.details
+            .map((detail) => `<li>${detail}</li>`)
+            .join("")}
         </ul>
+
       </div>
-      <a href="#treatment/${procedure.id}" class="button">View Treatment Options</a>
+
+      <div
+        style="
+          margin-top:20px;
+          padding:18px;
+          border-radius:18px;
+          background:#f8fafc;
+          border:1px solid #e5e7eb;
+        "
+      >
+
+        <h4 style="margin-bottom:10px;">
+          About This Procedure
+        </h4>
+
+        <p class="section-text" style="font-size:.98rem;">
+          ${procedure.info}
+        </p>
+
+      </div>
+
+      <a
+        href="treatment.html#${procedure.id}"
+        class="button"
+        style="margin-top:24px;"
+      >
+        Use Image Processing
+      </a>
+
     </div>
   `;
 }
@@ -356,16 +448,23 @@ function processImageWithFilters(imageUrl) {
 
 window.addEventListener("hashchange", render);
 window.addEventListener("load", () => {
-  if (window.location.pathname.includes("treatment.html")) {
+  const path = window.location.pathname;
+
+  if (path.includes("treatment.html")) {
     const hash = window.location.hash.slice(1);
+
     if (hash) {
       selectedProcedureId = hash;
       renderTreatment(hash);
     }
-  } else {
-    if (!window.location.hash) {
-      window.location.hash = "home.html";
-    }
-    render();
+
+    return;
   }
+
+  if (path.includes("procedures.html")) {
+    renderProcedures();
+    return;
+  }
+
+  renderHome();
 });
