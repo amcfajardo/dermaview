@@ -12,79 +12,94 @@ def process_co2_dermapen(input_path, output_path):
 
     original = img.copy()
 
-    # Convert colors
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    ycrcb = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
 
-    h, s, v = cv2.split(hsv)
-    l, a, b = cv2.split(lab)
-
-    # 1. Detect skin area only
-    skin_mask = cv2.inRange(
+    # SKIN MASK ONLY
+    skin_hsv = cv2.inRange(
         hsv,
-        np.array([0, 20, 50]),
-        np.array([35, 180, 255])
+        np.array([0, 18, 45]),
+        np.array([35, 210, 255])
     )
 
-    # 2. Detect red acne/scars
-    red_mask1 = cv2.inRange(
-        hsv,
-        np.array([0, 45, 50]),
-        np.array([15, 255, 255])
+    skin_ycrcb = cv2.inRange(
+        ycrcb,
+        np.array([0, 133, 77]),
+        np.array([255, 180, 140])
     )
 
-    red_mask2 = cv2.inRange(
-        hsv,
-        np.array([160, 45, 50]),
-        np.array([180, 255, 255])
+    skin_mask = cv2.bitwise_and(skin_hsv, skin_ycrcb)
+
+    skin_mask = cv2.morphologyEx(
+        skin_mask,
+        cv2.MORPH_CLOSE,
+        np.ones((9, 9), np.uint8)
     )
 
-    red_mask = cv2.bitwise_or(red_mask1, red_mask2)
-
-    lab_red = cv2.inRange(a, 140, 180)
-
-    acne_mask = cv2.bitwise_or(red_mask, lab_red)
-
-    # 3. Only acne inside skin
-    mask = cv2.bitwise_and(acne_mask, skin_mask)
-
-    kernel = np.ones((5, 5), np.uint8)
-
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-    mask = cv2.dilate(mask, kernel, iterations=1)
-
-    hard_mask = cv2.threshold(mask, 50, 255, cv2.THRESH_BINARY)[1]
-
-    # 4. Inpaint acne marks
-    inpainted = cv2.inpaint(
-        img,
-        hard_mask,
-        5,
-        cv2.INPAINT_TELEA
+    skin_mask = cv2.morphologyEx(
+        skin_mask,
+        cv2.MORPH_OPEN,
+        np.ones((5, 5), np.uint8)
     )
 
-    # 5. Smooth repaired areas
+    skin_mask = cv2.GaussianBlur(skin_mask, (35, 35), 0)
+
+    skin_float = skin_mask.astype(np.float32) / 255.0
+    skin_float = np.clip(skin_float * 0.95, 0, 0.95)
+    skin_float_3 = cv2.merge([skin_float, skin_float, skin_float])
+
+    # STRONGER CLEAR SKIN VERSION
     smooth = cv2.bilateralFilter(
-        inpainted,
-        d=25,
-        sigmaColor=90,
-        sigmaSpace=90
+    original,
+    d=35,
+    sigmaColor=120,
+    sigmaSpace=120
     )
 
-    # 6. Soft blend only acne areas
-    soft_mask = cv2.GaussianBlur(hard_mask, (25, 25), 0)
-    soft_mask = soft_mask.astype(np.float32) / 255.0
-    soft_mask = cv2.merge([soft_mask, soft_mask, soft_mask])
+    smooth = cv2.bilateralFilter(
+    smooth,
+    d=25,
+    sigmaColor=95,
+    sigmaSpace=95
+    )
 
+    # SOFTEN TEXTURE
+    blur = cv2.GaussianBlur(smooth, (0, 0), 1.3)
+    smooth = cv2.addWeighted(smooth, 0.75, blur, 0.25, 0)
+
+    # SKIN TONE CORRECTION
+    # SKIN TONE CORRECTION
+    smooth_lab = cv2.cvtColor(smooth, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(smooth_lab)
+
+    # Slight brightness
+    l = cv2.convertScaleAbs(
+        l,
+        alpha=1.02,
+        beta=2
+    )
+
+    # VERY LIGHT redness reduction
+    a = cv2.addWeighted(
+        a,
+        0.96,
+        cv2.GaussianBlur(a, (0, 0), 3),
+        0.04,
+        0
+    )
+
+    smooth_lab = cv2.merge((l, a, b))
+    smooth = cv2.cvtColor(smooth_lab, cv2.COLOR_LAB2BGR)
+
+    # BLEND ONLY SKIN
     result = (
-        smooth.astype(np.float32) * soft_mask +
-        original.astype(np.float32) * (1 - soft_mask)
+        smooth.astype(np.float32) * skin_float_3 +
+        original.astype(np.float32) * (1 - skin_float_3)
     ).astype(np.uint8)
 
-    cv2.imwrite(output_path, result)
+    cv2.imwrite(output_path, result, [cv2.IMWRITE_JPEG_QUALITY, 95])
 
-    print("Processed image saved:", output_path)
+    print("Skin only processed:", output_path)
     sys.exit(0)
 
 
