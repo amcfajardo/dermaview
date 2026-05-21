@@ -20,7 +20,7 @@ const procedures = [
   },
 
   {
-    id: "face-slimming",
+    id: "face_slimming",
     name: "Face Slimming",
 
     description:

@@ -170,6 +170,68 @@ if (
 
 /*
 |--------------------------------------------------------------------------
+| FACE SLIMMING
+|--------------------------------------------------------------------------
+*/
+
+if (
+    $procedure ===
+    "face_slimming"
+) {
+
+    $pythonScript =
+        "process_face_slimming.py";
+
+    /*
+    |--------------------------------------------------------------------------
+    | PYTHON COMMAND
+    |--------------------------------------------------------------------------
+    */
+
+    $command =
+    "python \"$pythonScript\" " .
+    escapeshellarg($inputPath) . " " .
+    escapeshellarg($outputPath) . " 2>&1";
+
+    exec(
+        $command,
+        $output,
+        $status
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | SUCCESS
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        $status === 0 &&
+        file_exists($outputPath)
+    ) {
+
+        echo json_encode([
+            "success" => true,
+            "image" => $outputPath
+        ]);
+
+    } else {
+
+        echo json_encode([
+            "success" => false,
+            "message" => "Face slimming processing failed",
+            "debug" => $output,
+            "command" => $command,
+            "outputPath" => $outputPath
+        ]);
+
+    }
+
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
 | INVALID PROCEDURE
 |--------------------------------------------------------------------------
 */
