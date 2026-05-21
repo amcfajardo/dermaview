@@ -19,7 +19,7 @@ $email = trim($_POST['email'] ?? '');
 $firstName = trim($_POST['first_name'] ?? '');
 $lastName = trim($_POST['last_name'] ?? '');
 $role = trim($_POST['role'] ?? '');
-$username = trim($_POST['username'] ?? '');
+$employeeNumber = trim($_POST['employee_number'] ?? '');
 $password = $_POST['password'] ?? '';
 
 /*
@@ -33,7 +33,7 @@ if (
     empty($firstName) ||
     empty($lastName) ||
     empty($role) ||
-    empty($username) ||
+    empty($employeeNumber) ||
     empty($password)
 ) {
     echo "Please fill in all fields";
@@ -52,17 +52,17 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 */
 
 $checkUser = $conn->prepare(
-    "SELECT id FROM users WHERE email = ? OR username = ?"
+    "SELECT id FROM users WHERE email = ? OR employee_number = ?"
 );
 
-$checkUser->bind_param("ss", $email, $username);
+$checkUser->bind_param("ss", $email, $employeeNumber);
 
 $checkUser->execute();
 
 $result = $checkUser->get_result();
 
 if ($result->num_rows > 0) {
-    echo "Email or username already exists";
+    echo "Email or employee number already exists";
     exit;
 }
 
@@ -90,7 +90,7 @@ $stmt = $conn->prepare(
         first_name,
         last_name,
         role,
-        username,
+        employee_number,
         password
     )
     VALUES (?, ?, ?, ?, ?, ?)"
@@ -102,7 +102,7 @@ $stmt->bind_param(
     $firstName,
     $lastName,
     $role,
-    $username,
+    $employeeNumber,
     $hashedPassword
 );
 
@@ -196,7 +196,7 @@ if ($stmt->execute()) {
                 <hr>
 
                 <p>
-                    <b>Username:</b> $username
+                    <b>Employee Number:</b> $employeeNumber
                 </p>
 
                 <p>

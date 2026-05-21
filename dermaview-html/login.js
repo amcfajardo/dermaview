@@ -9,28 +9,53 @@ document
     const formData = new FormData(form);
 
     try {
+      const resp = await fetch("login.php", { method: "POST", body: formData });
+      const text = await resp.text();
 
-      const response = await fetch("login.php", {
-        method: "POST",
-        body: formData,
-      });
+      // try parse JSON response
+      let parsed = null;
+      try {
+        parsed = JSON.parse(text);
+      } catch (e) {
+        parsed = null;
+      }
 
-      const result = await response.text();
+      if (parsed && parsed.status === 'ok') {
+        if (parsed.role === 'admin' || parsed.role === 'superadmin') {
+          window.location.href = 'admin.html';
+        } else {
+          window.location.href = 'index.html';
+        }
+        return;
+      }
 
-      alert(result);
+      // fallback: server returned plain text (older code). If it indicates success, fetch session role.
+      if (text && text.indexOf('Login successful') !== -1) {
+        try {
+          const s = await fetch('get-session.php');
+          const session = await s.json();
+          if (session.status === 'ok' && (session.role === 'admin' || session.role === 'superadmin')) {
+            window.location.href = 'admin.html';
+            return;
+          }
+        } catch (e) {
+          console.warn('get-session failed', e);
+        }
+        // default redirect
+        window.location.href = 'index.html';
+        return;
+      }
 
-      if (result === "Login successful") {
-
-        window.location.href = "index.html";
-
+      // show server message if available
+      if (parsed && parsed.message) {
+        alert(parsed.message);
+      } else {
+        alert(text || 'Login failed');
       }
 
     } catch (error) {
-
       console.error(error);
-
-      alert("Something went wrong");
-
+      alert('Something went wrong');
     }
 
 });

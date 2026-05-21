@@ -2,17 +2,18 @@
 
 include 'config.php';
 
-$username = $_POST['username'];
+$identifier = $_POST['employee_number'];
 $code = $_POST['code'];
 
 $userQuery = $conn->prepare(
     "SELECT email FROM users
-     WHERE username = ?"
+     WHERE employee_number = ? OR email = ?"
 );
 
 $userQuery->bind_param(
-    "s",
-    $username
+    "ss",
+    $identifier,
+    $identifier
 );
 
 $userQuery->execute();
@@ -20,10 +21,18 @@ $userQuery->execute();
 $userResult =
     $userQuery->get_result();
 
-$user =
-    $userResult->fetch_assoc();
-
-$email = $user['email'];
+if ($userResult->num_rows === 0) {
+    // if identifier is an email, allow using it directly
+    if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+        $email = $identifier;
+    } else {
+        echo "Invalid code";
+        exit;
+    }
+} else {
+    $user = $userResult->fetch_assoc();
+    $email = $user['email'];
+}
 
 $stmt = $conn->prepare(
     "SELECT * FROM password_resets
