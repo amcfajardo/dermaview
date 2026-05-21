@@ -26,8 +26,8 @@ def process_face_slimming(input_path, output_path):
             # Only affect middle face area
             strength = 0
 
-            if h * 0.20 < y < h * 0.85:
-              strength = 0.16 * np.exp(-(distance ** 2) / (2 * (w * 0.30) ** 2))
+            if h * 0.38 < y < h * 0.82:
+              strength = 0.075 * np.exp(-(distance ** 2) / (2 * (w * 0.23) ** 2))
 
             # Pull cheeks inward
             if x < center_x:
