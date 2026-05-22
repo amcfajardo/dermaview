@@ -11,8 +11,30 @@ document.addEventListener('DOMContentLoaded', function () {
   function initManageAccounts() {
     const accountForm = document.getElementById('accountForm');
     const accountsTableBody = document.getElementById('accountsTableBody');
+    const showAccountForm = document.getElementById('showAccountForm');
+    const cancelAccountForm = document.getElementById('cancelAccountForm');
+    const accountsSearch = document.getElementById('accountsSearch');
 
     if (!accountForm || !accountsTableBody) return;
+
+    function setFormVisible(isVisible) {
+      accountForm.hidden = !isVisible;
+
+      if (showAccountForm) {
+        showAccountForm.hidden = isVisible;
+      }
+    }
+
+    function filterAccounts() {
+      if (!accountsSearch) return;
+
+      const query = accountsSearch.value.trim().toLowerCase();
+      const rows = accountsTableBody.querySelectorAll('tr');
+
+      rows.forEach(row => {
+        row.hidden = query !== '' && !row.textContent.toLowerCase().includes(query);
+      });
+    }
 
     function loadAccounts() {
       const formData = new FormData();
@@ -25,6 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(response => response.text())
         .then(html => {
           accountsTableBody.innerHTML = html;
+          filterAccounts();
         })
         .catch(() => {
           accountsTableBody.innerHTML = `
@@ -34,7 +57,11 @@ document.addEventListener('DOMContentLoaded', function () {
               </td>
             </tr>
           `;
-        });
+      });
+    }
+
+    if (accountsSearch) {
+      accountsSearch.addEventListener('input', filterAccounts);
     }
 
     accountForm.addEventListener('submit', function (e) {
@@ -50,19 +77,42 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(message => {
           alert(message);
           accountForm.reset();
+          setFormVisible(false);
           loadAccounts();
+        })
+        .catch(() => {
+          alert('Failed to add account.');
         });
     });
 
-    accountsTableBody.addEventListener('click', function (e) {
-      if (!e.target.classList.contains('deactivate-btn')) return;
+    if (showAccountForm) {
+      showAccountForm.addEventListener('click', function () {
+        setFormVisible(true);
+        document.getElementById('accountFirstName')?.focus();
+      });
+    }
 
+    if (cancelAccountForm) {
+      cancelAccountForm.addEventListener('click', function () {
+        accountForm.reset();
+        setFormVisible(false);
+      });
+    }
+
+    accountsTableBody.addEventListener('click', function (e) {
+      const isDeactivate = e.target.classList.contains('deactivate-btn');
+      const isReactivate = e.target.classList.contains('reactivate-btn');
+
+      if (!isDeactivate && !isReactivate) return;
+
+      const action = isDeactivate ? 'deactivate' : 'reactivate';
+      const label = isDeactivate ? 'Deactivate' : 'Reactivate';
       const id = e.target.dataset.id;
 
-      if (!confirm('Deactivate this account?')) return;
+      if (!id || !confirm(`${label} this account?`)) return;
 
       const formData = new FormData();
-      formData.append('action', 'deactivate');
+      formData.append('action', action);
       formData.append('id', id);
 
       fetch('admin_pages/manage-accounts.php', {
@@ -73,6 +123,9 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(message => {
           alert(message);
           loadAccounts();
+        })
+        .catch(() => {
+          alert(`Failed to ${action} account.`);
         });
     });
 
@@ -131,7 +184,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     showLoading();
 
-    fetch(url, { cache: 'no-store' })
+    fetch(`${url}?v=${Date.now()}`, { cache: 'no-store' })
       .then(r => {
         if (!r.ok) throw new Error('Failed to load page');
         return r.text();
@@ -139,9 +192,12 @@ document.addEventListener('DOMContentLoaded', function () {
       .then(html => {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
+        const styles = Array.from(doc.head.querySelectorAll('style'))
+          .map(style => style.outerHTML)
+          .join('');
         const body = doc.body ? doc.body.innerHTML : html;
 
-        pageContent.innerHTML = body;
+        pageContent.innerHTML = styles + body;
 
         if (page === 'staff') {
           initManageAccounts();

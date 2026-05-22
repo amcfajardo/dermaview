@@ -42,7 +42,12 @@ if ($action === 'add') {
 }
 
 if ($action === 'deactivate') {
-    $id = $_POST['id'];
+    $id = (int) ($_POST['id'] ?? 0);
+
+    if ($id <= 0) {
+        echo "Invalid account.";
+        exit();
+    }
 
     $stmt = $conn->prepare("
         UPDATE users
@@ -52,10 +57,35 @@ if ($action === 'deactivate') {
 
     $stmt->bind_param("i", $id);
 
-    if ($stmt->execute()) {
+    if ($stmt->execute() && $stmt->affected_rows > 0) {
         echo "Account deactivated.";
     } else {
         echo "Failed to deactivate account.";
+    }
+
+    exit();
+}
+
+if ($action === 'reactivate') {
+    $id = (int) ($_POST['id'] ?? 0);
+
+    if ($id <= 0) {
+        echo "Invalid account.";
+        exit();
+    }
+
+    $stmt = $conn->prepare("
+        UPDATE users
+        SET status = 'Active'
+        WHERE id = ?
+    ");
+
+    $stmt->bind_param("i", $id);
+
+    if ($stmt->execute() && $stmt->affected_rows > 0) {
+        echo "Account reactivated.";
+    } else {
+        echo "Failed to reactivate account.";
     }
 
     exit();
@@ -76,24 +106,27 @@ if ($action === 'fetch') {
             $employee_number = htmlspecialchars($row['employee_number']);
             $role = htmlspecialchars(ucfirst($row['role']));
             $status = htmlspecialchars($row['status']);
+            $status_class = $row['status'] === 'Active' ? 'account-status-active' : 'account-status-inactive';
 
             echo "
             <tr>
-              <td style='padding:10px;'>$name</td>
-              <td style='padding:10px;'>$email</td>
-              <td style='padding:10px;'>$employee_number</td>
-              <td style='padding:10px;'>$role</td>
-              <td style='padding:10px;'>$status</td>
-              <td style='padding:10px;'>
+              <td>$name</td>
+              <td>$email</td>
+              <td>$employee_number</td>
+              <td>$role</td>
+              <td><span class='account-status $status_class'>$status</span></td>
+              <td>
+                <div class='account-row-actions'>
             ";
 
             if ($row['status'] === 'Active') {
-                echo "<button class='deactivate-btn' data-id='$id'>Deactivate</button>";
+                echo "<button class='account-action-btn deactivate-btn' data-id='$id'>Deactivate</button>";
             } else {
-                echo "<span style='color: gray;'>Deactivated</span>";
+                echo "<button class='account-action-btn reactivate-btn' data-id='$id'>Reactivate</button>";
             }
 
             echo "
+                </div>
               </td>
             </tr>
             ";
@@ -101,7 +134,7 @@ if ($action === 'fetch') {
     } else {
         echo "
         <tr>
-          <td colspan='6' style='padding:10px; text-align:center;'>
+          <td colspan='6' style='text-align:center;'>
             No accounts found.
           </td>
         </tr>

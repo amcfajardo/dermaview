@@ -38,6 +38,13 @@
   margin-top: 24px;
 }
 
+.assessment-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
 .stat-card {
   padding: 20px;
   border-radius: var(--radius-xl);
@@ -93,4 +100,34 @@
   color: var(--color-text);
   display: block;
   margin-bottom: 4px;
+}
+
+.recommendation-list li span {
+  display: inline-flex;
+  margin-bottom: 8px;
+  color: var(--color-primary);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.recommendation-list li p {
+  margin: 0 0 10px;
+}
+
+.recommendation-list li a {
+  color: var(--color-primary-dark);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.recommendation-list li a:hover {
+  text-decoration: underline;
+}
+
+.assessment-recommendations {
+  margin-top: 24px;
+}
+
+.assessment-recommendations h4 {
+  margin: 0 0 12px;
 }

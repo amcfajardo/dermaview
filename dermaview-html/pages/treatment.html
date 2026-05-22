@@ -1,24 +1,18 @@
-<html lang="en"><head>
+<!doctype html>
+<html lang="en">
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DermaView</title>
-    <!-- Global Styles -->
-  <!-- Global Styles (All styles from index.html) -->
-   
-    <link rel="stylesheet" href="../styles/global.css" />
-    <link rel="stylesheet" href="../styles/header.css" />
-    <link rel="stylesheet" href="../styles/hero.css" />
-    <link rel="stylesheet" href="../styles/buttons.css" />
-    <link rel="stylesheet" href="../styles/cards.css" />
-    <link rel="stylesheet" href="../styles/procedures.css" />
-    <link rel="stylesheet" href="../styles/upload.css" />
-    <link rel="stylesheet" href="../styles/treatment.css" />
-    <link rel="stylesheet" href="../styles/responsive.css" />
-    <link rel="stylesheet" href="../style.css" />
-
+    <title>DermaView | Skin Assessment</title>
+    <link rel="stylesheet" href="../styles/global.css?v=20260523-4" />
+    <link rel="stylesheet" href="../styles/header.css?v=20260523-4" />
+    <link rel="stylesheet" href="../styles/buttons.css?v=20260523-4" />
+    <link rel="stylesheet" href="../styles/cards.css?v=20260523-4" />
+    <link rel="stylesheet" href="../styles/upload.css?v=20260523-4" />
+    <link rel="stylesheet" href="../styles/treatment.css?v=20260523-4" />
+    <link rel="stylesheet" href="../styles/responsive.css?v=20260523-4" />
   </head>
-
-<body>
+  <body>
     <div class="page-shell">
       <header class="site-header">
         <div class="header-inner">
@@ -26,76 +20,67 @@
             <span class="brand-mark">D</span>
             <span class="brand-name">DermaView</span>
           </a>
-           <nav class="top-nav">
-
-      <a href="../index.html">
-        Home
-      </a>
-
-      <a href="procedures.html">
-        Procedures
-      </a>
-
-      <a href="../logout.php">
-        Logout
-      </a>
-
-    </nav>
+          <nav class="top-nav">
+            <a href="../index.html">Home</a>
+            <a href="procedures.html">Procedures</a>
+            <a href="../logout.php" class="logout-btn">Logout</a>
+          </nav>
         </div>
       </header>
 
-<!-- Treatment Page Content -->
-  <main id="app" class="app-content">
+      <main id="app" class="app-content">
+        <section class="section-grid">
+          <div>
+            <a href="procedures.html" class="button-secondary">Back to Procedures</a>
+            <h2 class="section-heading" id="treatment-title" style="margin-top: 24px;">Treatment</h2>
+            <p class="section-text" id="treatment-description">Loading treatment details...</p>
+          </div>
+        </section>
 
-<section class="section-grid">
-  <div>
-    <a href="../pages/procedures.html" class="button-secondary">← Back to Procedures</a>
-    <h2 class="section-heading" id="treatment-title">Treatment</h2>
-    <p class="section-text" id="treatment-description">Loading treatment details...</p>
-  </div>
-</section>
-<div class="grid-2">
-  <div>
-    <div class="panel-card upload-panel">
-      <h3>Upload or Capture Image</h3>
-      <label class="upload-box" for="image-upload">
-        <input id="image-upload" type="file" accept="image/*" />
-        <div>
-          <p>Click to upload an image</p>
-          <p style="margin-top: 10px; color: #6b7280; font-size: .95rem;">PNG, JPG, or GIF up to 10MB.</p>
+        <div class="grid-2">
+          <div>
+            <div class="panel-card upload-panel">
+              <h3>Upload or Capture Image</h3>
+              <label class="upload-box" for="image-upload">
+                <input id="image-upload" type="file" accept="image/*" />
+                <div>
+                  <p>Click to upload an image</p>
+                  <p style="margin-top: 10px; color: #6b7280; font-size: .95rem;">PNG, JPG, or GIF up to 10MB.</p>
+                </div>
+              </label>
+              <div id="upload-preview-container"></div>
+            </div>
+
+            <div class="panel-card info-panel">
+              <h4 id="workflow-title">How It Works</h4>
+              <ol class="detail-list" id="workflow-list" style="list-style:none;">
+                <li>Upload a clear image of the skin area.</li>
+                <li>DermaView reviews visible image signals.</li>
+                <li>Use the results as a guide for consultation.</li>
+                <li>Consult with your dermatologist for next steps.</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="panel-card results-panel">
+            <h3 id="results-title">Skin Assessment</h3>
+            <div id="results-content">
+              <div class="empty-state">
+                <div>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16" />
+                    <path d="M12 8v12" />
+                    <path d="M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p>Upload an image to start the skin assessment.</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </label>
-      <div id="upload-preview-container"></div>
+      </main>
     </div>
-    <div class="panel-card info-panel">
-      <h4>How It Works</h4>
-      <ol class="detail-list" style="list-style:none;">
-        <li>Upload a clear image of the treatment area.</li>
-        <li>Our image processing preview applies a treatment effect.</li>
-        <li>Compare the before and after visuals.</li>
-        <li>Consult with your dermatologist for next steps.</li>
-      </ol>
-    </div>
-  </div>
-  <div class="panel-card results-panel">
-    <h3>Treatment Visualization</h3>
-    <div id="results-content">
-      <div class="empty-state">
-        <div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16" />
-            <path d="M12 8v12" />
-            <path d="M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <p>Upload an image to see treatment visualization.</p>
-        </div>
-      </div>
-    </div>
-  </div>
 
-</main>
-</div>
-
-<script src="../app.js"></script>
-</body>
+    <script src="../app.js?v=20260523-4"></script>
+  </body>
 </html>
