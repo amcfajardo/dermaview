@@ -1,0 +1,231 @@
+:root{
+  --staff-cal-border:#e5e7eb;
+}
+
+.calendar-page-header{
+  display:grid;
+  gap:12px;
+  max-width: 900px;
+  padding: 26px 0 18px;
+}
+
+.staff-cal-layout{
+  display:grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.75fr);
+  gap:18px;
+  align-items:start;
+}
+
+.staff-cal-wrap{
+  margin: 0;
+  padding: 18px;
+}
+
+.staff-cal-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom: 12px;
+}
+
+.staff-cal-title{
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+}
+
+.staff-cal-title h3{
+  margin:0;
+  font-size: 1.25rem;
+}
+
+.staff-cal-controls{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.staff-cal-month{
+  font-weight: 900;
+  color: var(--color-text);
+}
+
+.staff-cal-nav{
+  border: 1px solid var(--color-border);
+  background: var(--color-white);
+  color: var(--color-text);
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor:pointer;
+  font-weight: 900;
+}
+
+.staff-cal-grid{
+  display:grid;
+  grid-template-columns: repeat(7, minmax(0,1fr));
+  gap:10px;
+}
+
+.staff-cal-weekday{
+  font-weight: 900;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  padding: 0 4px;
+}
+
+.staff-cal-day{
+  border: 1px solid var(--staff-cal-border);
+  border-radius: 12px;
+  background:#fff;
+  padding: 8px;
+  min-height: 96px;
+  display:grid;
+  grid-template-rows:auto auto 1fr;
+  gap:4px;
+  cursor:pointer;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.staff-cal-day.is-outside{ opacity:0.55; }
+.staff-cal-day.is-today{ border-color: var(--color-primary); box-shadow: 0 10px 24px rgba(37,99,235,0.12); }
+.staff-cal-day.is-selected{ border-color: var(--color-secondary); box-shadow: 0 12px 28px rgba(124,58,237,0.14); }
+.staff-cal-day:hover{ transform: translateY(-1px); border-color: var(--color-primary); }
+
+.staff-cal-day-num{ font-weight: 1000; color: var(--color-text); }
+.staff-cal-day-count{
+  width: fit-content;
+  min-height: 22px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: var(--color-bg-light);
+  color: var(--color-primary);
+  font-weight: 900;
+  font-size:0.8rem;
+}
+.staff-cal-day-count:empty{ display:none; }
+.staff-cal-day-events span{ color: var(--color-text-secondary); font-weight: 800; font-size: 0.85rem; }
+
+.staff-cal-day.has-appointments{ cursor:pointer; }
+
+.staff-cal-list-panel{
+  display:grid;
+  gap:14px;
+  position: sticky;
+  top: 92px;
+}
+
+.staff-cal-list-panel h3{
+  margin: 8px 0 0;
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.staff-cal-list{
+  display:grid;
+  gap:10px;
+}
+
+/* modal */
+.staff-cal-modal{
+  position:fixed;
+  inset:0;
+  display:none;
+  background: rgba(0,0,0,0.45);
+  align-items:center;
+  justify-content:center;
+  padding: 18px;
+  z-index: 9999;
+}
+
+.staff-cal-modal.active{ display:flex; }
+
+.staff-cal-modal-content{
+  width: min(720px, 100%);
+  background:#fff;
+  border-radius: 16px;
+  box-shadow: var(--shadow-md, 0 24px 80px rgba(15,23,42,0.2));
+  overflow:hidden;
+}
+
+.staff-cal-modal-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.staff-cal-modal-close{
+  border: 0;
+  background: transparent;
+  font-size: 26px;
+  line-height: 1;
+  cursor:pointer;
+}
+
+.staff-cal-modal-body{
+  padding: 14px 16px;
+  max-height: 60vh;
+  overflow:auto;
+}
+
+.appointment-detail-card{
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 10px;
+  display:flex;
+  align-items:flex-start;
+  gap: 12px;
+}
+
+.apt-time{ font-weight: 900; min-width: 110px; color: var(--color-text); }
+.apt-patient{ font-weight: 900; }
+.apt-procedure{ color: var(--color-text-secondary); font-weight: 700; }
+.apt-contact{
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin-top: 3px;
+  white-space: pre-line;
+}
+
+.apt-status{ display:inline-block; margin-top:6px; font-weight: 1000; padding: 4px 10px; border-radius: 999px; border:1px solid transparent; }
+.apt-status.status-pending{ background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+.apt-status.status-confirmed{ background:#ecfccb; color:#4d7c0f; border-color:#d9f99d; }
+.apt-status.status-completed{ background:#f0fdf4; color:#166534; border-color:#bbf7d0; }
+.apt-status.status-cancelled{ background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+.apt-status.status-no-show{ background:#fff7ed; color:#9a3412; border-color:#fed7aa; }
+
+.no-appointments{ color: var(--color-text-secondary); font-weight: 800; }
+
+@media (max-width: 980px){
+  .staff-cal-layout{
+    grid-template-columns: 1fr;
+  }
+
+  .staff-cal-list-panel{
+    position: static;
+  }
+}
+
+@media (max-width: 720px){
+  .staff-cal-grid{
+    gap:6px;
+  }
+
+  .staff-cal-day{
+    min-height: 74px;
+    padding: 7px;
+  }
+
+  .staff-cal-day-events{
+    display:none;
+  }
+
+  .staff-cal-header{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+}

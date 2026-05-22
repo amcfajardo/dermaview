@@ -1,4 +1,25 @@
-<!doctype html>
-<html><head><meta charset="utf-8"><title>View Processed Images</title></head><body>
-<h2>View Processed Images (placeholder)</h2>
-</body></html>
+<div class="panel-card accounts-panel processed-images-panel">
+  <div class="accounts-header">
+    <div>
+      <h3>View Processed Images</h3>
+      <p class="section-text">
+        Review saved before-and-after image analysis records created from the treatment preview tools.
+      </p>
+    </div>
+    <button type="button" class="accounts-create-btn" id="refreshProcessedImages">
+      Refresh
+    </button>
+  </div>
+
+  <div class="accounts-list-header">
+    <h4>Saved Analysis Records</h4>
+    <label class="accounts-search" for="processedImagesSearch">
+      <span>Search records</span>
+      <input id="processedImagesSearch" type="search" placeholder="Search procedure or analysis type..." autocomplete="off">
+    </label>
+  </div>
+
+  <div id="processedImagesList" class="processed-images-list">
+    <p class="accounts-empty-cell">Loading processed images...</p>
+  </div>
+</div>

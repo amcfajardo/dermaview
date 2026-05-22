@@ -152,6 +152,9 @@ let processedImageUrl = null;
 let assessmentResult = null;
 let isProcessing = false;
 let showResults = false;
+let isSavingAnalysis = false;
+let analysisSaveMessage = "";
+let lastSavedRecordId = null;
 
 function getCurrentRoute() {
   const hash = window.location.hash.slice(1) || "home";
@@ -412,10 +415,10 @@ function renderTreatment(id) {
     resultsContent.innerHTML = isAssessment ? renderAssessmentResults() : `
       <div class="comparison-grid">
         <div class="image-card">
-          <img src="${uploadedImageUrl}" alt="Before Treatment" />
+          <img src="${uploadedImageUrl}" alt="Before Treatment" data-preview-image data-preview-title="Before Treatment" tabindex="0" />
         </div>
         <div class="image-card">
-          <img src="${processedImageUrl}" alt="Projected Result" />
+          <img src="${processedImageUrl}" alt="Projected Result" data-preview-image data-preview-title="Projected Result" tabindex="0" />
         </div>
       </div>
       <div class="stat-grid" style="margin-top:24px;">
@@ -436,6 +439,7 @@ function renderTreatment(id) {
           <li><strong>Expected Improvement</strong><br />60–85% visible improvement</li>
         </ul>
       </div>
+      ${renderAnalysisSaveStatus()}
       <div class="alert-box">Important: These results are for educational purposes only. Consult with a qualified dermatologist for personalized medical advice.</div>
       <a href="schedule.html#${procedure.id}" class="button" style="width:100%; margin-top:20px;">Schedule Consultation</a>
     `;
@@ -455,6 +459,7 @@ function renderTreatment(id) {
   }
 
   bindTreatmentEvents(id);
+  bindImagePreviewEvents();
 }
 
 function bindTreatmentEvents(id) {
@@ -472,6 +477,8 @@ function bindTreatmentEvents(id) {
         showResults = false;
         processedImageUrl = null;
         assessmentResult = null;
+        analysisSaveMessage = "";
+        lastSavedRecordId = null;
         renderTreatment(id);
       };
       reader.readAsDataURL(file);
@@ -482,12 +489,29 @@ function bindTreatmentEvents(id) {
     processButton.addEventListener("click", async () => {
       if (!uploadedImageUrl || isProcessing) return;
       isProcessing = true;
+      analysisSaveMessage = "";
+      lastSavedRecordId = null;
       renderTreatment(id);
       await new Promise((resolve) => setTimeout(resolve, 1200));
       processedImageUrl = await processImageWithFilters(uploadedImageUrl);
       isProcessing = false;
       showResults = true;
+      isSavingAnalysis = true;
+      analysisSaveMessage = "Saving analyzed images...";
       renderTreatment(id);
+
+      try {
+        const saveResult = await saveAnalyzedImages(id);
+        lastSavedRecordId = saveResult.id || null;
+        analysisSaveMessage = lastSavedRecordId
+          ? `Saved to processed images as record #${lastSavedRecordId}.`
+          : "Saved to processed images.";
+      } catch (error) {
+        analysisSaveMessage = "Analysis completed, but the image record could not be saved.";
+      } finally {
+        isSavingAnalysis = false;
+        renderTreatment(id);
+      }
     });
   }
 
@@ -498,31 +522,50 @@ function bindTreatmentEvents(id) {
       showResults = false;
       isProcessing = false;
       assessmentResult = null;
+      isSavingAnalysis = false;
+      analysisSaveMessage = "";
+      lastSavedRecordId = null;
       renderTreatment(id);
     });
   }
 }
 
-function processImageWithFilters(imageUrl) {
+function renderImageDataUrl(imageUrl, options = {}) {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
+      const maxSize = options.maxSize || 1200;
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
       const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
       const ctx = canvas.getContext("2d");
 
       if (ctx) {
-        ctx.drawImage(img, 0, 0);
-        assessmentResult = analyzeSkinImage(ctx, canvas.width, canvas.height);
-        ctx.filter = "contrast(1.15) brightness(1.08) saturate(0.85) hue-rotate(5deg)";
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        if (options.analyze) {
+          assessmentResult = analyzeSkinImage(ctx, canvas.width, canvas.height);
+        }
+
+        if (options.filter) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.filter = options.filter;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
       }
 
-      resolve(canvas.toDataURL("image/png"));
+      resolve(canvas.toDataURL("image/jpeg", 0.88));
     };
     img.src = imageUrl;
+  });
+}
+
+function processImageWithFilters(imageUrl) {
+  return renderImageDataUrl(imageUrl, {
+    analyze: true,
+    filter: "contrast(1.15) brightness(1.08) saturate(0.85) hue-rotate(5deg)"
   });
 }
 
@@ -616,6 +659,20 @@ function formatMetric(value) {
   return `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
 }
 
+function renderAnalysisSaveStatus() {
+  if (!analysisSaveMessage) {
+    return "";
+  }
+
+  const statusClass = isSavingAnalysis ? "analysis-save-status is-saving" : "analysis-save-status";
+
+  return `
+    <div class="${statusClass}">
+      ${analysisSaveMessage}
+    </div>
+  `;
+}
+
 function renderAssessmentResults() {
   if (!assessmentResult) {
     return `
@@ -632,10 +689,10 @@ function renderAssessmentResults() {
   return `
     <div class="comparison-grid">
       <div class="image-card">
-        <img src="${uploadedImageUrl}" alt="Uploaded skin image" />
+        <img src="${uploadedImageUrl}" alt="Uploaded skin image" data-preview-image data-preview-title="Before Analysis" tabindex="0" />
       </div>
       <div class="image-card">
-        <img src="${processedImageUrl}" alt="Processed skin image preview" />
+        <img src="${processedImageUrl}" alt="Processed skin image preview" data-preview-image data-preview-title="After Analysis" tabindex="0" />
       </div>
     </div>
     <div class="assessment-metrics">
@@ -673,27 +730,169 @@ function renderAssessmentResults() {
           .join("")}
       </ul>
     </div>
+    ${renderAnalysisSaveStatus()}
     <div class="alert-box">Important: This is an educational image-processing guide only. It cannot diagnose skin conditions or determine medical treatment. Please consult a licensed dermatologist.</div>
     <a href="schedule.html#general-skin-assessment" class="button" style="width:100%; margin-top:20px;">Schedule Consultation</a>
   `;
 }
 
-function formatScheduleDateValue(date) {
-  return date.toISOString().split("T")[0];
+function ensureImagePreviewModal() {
+  let modal = document.getElementById("imagePreviewModal");
+
+  if (modal) {
+    return modal;
+  }
+
+  modal = document.createElement("div");
+  modal.id = "imagePreviewModal";
+  modal.className = "image-preview-modal";
+  modal.innerHTML = `
+    <div class="image-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="imagePreviewTitle">
+      <div class="image-preview-header">
+        <h3 id="imagePreviewTitle">Image Preview</h3>
+        <button type="button" class="image-preview-close" aria-label="Close image preview">&times;</button>
+      </div>
+      <img src="" alt="">
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector(".image-preview-close").addEventListener("click", closeImagePreview);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      closeImagePreview();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && modal.classList.contains("active")) {
+      closeImagePreview();
+    }
+  });
+
+  return modal;
 }
 
-function getScheduleDates(days = 6) {
-  return Array.from({ length: days }, (_, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() + index);
+function openImagePreview(src, title, alt) {
+  const modal = ensureImagePreviewModal();
+  const image = modal.querySelector("img");
+  const heading = modal.querySelector("#imagePreviewTitle");
+
+  image.src = src;
+  image.alt = alt || title || "Image preview";
+  heading.textContent = title || "Image Preview";
+  modal.classList.add("active");
+  modal.querySelector(".image-preview-close").focus();
+}
+
+function closeImagePreview() {
+  const modal = document.getElementById("imagePreviewModal");
+
+  if (!modal) return;
+
+  modal.classList.remove("active");
+  modal.querySelector("img").src = "";
+}
+
+function bindImagePreviewEvents(root = document) {
+  root.querySelectorAll("[data-preview-image]").forEach((image) => {
+    if (image.dataset.previewBound === "true") return;
+
+    image.dataset.previewBound = "true";
+    image.addEventListener("click", () => {
+      openImagePreview(image.src, image.dataset.previewTitle || image.alt, image.alt);
+    });
+    image.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openImagePreview(image.src, image.dataset.previewTitle || image.alt, image.alt);
+      }
+    });
+  });
+}
+
+function getProcessedImagesEndpoint() {
+  return window.location.pathname.includes("/pages/")
+    ? "../admin_pages/processed-images.php"
+    : "admin_pages/processed-images.php";
+}
+
+function buildSavedRecommendations() {
+  if (!assessmentResult || !assessmentResult.recommendations) {
+    return [];
+  }
+
+  return assessmentResult.recommendations.map((item) => ({
+    procedure_id: item.procedure?.id || item.id || "",
+    procedure_name: item.procedure?.name || "",
+    score: item.score,
+    reason: item.reason
+  }));
+}
+
+async function saveAnalyzedImages(id) {
+  const procedure = findProcedureById(id);
+
+  if (!procedure || !uploadedImageUrl || !processedImageUrl) {
+    throw new Error("Missing analysis record details.");
+  }
+
+  const beforeImageForSave = await renderImageDataUrl(uploadedImageUrl);
+  const formData = new FormData();
+  formData.append("action", "add");
+  formData.append("procedure_id", procedure.id);
+  formData.append("procedure_name", procedure.name);
+  formData.append(
+    "analysis_type",
+    procedure.id === "general-skin-assessment" ? "Skin Assessment" : "Treatment Visualization"
+  );
+  formData.append("before_image", beforeImageForSave);
+  formData.append("after_image", processedImageUrl);
+  formData.append("metrics_json", JSON.stringify(assessmentResult?.metrics || {}));
+  formData.append("recommendations_json", JSON.stringify(buildSavedRecommendations()));
+
+  const response = await fetch(getProcessedImagesEndpoint(), {
+    method: "POST",
+    body: formData
+  });
+  const data = await response.json();
+
+  if (!response.ok || data.status !== "ok") {
+    throw new Error(data.message || "Failed to save image record.");
+  }
+
+  return data;
+}
+
+function formatScheduleDateValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getScheduleEndpoint() {
+  return window.location.pathname.includes("/pages/")
+    ? "../admin_pages/manage-appointments.php"
+    : "admin_pages/manage-appointments.php";
+}
+
+function getScheduleCalendarDates(cursor) {
+  const year = cursor.getFullYear();
+  const month = cursor.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const startDay = firstOfMonth.getDay();
+  const firstCell = new Date(year, month, 1 - startDay);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(firstCell);
+    date.setDate(firstCell.getDate() + index);
     return date;
   });
 }
 
-function renderSchedule(id) {
-  const procedure = findProcedureById(id) || procedures[0];
-  const scheduleDates = getScheduleDates();
-  const timeSlots = [
+function getScheduleTimeSlots() {
+  return [
     { value: "09:00:00", label: "9:00 AM" },
     { value: "10:00:00", label: "10:00 AM" },
     { value: "11:00:00", label: "11:00 AM" },
@@ -702,6 +901,16 @@ function renderSchedule(id) {
     { value: "15:00:00", label: "3:00 PM" },
     { value: "16:00:00", label: "4:00 PM" }
   ];
+}
+
+function isAppointmentBlocking(appointment) {
+  return !["Cancelled", "No Show"].includes(appointment.status);
+}
+
+function renderSchedule(id) {
+  const procedure = findProcedureById(id) || procedures[0];
+  const today = formatScheduleDateValue(new Date());
+  const timeSlots = getScheduleTimeSlots();
 
   document.title = `DermaView | Schedule ${procedure.name}`;
 
@@ -719,7 +928,6 @@ function renderSchedule(id) {
       <form class="panel-card schedule-form" id="schedule-form">
         <input type="hidden" name="action" value="add" />
         <input type="hidden" name="source" value="online" />
-
         <div class="schedule-selector">
           <label class="schedule-procedure-field">
             <span>Selected Procedure</span>
@@ -733,30 +941,23 @@ function renderSchedule(id) {
           </label>
 
           <div class="schedule-picker">
-            <div>
-              <h3>Available Dates</h3>
-              <div class="schedule-date-grid">
-                ${scheduleDates
-                  .map((date, index) => {
-                    const value = formatScheduleDateValue(date);
-                    const weekday = date.toLocaleDateString("en-US", { weekday: "short" });
-                    const monthDay = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-
-                    return `
-                      <label class="schedule-date-card">
-                        <input type="radio" name="appointment_date" value="${value}" ${index === 0 ? "checked" : ""} required />
-                        <span>${weekday}</span>
-                        <strong>${monthDay}</strong>
-                      </label>
-                    `;
-                  })
-                  .join("")}
+            <div class="schedule-date-field">
+              <span>Appointment Date</span>
+              <input id="appointmentDateInput" type="hidden" name="appointment_date" value="${today}" required />
+              <button type="button" class="schedule-date-button" id="appointmentDateButton"></button>
+              <div class="schedule-date-dropdown" id="appointmentDateDropdown" hidden>
+                <div class="schedule-date-dropdown-header">
+                  <button type="button" id="appointmentDatePrev" aria-label="Previous month">&larr;</button>
+                  <strong id="appointmentDateMonth"></strong>
+                  <button type="button" id="appointmentDateNext" aria-label="Next month">&rarr;</button>
+                </div>
+                <div class="schedule-date-dropdown-grid" id="appointmentDateGrid"></div>
               </div>
             </div>
 
             <div>
-              <h3>Available Time Slots</h3>
-              <div class="schedule-time-grid">
+              <h3 id="scheduleTimeTitle">Available Time Slots</h3>
+              <div class="schedule-time-grid" id="scheduleTimeGrid">
                 ${timeSlots
                   .map(
                     (slot, index) => `
@@ -817,10 +1018,154 @@ function renderSchedule(id) {
   bindScheduleEvents();
 }
 
+function renderAppointmentBookingCalendar(state) {
+  const dateInput = document.getElementById("appointmentDateInput");
+  const dateButton = document.getElementById("appointmentDateButton");
+  const dateDropdown = document.getElementById("appointmentDateDropdown");
+  const dateMonth = document.getElementById("appointmentDateMonth");
+  const dateGrid = document.getElementById("appointmentDateGrid");
+  const timeTitle = document.getElementById("scheduleTimeTitle");
+  const timeGrid = document.getElementById("scheduleTimeGrid");
+
+  if (!dateInput || !timeGrid) return;
+
+  state.selectedDateIso = dateInput.value || formatScheduleDateValue(new Date());
+  const blockingAppointments = state.appointments.filter(isAppointmentBlocking);
+  const bookedTimes = new Set(
+    blockingAppointments
+      .filter((appointment) => appointment.appointment_date === state.selectedDateIso)
+      .map((appointment) => appointment.appointment_time)
+  );
+  const appointmentCounts = new Map();
+
+  blockingAppointments.forEach((appointment) => {
+    appointmentCounts.set(
+      appointment.appointment_date,
+      (appointmentCounts.get(appointment.appointment_date) || 0) + 1
+    );
+  });
+
+  if (dateButton) {
+    const selectedDate = new Date(`${state.selectedDateIso}T00:00:00`);
+    dateButton.textContent = selectedDate.toLocaleDateString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric"
+    });
+  }
+
+  if (dateDropdown && dateMonth && dateGrid) {
+    const todayIso = formatScheduleDateValue(new Date());
+    const currentMonth = state.datePickerCursor.getMonth();
+    const dates = getScheduleCalendarDates(state.datePickerCursor);
+
+    dateMonth.textContent = state.datePickerCursor.toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric"
+    });
+
+    dateGrid.innerHTML = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+      .map((day) => `<span class="schedule-date-weekday">${day}</span>`)
+      .join("");
+
+    dates.forEach((date) => {
+      const iso = formatScheduleDateValue(date);
+      const count = appointmentCounts.get(iso) || 0;
+      const button = document.createElement("button");
+
+      button.type = "button";
+      button.className = "schedule-date-day" +
+        (date.getMonth() !== currentMonth ? " is-outside" : "") +
+        (iso === state.selectedDateIso ? " is-selected" : "") +
+        (count ? " has-bookings" : "");
+      button.disabled = iso < todayIso;
+      button.innerHTML = `<span>${date.getDate()}</span>${count ? `<small>${count}</small>` : ""}`;
+      button.addEventListener("click", () => {
+        state.selectedDateIso = iso;
+        state.datePickerCursor = new Date(date.getFullYear(), date.getMonth(), 1);
+        dateInput.value = iso;
+        dateDropdown.hidden = true;
+        renderAppointmentBookingCalendar(state);
+      });
+
+      dateGrid.appendChild(button);
+    });
+  }
+
+  if (timeTitle) {
+    const selectedDate = new Date(`${state.selectedDateIso}T00:00:00`);
+    const bookedCount = blockingAppointments.filter(
+      (appointment) => appointment.appointment_date === state.selectedDateIso
+    ).length;
+
+    timeTitle.textContent = `Available Time Slots for ${selectedDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric"
+    })}${bookedCount ? ` (${bookedCount} booked)` : ""}`;
+  }
+
+  timeGrid.querySelectorAll(".schedule-time-slot").forEach((label) => {
+    const input = label.querySelector("input");
+    const isBooked = input && bookedTimes.has(input.value);
+
+    label.classList.toggle("is-booked", Boolean(isBooked));
+
+    if (input) {
+      input.disabled = Boolean(isBooked);
+      if (isBooked && input.checked) {
+        input.checked = false;
+      }
+    }
+  });
+
+  const firstAvailableTime = timeGrid.querySelector("input:not(:disabled)");
+  const selectedTime = timeGrid.querySelector("input:checked:not(:disabled)");
+
+  if (!selectedTime && firstAvailableTime) {
+    firstAvailableTime.checked = true;
+  }
+}
+
+function loadAppointmentBookings(state) {
+  const formData = new FormData();
+  formData.append("action", "fetch_json");
+
+  return fetch(getScheduleEndpoint(), {
+    method: "POST",
+    body: formData
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      state.appointments = data.appointments || [];
+      renderAppointmentBookingCalendar(state);
+    })
+    .catch(() => {
+      state.appointments = [];
+      renderAppointmentBookingCalendar(state);
+    });
+}
+
 function bindScheduleEvents() {
   const procedureSelect = document.getElementById("schedule-procedure");
   const scheduleForm = document.getElementById("schedule-form");
   const confirmation = document.getElementById("schedule-confirmation");
+  const dateInput = document.getElementById("appointmentDateInput");
+  const selectedDate = dateInput?.value || formatScheduleDateValue(new Date());
+  const state = {
+    cursor: new Date(`${selectedDate}T00:00:00`),
+    datePickerCursor: new Date(`${selectedDate}T00:00:00`),
+    selectedDateIso: selectedDate,
+    appointments: []
+  };
+  state.datePickerCursor = new Date(
+    state.datePickerCursor.getFullYear(),
+    state.datePickerCursor.getMonth(),
+    1
+  );
+  const dateButton = document.getElementById("appointmentDateButton");
+  const dateDropdown = document.getElementById("appointmentDateDropdown");
+  const datePrev = document.getElementById("appointmentDatePrev");
+  const dateNext = document.getElementById("appointmentDateNext");
 
   if (procedureSelect) {
     procedureSelect.addEventListener("change", () => {
@@ -829,16 +1174,56 @@ function bindScheduleEvents() {
     });
   }
 
+  if (dateInput) {
+    dateInput.addEventListener("change", () => {
+      state.selectedDateIso = dateInput.value;
+      renderAppointmentBookingCalendar(state);
+    });
+  }
+
+  if (dateButton && dateDropdown) {
+    dateButton.addEventListener("click", () => {
+      dateDropdown.hidden = !dateDropdown.hidden;
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".schedule-date-field")) {
+        dateDropdown.hidden = true;
+      }
+    });
+  }
+
+  if (datePrev) {
+    datePrev.addEventListener("click", () => {
+      state.datePickerCursor = new Date(
+        state.datePickerCursor.getFullYear(),
+        state.datePickerCursor.getMonth() - 1,
+        1
+      );
+      renderAppointmentBookingCalendar(state);
+    });
+  }
+
+  if (dateNext) {
+    dateNext.addEventListener("click", () => {
+      state.datePickerCursor = new Date(
+        state.datePickerCursor.getFullYear(),
+        state.datePickerCursor.getMonth() + 1,
+        1
+      );
+      renderAppointmentBookingCalendar(state);
+    });
+  }
+
+  renderAppointmentBookingCalendar(state);
+  loadAppointmentBookings(state);
+
   if (scheduleForm && confirmation) {
     scheduleForm.addEventListener("submit", (event) => {
       event.preventDefault();
       const formData = new FormData(scheduleForm);
       const procedure = findProcedureById(formData.get("procedure_id"));
-      const endpoint = window.location.pathname.includes("/pages/")
-        ? "../admin_pages/manage-appointments.php"
-        : "admin_pages/manage-appointments.php";
-
-      fetch(endpoint, {
+      fetch(getScheduleEndpoint(), {
         method: "POST",
         body: formData
       })
@@ -851,6 +1236,10 @@ function bindScheduleEvents() {
             <p>The clinic can now review it from the staff appointment dashboard.</p>
           `;
           scheduleForm.reset();
+          if (dateInput) {
+            dateInput.value = state.selectedDateIso;
+          }
+          loadAppointmentBookings(state);
         })
         .catch(() => {
           confirmation.hidden = false;

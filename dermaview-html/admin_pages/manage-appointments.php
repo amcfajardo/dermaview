@@ -119,6 +119,43 @@ if ($action === 'update_status') {
     exit();
 }
 
+if ($action === 'fetch_json') {
+    header('Content-Type: application/json; charset=utf-8');
+
+    $result = $conn->query("
+        SELECT id, procedure_id, procedure_name, patient_name, email, phone, appointment_date, appointment_time, notes, status, source
+        FROM appointments
+        ORDER BY appointment_date ASC, appointment_time ASC, id ASC
+    ");
+
+    $appointments = [];
+
+    if ($result && $result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $appointments[] = [
+                'id' => (int) $row['id'],
+                'procedure_id' => $row['procedure_id'],
+                'procedure_name' => $row['procedure_name'],
+                'patient_name' => $row['patient_name'],
+                'email' => $row['email'],
+                'phone' => $row['phone'],
+                'appointment_date' => $row['appointment_date'],
+                'appointment_time' => $row['appointment_time'],
+                'time_label' => format_time_label($row['appointment_time']),
+                'notes' => $row['notes'],
+                'status' => $row['status'],
+                'source' => $row['source']
+            ];
+        }
+    }
+
+    echo json_encode([
+        'status' => 'ok',
+        'appointments' => $appointments
+    ]);
+    exit();
+}
+
 if ($action === 'fetch') {
     $result = $conn->query("
         SELECT id, procedure_name, patient_name, email, phone, appointment_date, appointment_time, notes, status, source
