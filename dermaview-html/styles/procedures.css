@@ -131,10 +131,12 @@
 }
 
 .procedure-detail-actions {
-  display: flex;
+  display: grid;
+  gap: 10px;
   margin-top: 6px;
 }
 
-.procedure-detail-actions .button {
+.procedure-detail-actions .button,
+.procedure-detail-actions .button-secondary {
   width: 100%;
 }

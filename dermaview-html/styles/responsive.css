@@ -93,11 +93,16 @@
   .procedure-preview-grid,
   .home-steps,
   .final-cta,
-  .assessment-metrics {
+  .assessment-metrics,
+  .schedule-layout,
+  .schedule-date-grid,
+  .schedule-time-grid,
+  .form-grid {
     grid-template-columns: 1fr;
   }
 
-  .final-cta .button {
+  .final-cta .button,
+  .schedule-form .button {
     width: 100%;
   }
 }

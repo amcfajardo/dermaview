@@ -101,6 +101,10 @@
   grid-column: span 2;
 }
 
+.accounts-field-full {
+  grid-column: 1 / -1;
+}
+
 .accounts-field label {
   color: var(--color-text);
   font-size: 0.88rem;
@@ -120,6 +124,12 @@
   padding: 9px 11px;
   outline: none;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+textarea.accounts-input {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.5;
 }
 
 .accounts-input:focus,
@@ -231,6 +241,58 @@
   color: #991b1b;
 }
 
+.table-muted {
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+}
+
+.appointments-table {
+  min-width: 1120px;
+}
+
+.appointment-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.appointment-status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.appointment-status-confirmed {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.appointment-status-completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.appointment-status-cancelled,
+.appointment-status-no-show {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.appointment-status-select {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 6px 9px;
+}
+
 .account-row-actions {
   display: flex;
   flex-wrap: wrap;
@@ -258,6 +320,7 @@
 @media (max-width: 1100px) {
   .accounts-field,
   .accounts-field-wide,
+  .accounts-field-full,
   .accounts-actions {
     grid-column: span 3;
   }
@@ -285,6 +348,7 @@
 
   .accounts-field,
   .accounts-field-wide,
+  .accounts-field-full,
   .accounts-actions {
     grid-column: 1 / -1;
   }

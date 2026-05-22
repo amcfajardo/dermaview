@@ -172,6 +172,8 @@ function render() {
     renderProcedures();
   } else if (page === "treatment" && arg) {
     renderTreatment(arg);
+  } else if (page === "schedule" && arg) {
+    renderSchedule(arg);
   } else {
     renderHome();
   }
@@ -336,6 +338,7 @@ function renderProcedureDetails(procedure) {
         </div>
         <div class="procedure-detail-actions">
           <a href="treatment.html#${procedure.id}" class="button">${procedure.id === "general-skin-assessment" ? "Start Assessment" : "Use Image Processing"}</a>
+          <a href="schedule.html#${procedure.id}" class="button-secondary">Schedule Appointment</a>
         </div>
       </div>
     </div>
@@ -434,7 +437,7 @@ function renderTreatment(id) {
         </ul>
       </div>
       <div class="alert-box">Important: These results are for educational purposes only. Consult with a qualified dermatologist for personalized medical advice.</div>
-      <button class="button" style="width:100%; margin-top:20px;">Schedule Consultation</button>
+      <a href="schedule.html#${procedure.id}" class="button" style="width:100%; margin-top:20px;">Schedule Consultation</a>
     `;
   } else {
     resultsContent.innerHTML = `
@@ -671,11 +674,196 @@ function renderAssessmentResults() {
       </ul>
     </div>
     <div class="alert-box">Important: This is an educational image-processing guide only. It cannot diagnose skin conditions or determine medical treatment. Please consult a licensed dermatologist.</div>
+    <a href="schedule.html#general-skin-assessment" class="button" style="width:100%; margin-top:20px;">Schedule Consultation</a>
   `;
 }
 
-window.addEventListener("hashchange", render);
-window.addEventListener("load", () => {
+function formatScheduleDateValue(date) {
+  return date.toISOString().split("T")[0];
+}
+
+function getScheduleDates(days = 6) {
+  return Array.from({ length: days }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() + index);
+    return date;
+  });
+}
+
+function renderSchedule(id) {
+  const procedure = findProcedureById(id) || procedures[0];
+  const scheduleDates = getScheduleDates();
+  const timeSlots = [
+    { value: "09:00:00", label: "9:00 AM" },
+    { value: "10:00:00", label: "10:00 AM" },
+    { value: "11:00:00", label: "11:00 AM" },
+    { value: "13:00:00", label: "1:00 PM" },
+    { value: "14:00:00", label: "2:00 PM" },
+    { value: "15:00:00", label: "3:00 PM" },
+    { value: "16:00:00", label: "4:00 PM" }
+  ];
+
+  document.title = `DermaView | Schedule ${procedure.name}`;
+
+  app.innerHTML = `
+    <section class="schedule-header">
+      <div>
+        <a href="procedures.html" class="button-secondary">Back to Procedures</a>
+        <span class="section-kicker">Appointment</span>
+        <h2 class="section-heading">Clinic Schedule</h2>
+        <p class="section-text">Choose an available appointment date and time, then add the patient details for the clinic record.</p>
+      </div>
+    </section>
+
+    <section class="schedule-layout">
+      <form class="panel-card schedule-form" id="schedule-form">
+        <input type="hidden" name="action" value="add" />
+        <input type="hidden" name="source" value="online" />
+
+        <div class="schedule-selector">
+          <label class="schedule-procedure-field">
+            <span>Selected Procedure</span>
+            <select id="schedule-procedure" name="procedure_id">
+              ${procedures
+                .map(
+                  (item) => `<option value="${item.id}" ${item.id === procedure.id ? "selected" : ""}>${item.name}</option>`,
+                )
+                .join("")}
+            </select>
+          </label>
+
+          <div class="schedule-picker">
+            <div>
+              <h3>Available Dates</h3>
+              <div class="schedule-date-grid">
+                ${scheduleDates
+                  .map((date, index) => {
+                    const value = formatScheduleDateValue(date);
+                    const weekday = date.toLocaleDateString("en-US", { weekday: "short" });
+                    const monthDay = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+                    return `
+                      <label class="schedule-date-card">
+                        <input type="radio" name="appointment_date" value="${value}" ${index === 0 ? "checked" : ""} required />
+                        <span>${weekday}</span>
+                        <strong>${monthDay}</strong>
+                      </label>
+                    `;
+                  })
+                  .join("")}
+              </div>
+            </div>
+
+            <div>
+              <h3>Available Time Slots</h3>
+              <div class="schedule-time-grid">
+                ${timeSlots
+                  .map(
+                    (slot, index) => `
+                      <label class="schedule-time-slot">
+                        <input type="radio" name="appointment_time" value="${slot.value}" ${index === 0 ? "checked" : ""} required />
+                        <span>${slot.label}</span>
+                      </label>
+                    `,
+                  )
+                  .join("")}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            <span>Full Name</span>
+            <input type="text" name="patient_name" autocomplete="name" required />
+          </label>
+
+          <label>
+            <span>Email Address</span>
+            <input type="email" name="email" autocomplete="email" required />
+          </label>
+
+          <label>
+            <span>Phone Number</span>
+            <input type="tel" name="phone" autocomplete="tel" required />
+          </label>
+
+          <label class="form-wide">
+            <span>Notes or Skin Concern</span>
+            <textarea name="notes" rows="5" placeholder="Briefly describe the concern or goal for this appointment."></textarea>
+          </label>
+        </div>
+
+        <button class="button" type="submit">Request Appointment</button>
+      </form>
+
+      <aside class="panel-card schedule-summary">
+        <span class="procedure-chip">${procedure.category}</span>
+        <h3>${procedure.name}</h3>
+        <p>${procedure.description}</p>
+        <div class="schedule-summary-box">
+          <strong>Before your visit</strong>
+          <ul class="detail-list">
+            <li>Bring a clear photo history if available.</li>
+            <li>Avoid editing or filtering reference images.</li>
+            <li>Final treatment advice must come from the dermatologist.</li>
+          </ul>
+        </div>
+        <div id="schedule-confirmation" class="schedule-confirmation" hidden></div>
+      </aside>
+    </section>
+  `;
+
+  bindScheduleEvents();
+}
+
+function bindScheduleEvents() {
+  const procedureSelect = document.getElementById("schedule-procedure");
+  const scheduleForm = document.getElementById("schedule-form");
+  const confirmation = document.getElementById("schedule-confirmation");
+
+  if (procedureSelect) {
+    procedureSelect.addEventListener("change", () => {
+      const nextId = procedureSelect.value;
+      window.location.hash = nextId;
+    });
+  }
+
+  if (scheduleForm && confirmation) {
+    scheduleForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const formData = new FormData(scheduleForm);
+      const procedure = findProcedureById(formData.get("procedure_id"));
+      const endpoint = window.location.pathname.includes("/pages/")
+        ? "../admin_pages/manage-appointments.php"
+        : "admin_pages/manage-appointments.php";
+
+      fetch(endpoint, {
+        method: "POST",
+        body: formData
+      })
+        .then((response) => response.text())
+        .then((message) => {
+          confirmation.hidden = false;
+          confirmation.innerHTML = `
+            <strong>${message}</strong>
+            <p>${formData.get("patient_name")}, your request for ${procedure ? procedure.name : "this procedure"} has been recorded.</p>
+            <p>The clinic can now review it from the staff appointment dashboard.</p>
+          `;
+          scheduleForm.reset();
+        })
+        .catch(() => {
+          confirmation.hidden = false;
+          confirmation.innerHTML = `
+            <strong>Unable to save request</strong>
+            <p>Please try again or contact the clinic directly.</p>
+          `;
+        });
+    });
+  }
+}
+
+function renderCurrentPage() {
   const path = window.location.pathname;
 
   if (path.includes("treatment.html")) {
@@ -697,5 +885,15 @@ window.addEventListener("load", () => {
     return;
   }
 
+  if (path.includes("schedule.html")) {
+    const hash = window.location.hash.slice(1) || "general-skin-assessment";
+    selectedProcedureId = hash;
+    renderSchedule(hash);
+    return;
+  }
+
   renderHome();
-});
+}
+
+window.addEventListener("hashchange", renderCurrentPage);
+window.addEventListener("load", renderCurrentPage);
