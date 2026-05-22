@@ -2,7 +2,7 @@
 
 include 'config.php';
 
-$username = $_POST['username'];
+$identifier = trim($_POST['employee_number']);
 
 $password = password_hash(
     $_POST['password'],
@@ -12,13 +12,14 @@ $password = password_hash(
 $stmt = $conn->prepare(
     "UPDATE users
      SET password = ?
-     WHERE username = ?"
+     WHERE employee_number = ? OR email = ?"
 );
 
 $stmt->bind_param(
-    "ss",
+    "sss",
     $password,
-    $username
+    $identifier,
+    $identifier
 );
 
 if ($stmt->execute()) {

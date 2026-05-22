@@ -4,18 +4,19 @@ document
 
     e.preventDefault();
 
-    const username =
-      localStorage.getItem(
-        "reset_username"
-      );
+    const username = localStorage.getItem("reset_employee");
+    const password = e.target.password.value;
+    const confirm = e.target.confirm_password ? e.target.confirm_password.value : null;
 
-    const password =
-      e.target.password.value;
+    if (confirm !== null && password !== confirm) {
+      alert("Passwords do not match");
+      return;
+    }
 
     const formData = new FormData();
 
     formData.append(
-      "username",
+      "employee_number",
       username
     );
 
@@ -43,7 +44,7 @@ document
     ) {
 
       localStorage.removeItem(
-        "reset_username"
+        "reset_employee"
       );
 
       window.location.href =

@@ -8,13 +8,13 @@ require 'src/Exception.php';
 
 include 'config.php';
 
-$username = trim($_POST['username']);
+$identifier = trim($_POST['employee_number']);
 
 $stmt = $conn->prepare(
-    "SELECT email FROM users WHERE username = ?"
+    "SELECT email FROM users WHERE employee_number = ? OR email = ?"
 );
 
-$stmt->bind_param("s", $username);
+$stmt->bind_param("ss", $identifier, $identifier);
 
 $stmt->execute();
 
@@ -22,7 +22,7 @@ $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
 
-    echo "Username not found";
+    echo "User not found";
     exit;
 
 }

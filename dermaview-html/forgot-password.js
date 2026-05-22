@@ -20,16 +20,13 @@ document
 
     if (result === "Code sent") {
 
-      const username =
-        e.target.username.value;
+      const employee = e.target.employee_number.value;
 
-      localStorage.setItem(
-        "reset_username",
-        username
-      );
+      localStorage.setItem("reset_employee", employee);
+      // store timestamp (ms) when code was sent
+      localStorage.setItem("reset_sent_at", Date.now().toString());
 
-      window.location.href =
-        "verify-code.html";
+      window.location.href = "verify-code.html";
     }
 
 });

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="styles/global.css" />
+  <link rel="stylesheet" href="styles/header.css" />
+  <link rel="stylesheet" href="styles/cards.css" />
+  <link rel="stylesheet" href="styles/hero.css" />
+  <link rel="stylesheet" href="styles/buttons.css" />
+  <link rel="stylesheet" href="styles/responsive.css" />
+  <style>
+    .app { min-height: 100vh; display: flex; }
+    .sidebar {
+      width: 260px;
+      background: var(--color-white);
+      border-right: 1px solid var(--color-border);
+      padding: 28px;
+      box-sizing: border-box;
+      flex-shrink: 0;
+    }
+    .brand { font-weight: 800; color: var(--color-text); margin-bottom: 18px; font-size: 1.2rem; }
+    .nav { list-style: none; padding: 0; margin: 12px 0; }
+    .nav li { margin: 8px 0; }
+    .nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      color: var(--color-text);
+      text-decoration: none;
+      font-weight: 600;
+      transition: background var(--transition-fast), color var(--transition-fast);
+    }
+    .nav a.active,
+    .nav a:hover {
+      background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+      color: #fff;
+    }
+    .main { flex: 1; padding: 28px; }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .page-title { margin: 0; font-size: 2rem; color: var(--color-text); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 18px;
+    }
+    .placeholder {
+      height: 320px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-muted);
+      font-size: 1.05rem;
+    }
+    @media (max-width: 800px) {
+      .sidebar { display: none; }
+      .app { flex-direction: column; }
+      .main { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <a href="admin.html" class="brand" style="text-decoration:none; display:inline-flex; align-items:center; gap:12px;">
+        <span class="brand-mark">D</span>
+        <span class="brand-name">DermaView</span>
+      </a>
+      <ul class="nav" id="adminNav">
+        <li><a href="#" data-page="dashboard" class="active">Dashboard</a></li>
+        <li><a href="#" data-page="staff">Manage Staff / Employee Accounts</a></li>
+        <li><a href="#" data-page="procedures">Manage Procedures</a></li>
+        <li><a href="#" data-page="education">Manage Educational Content</a></li>
+        <li><a href="#" data-page="beforeafter">Manage Before-and-After Images</a></li>
+        <li><a href="#" data-page="processed">View Processed Images</a></li>
+        <li><a href="#" data-page="processing">Configure Image Processing Settings</a></li>
+        <li><a href="#" data-page="records">View Consultation / Image Records</a></li>
+        <li><a href="#" data-page="reports">View Reports</a></li>
+        <li style="margin-top: 12px;"><a href="logout.php" class="logout-btn">Logout</a></li>
+      </ul>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <h2 class="page-title" id="pageTitle">Dashboard</h2>
+      </div>
+
+      <div id="pageContent">
+        <div class="grid">
+          <div class="panel-card">
+            <h3>Overview</h3>
+            <p class="section-text">Quick stats and shortcuts for admins.</p>
+          </div>
+          <div class="panel-card">
+            <h3>Recent Activity</h3>
+            <div class="placeholder">No recent activity</div>
+          </div>
+        </div>
+
+        <section style="margin-top: 18px">
+          <div class="panel-card" id="mainPlaceholder" style="min-height: 320px; display:flex; align-items:center; justify-content:center; color: var(--color-text-muted);">
+            Select a menu item to manage content.
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

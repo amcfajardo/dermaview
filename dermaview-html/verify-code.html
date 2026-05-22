@@ -7,6 +7,19 @@
   <title>Verify Code</title>
 
   <link rel="stylesheet" href="styles/global.css">
+    <link rel="stylesheet" href="styles/header.css">
+
+    <style>
+      .auth-page { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:32px; }
+      .auth-card { position:relative; width:100%; max-width:450px; background:white; border:1px solid #e5e7eb; border-radius:28px; padding:40px; box-shadow:0 24px 80px rgba(15,23,42,0.08); }
+      .auth-title { margin:0 0 12px; font-size:2rem; font-weight:700; color:#111827; text-align:center; }
+      .auth-subtitle { margin:0 0 24px; text-align:center; color:#6b7280; }
+      .auth-form { display:grid; gap:18px; }
+      .auth-input { width:100%; padding:16px; border-radius:14px; border:1px solid #d1d5db; font-size:1rem; outline:none; box-sizing:border-box; }
+      .auth-input:focus { border-color:#2563eb; }
+      .auth-button { border:none; border-radius:14px; padding:16px; background:linear-gradient(90deg,#2563eb,#7c3aed); color:white; font-size:1rem; font-weight:700; cursor:pointer; }
+      .close-btn { position:absolute; top:12px; right:12px; width:36px; height:36px; border-radius:10px; background:#f3f4f6; color:#111827; display:inline-flex; align-items:center; justify-content:center; text-decoration:none; font-size:18px; line-height:1; border:1px solid #e5e7eb; }
+    </style>
 
 </head>
 
@@ -16,7 +29,11 @@
 
   <div class="auth-card">
 
-    <h1>Verify Code</h1>
+    <a href="login.html" class="close-btn" aria-label="Close">×</a>
+
+      <h1 class="auth-title">Verify Code</h1>
+
+      <p class="auth-subtitle">Enter the 4-digit code sent to your email.</p>
 
     <form id="verifyCodeForm" class="auth-form">
 
@@ -33,6 +50,10 @@
       </button>
 
     </form>
+    <div style="margin-top:16px; text-align:center;">
+      <p id="resendWrap">Didn't receive a code? <button id="resendButton" class="auth-button" style="padding:6px 12px;">Resend code</button></p>
+      <p id="resendTimer" style="color:#666; font-size:14px; margin-top:8px;"></p>
+    </div>
 
   </div>
 
