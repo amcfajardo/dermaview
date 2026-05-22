@@ -232,6 +232,202 @@ if (
 
 /*
 |--------------------------------------------------------------------------
+| DIAMOND PEEL WITH FACIAL
+|--------------------------------------------------------------------------
+*/
+
+if (
+    $procedure ===
+    "diamond-peel-facial"
+) {
+
+    $pythonScript =
+        "process_diamond_peel.py";
+
+    $command =
+    "python \"$pythonScript\" " .
+    escapeshellarg($inputPath) . " " .
+    escapeshellarg($outputPath) . " 2>&1";
+
+    exec(
+        $command,
+        $output,
+        $status
+    );
+
+    if (
+        $status === 0 &&
+        file_exists($outputPath)
+    ) {
+
+        echo json_encode([
+            "success" => true,
+            "image" => $outputPath
+        ]);
+
+    } else {
+
+        echo json_encode([
+            "success" => false,
+            "message" => "Diamond Peel processing failed",
+            "debug" => $output
+        ]);
+
+    }
+
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
+| UNDEREYE AND LIP FILLER
+|--------------------------------------------------------------------------
+*/
+
+if (
+    $procedure ===
+    "undereye-lip-filler"
+) {
+
+    $pythonScript =
+        "process_undereye_lip_filler.py";
+
+    $command =
+    "python \"$pythonScript\" " .
+    escapeshellarg($inputPath) . " " .
+    escapeshellarg($outputPath) . " 2>&1";
+
+    exec(
+        $command,
+        $output,
+        $status
+    );
+
+    if (
+        $status === 0 &&
+        file_exists($outputPath)
+    ) {
+
+        echo json_encode([
+            "success" => true,
+            "image" => $outputPath
+        ]);
+
+    } else {
+
+        echo json_encode([
+            "success" => false,
+            "message" => "Undereye and Lip Filler processing failed",
+            "debug" => $output
+        ]);
+
+    }
+
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
+| PICO CARBON LASER FACIAL
+|--------------------------------------------------------------------------
+*/
+
+if (
+    $procedure ===
+    "pico-carbon-laser"
+) {
+
+    $pythonScript =
+        "process_pico_carbon_laser.py";
+
+    $command =
+    "python \"$pythonScript\" " .
+    escapeshellarg($inputPath) . " " .
+    escapeshellarg($outputPath) . " 2>&1";
+
+    exec(
+        $command,
+        $output,
+        $status
+    );
+
+    if (
+        $status === 0 &&
+        file_exists($outputPath)
+    ) {
+
+        echo json_encode([
+            "success" => true,
+            "image" => $outputPath
+        ]);
+
+    } else {
+
+        echo json_encode([
+            "success" => false,
+            "message" => "PICO Carbon Laser processing failed",
+            "debug" => $output,
+            "command" => $command,
+            "outputPath" => $outputPath
+        ]);
+
+    }
+
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
+| LIP FILLER, CHIN FILLER, AND JAWTOX
+|--------------------------------------------------------------------------
+*/
+
+if (
+    $procedure ===
+    "lip-chin-jawtox"
+) {
+
+    $pythonScript =
+        "process_lip_chin_jawtox.py";
+
+    $command =
+    "python \"$pythonScript\" " .
+    escapeshellarg($inputPath) . " " .
+    escapeshellarg($outputPath) . " 2>&1";
+
+    exec(
+        $command,
+        $output,
+        $status
+    );
+
+    if (
+        $status === 0 &&
+        file_exists($outputPath)
+    ) {
+
+        echo json_encode([
+            "success" => true,
+            "image" => $outputPath
+        ]);
+
+    } else {
+
+        echo json_encode([
+            "success" => false,
+            "message" => "Lip, Chin, and Jawtox processing failed",
+            "debug" => $output,
+            "command" => $command,
+            "outputPath" => $outputPath
+        ]);
+
+    }
+
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
 | INVALID PROCEDURE
 |--------------------------------------------------------------------------
 */
