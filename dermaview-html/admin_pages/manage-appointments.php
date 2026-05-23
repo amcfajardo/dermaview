@@ -3,6 +3,47 @@
 session_start();
 include '../config.php';
 
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require '../src/Exception.php';
+require '../src/PHPMailer.php';
+require '../src/SMTP.php';
+
+function sendAppointmentEmail($toEmail, $patientName, $subject, $messageBody) {
+    if (empty($toEmail)) {
+        return false;
+    }
+
+    $mail = new PHPMailer(true);
+
+    try {
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';
+        $mail->SMTPAuth = true;
+
+        $mail->Username = 'dermaview2026@gmail.com';
+        $mail->Password = 'grqa hghr alxb ltwq';
+
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+        $mail->CharSet = 'UTF-8';
+
+        $mail->setFrom('YOUR_GMAIL@gmail.com', 'DermaView');
+        $mail->addAddress($toEmail, $patientName);
+
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+        $mail->Body = $messageBody;
+
+        $mail->send();
+        return true;
+
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
 header('Content-Type: text/html; charset=utf-8');
 
 $procedure_names = [
@@ -85,10 +126,31 @@ if ($action === 'add') {
     );
 
     if ($stmt->execute()) {
-        echo "Appointment saved successfully.";
-    } else {
-        echo "Failed to save appointment.";
-    }
+
+    sendAppointmentEmail(
+        $email,
+        $patient_name,
+        "DermaView Appointment Scheduled",
+        "
+        <h2>Appointment Scheduled</h2>
+        <p>Hello <b>$patient_name</b>,</p>
+        <p>Your appointment has been successfully scheduled.</p>
+
+        <p><b>Procedure:</b> $procedure_name</p>
+        <p><b>Date:</b> $appointment_date</p>
+        <p><b>Time:</b> " . format_time_label($appointment_time) . "</p>
+        <p><b>Status:</b> $status</p>
+
+        <br>
+        <p>Thank you for choosing DermaView.</p>
+        "
+    );
+
+    echo "Appointment saved successfully.";
+
+} else {
+    echo "Failed to save appointment.";
+}
 
     exit();
 }
@@ -111,10 +173,48 @@ if ($action === 'update_status') {
     $stmt->bind_param("si", $status, $id);
 
     if ($stmt->execute()) {
-        echo "Appointment status updated.";
-    } else {
-        echo "Failed to update appointment.";
+
+    $infoStmt = $conn->prepare("
+        SELECT patient_name, email, procedure_name, appointment_date, appointment_time, status
+        FROM appointments
+        WHERE id = ?
+    ");
+
+    $infoStmt->bind_param("i", $id);
+    $infoStmt->execute();
+
+    $infoResult = $infoStmt->get_result();
+
+    if ($infoResult && $infoResult->num_rows > 0) {
+        $appointment = $infoResult->fetch_assoc();
+
+        sendAppointmentEmail(
+            $appointment['email'],
+            $appointment['patient_name'],
+            "DermaView Appointment Status Updated",
+            "
+            <h2>Appointment Status Updated</h2>
+
+            <p>Hello <b>{$appointment['patient_name']}</b>,</p>
+
+            <p>Your appointment status has been updated.</p>
+
+            <p><b>Procedure:</b> {$appointment['procedure_name']}</p>
+            <p><b>Date:</b> {$appointment['appointment_date']}</p>
+            <p><b>Time:</b> " . format_time_label($appointment['appointment_time']) . "</p>
+            <p><b>New Status:</b> $status</p>
+
+            <br>
+            <p>Please contact DermaView for any concerns.</p>
+            "
+        );
     }
+
+    echo "Appointment status updated.";
+
+} else {
+    echo "Failed to update appointment.";
+}
 
     exit();
 }

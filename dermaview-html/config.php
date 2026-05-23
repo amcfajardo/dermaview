@@ -2,7 +2,7 @@
 
 $host = "localhost";
 $user = "root";
-$password = "";
+$password = "admin123";
 $database = "dermaview";
 
 $conn = new mysqli($host, $user, $password, $database);
