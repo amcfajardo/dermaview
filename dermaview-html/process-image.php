@@ -106,6 +106,7 @@ if (
     exit;
 }
 
+
 /*
 |--------------------------------------------------------------------------
 | CO2 FRACTIONAL LASER + DERMAPEN
@@ -421,6 +422,42 @@ if (
             "outputPath" => $outputPath
         ]);
 
+    }
+
+    exit;
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| GENERAL SKIN ASSESSMENT
+|--------------------------------------------------------------------------
+*/
+
+if ($procedure === "general-skin-assessment") {
+
+    $pythonScript = "process_general_skin_assessment.py";
+
+    $command =
+        "python \"$pythonScript\" " .
+        escapeshellarg($inputPath) . " " .
+        escapeshellarg($outputPath) . " 2>&1";
+
+    exec($command, $output, $status);
+
+    if ($status === 0 && file_exists($outputPath)) {
+        echo json_encode([
+            "success" => true,
+            "image" => $outputPath
+        ]);
+    } else {
+        echo json_encode([
+            "success" => false,
+            "message" => "General Skin Assessment processing failed",
+            "debug" => $output,
+            "command" => $command,
+            "outputPath" => $outputPath
+        ]);
     }
 
     exit;
