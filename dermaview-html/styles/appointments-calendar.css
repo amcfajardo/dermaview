@@ -1,0 +1,49 @@
+/* Appointment calendar styles - shared by admin + mini public view */
+
+.accounts-calendar-header {
+  display: grid;
+  gap: 12px;
+}
+
+.accounts-calendar-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.accounts-calendar-nav {
+  border: 1px solid var(--color-border);
+  background: var(--color-white);
+  color: var(--color-text);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.accounts-calendar-nav:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-primary);
+}
+
+.accounts-calendar-month {
+  font-weight: 900;
+  color: var(--color-text);
+}
+
+.accounts-calendar-view-toggles {
+  display: flex;
+  gap: 10px;
+}
+
+.accounts-calendar-view {
+  padding-top: 12px;
+}
+
+.accounts-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+

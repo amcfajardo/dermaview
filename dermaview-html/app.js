@@ -1,5 +1,25 @@
 const procedures = [
   {
+    id: "general-skin-assessment",
+    name: "General Skin Assessment",
+    description:
+      "Upload a skin image and get educational treatment suggestions based on visible image signals.",
+
+    category: "Assessment",
+
+    details: [
+      "Checks basic image brightness, redness, contrast, and texture patterns",
+      "Suggests possible procedure categories for consultation",
+      "Helps patients decide which treatment preview to explore next",
+      "Designed for education, not diagnosis",
+      "Best used with a clear, well-lit photo"
+    ],
+
+    info:
+      "DermaView uses client-side image processing heuristics to suggest treatments that may be worth discussing with a licensed dermatologist."
+  },
+
+  {
     id: "co2-fractional-laser-dermapen",
     name: "CO₂ Fractional Laser + Dermapen",
     description:
@@ -129,8 +149,12 @@ const app = document.getElementById("app");
 let selectedProcedureId = null;
 let uploadedImageUrl = null;
 let processedImageUrl = null;
+let assessmentResult = null;
 let isProcessing = false;
 let showResults = false;
+let isSavingAnalysis = false;
+let analysisSaveMessage = "";
+let lastSavedRecordId = null;
 
 function getCurrentRoute() {
   const hash = window.location.hash.slice(1) || "home";
@@ -151,84 +175,135 @@ function render() {
     renderProcedures();
   } else if (page === "treatment" && arg) {
     renderTreatment(arg);
+  } else if (page === "schedule" && arg) {
+    renderSchedule(arg);
   } else {
     renderHome();
   }
 }
 
 function renderHome() {
+  const featuredProcedures = procedures.slice(0, 6);
+
   app.innerHTML = `
-    <section class="hero">
+    <section class="hero home-hero">
       <div class="hero-grid">
-        <div>
+        <div class="hero-copy-block">
           <p class="status-badge">Professional Dermatology Platform</p>
           <h1 class="hero-headline">Professional Dermatology Image Analysis</h1>
           <p class="hero-copy">Leverage advanced image processing technology to visualize and analyze skin conditions with precision.</p>
           <p class="hero-copy">DermaView helps clinicians and patients understand treatment outcomes through sophisticated image analysis.</p>
           <div class="cta-row">
             <a href="pages/procedures.html" class="button">Get Started</a>
-<a href="pages/procedures.html" class="button-secondary">Browse Procedures</a>
+            <a href="pages/procedures.html" class="button-secondary">Browse Procedures</a>
           </div>
         </div>
         <div class="features-grid">
           <div class="feature-card">
-            <h3>🔍 Advanced Analysis</h3>
+            <h3>Advanced Analysis</h3>
             <p>State-of-the-art image processing algorithms for detailed skin analysis.</p>
           </div>
           <div class="feature-card">
-            <h3>📊 Treatment Visualization</h3>
+            <h3>Treatment Visualization</h3>
             <p>Visualize potential treatment outcomes with interactive before/after comparisons.</p>
           </div>
           <div class="feature-card">
-            <h3>📚 Educational Content</h3>
+            <h3>Educational Content</h3>
             <p>Comprehensive information about procedures and treatment options.</p>
           </div>
           <div class="feature-card">
-            <h3>💼 Clinical Grade</h3>
+            <h3>Clinical Grade</h3>
             <p>Professional-grade tools designed for medical professionals and clinics.</p>
           </div>
         </div>
       </div>
     </section>
-    <section class="section-grid">
-      <div class="panel-card">
-        <h3 class="section-heading">Ready to explore treatment options?</h3>
-        <p class="section-text">Browse our available procedures and learn how DermaView can help you visualize your treatment journey.</p>
-        <a href="pages/procedures.html" class="button" style="margin-top: 24px;">Browse Procedures</a>
+    <section class="home-section">
+      <div class="home-section-header">
+        <span class="section-kicker">Procedures</span>
+        <h2 class="section-heading">Explore treatment previews</h2>
+        <p class="section-text">Choose a dermatology procedure and use DermaView to support patient education and treatment planning.</p>
       </div>
+      <div class="procedure-preview-grid">
+        ${featuredProcedures
+          .map(
+            (procedure) => `
+              <a class="procedure-preview-card" href="pages/treatment.html#${procedure.id}">
+                <span>${procedure.category}</span>
+                <h3>${procedure.name}</h3>
+                <p>${procedure.description}</p>
+              </a>
+            `,
+          )
+          .join("")}
+      </div>
+    </section>
+    <section class="home-section">
+      <div class="home-section-header">
+        <span class="section-kicker">Workflow</span>
+        <h2 class="section-heading">How DermaView works</h2>
+      </div>
+      <div class="home-steps">
+        <div class="home-step">
+          <span>1</span>
+          <h3>Upload a clear image</h3>
+          <p>Start with a patient image or treatment-area photo for visualization.</p>
+        </div>
+        <div class="home-step">
+          <span>2</span>
+          <h3>Select a procedure</h3>
+          <p>Choose from supported dermatology treatments and review procedure details.</p>
+        </div>
+        <div class="home-step">
+          <span>3</span>
+          <h3>Review the preview</h3>
+          <p>Compare visual output and use it as a guide for consultation discussion.</p>
+        </div>
+      </div>
+    </section>
+    <section class="disclaimer-band">
+      <strong>Medical disclaimer</strong>
+      <p>DermaView is for educational visualization only. It does not diagnose skin conditions or replace advice from a licensed dermatologist.</p>
+    </section>
+    <section class="final-cta">
+      <div>
+        <span class="section-kicker">Start</span>
+        <h2 class="section-heading">Ready to preview a treatment?</h2>
+        <p class="section-text">Browse procedures, upload an image, and review a visual treatment simulation.</p>
+      </div>
+      <a href="pages/procedures.html" class="button">Browse Procedures</a>
     </section>
   `;
 }
 
 function renderProcedures() {
-  const selected = findProcedureById(selectedProcedureId);
+  const activeProcedureId = selectedProcedureId || procedures[0]?.id;
+  const selected = findProcedureById(activeProcedureId);
 
   app.innerHTML = `
-    <section class="section-grid">
-      <div>
-        <h2 class="section-heading">Available Procedures</h2>
-        <p class="section-text">Explore our comprehensive selection of dermatological treatments and procedures.</p>
+    <section class="procedures-page-header">
+      <div class="home-section-header">
+        <span class="section-kicker">Procedures</span>
+        <h2 class="section-heading">Choose a treatment to preview</h2>
+        <p class="section-text">Review supported dermatology procedures, compare benefits, and continue into image visualization when you are ready.</p>
       </div>
     </section>
-    <div class="grid-2">
-      <div>
-        ${procedures
-          .map(
-            (procedure) => `
-          <button class="procedure-card ${procedure.id === selectedProcedureId ? "selected" : ""}" data-procedure="${procedure.id}">
-            <div>
-              <h3>${procedure.name}</h3>
-              <p>${procedure.description}</p>
-            </div>
-            <span class="procedure-chip">${procedure.category}</span>
-          </button>
-        `,
-          )
-          .join("")}
-      </div>
-      <div class="panel-card">
-        ${selected ? renderProcedureDetails(selected) : renderProcedureEmpty()}
-      </div>
+    <div class="procedures-list">
+      ${procedures
+        .map(
+          (procedure) => `
+        <button class="procedure-card ${procedure.id === activeProcedureId ? "selected" : ""}" data-procedure="${procedure.id}">
+          <span class="procedure-chip">${procedure.category}</span>
+          <h3>${procedure.name}</h3>
+          <p>${procedure.description}</p>
+          <span class="procedure-card-action">${procedure.id === activeProcedureId ? "Selected" : "View details"}</span>
+        </button>
+      `,
+        )
+        .join("")}
+    </div>
+    <div class="panel-card procedure-detail-card">
+      ${selected ? renderProcedureDetails(selected) : renderProcedureEmpty()}
     </div>
   `;
 
@@ -245,54 +320,30 @@ function renderProcedures() {
 
 function renderProcedureDetails(procedure) {
   return `
-    <div>
-
-      <h3>${procedure.name}</h3>
-
-      <p class="section-text">
-        ${procedure.description}
-      </p>
-
-      <div style="margin: 24px 0;">
-
+    <div class="procedure-detail">
+      <div class="procedure-detail-summary">
+        <span class="procedure-chip">${procedure.category}</span>
+        <h3>${procedure.name}</h3>
+        <p class="section-text">${procedure.description}</p>
+      </div>
+      <div class="procedure-benefits">
         <h4>Procedure Benefits</h4>
-
         <ul class="detail-list">
           ${procedure.details
             .map((detail) => `<li>${detail}</li>`)
             .join("")}
         </ul>
-
       </div>
-
-      <div
-        style="
-          margin-top:20px;
-          padding:18px;
-          border-radius:18px;
-          background:#f8fafc;
-          border:1px solid #e5e7eb;
-        "
-      >
-
-        <h4 style="margin-bottom:10px;">
-          About This Procedure
-        </h4>
-
-        <p class="section-text" style="font-size:.98rem;">
-          ${procedure.info}
-        </p>
-
+      <div class="procedure-info-column">
+        <div class="procedure-info-box">
+          <h4>About This Procedure</h4>
+          <p>${procedure.info}</p>
+        </div>
+        <div class="procedure-detail-actions">
+          <a href="treatment.html#${procedure.id}" class="button">${procedure.id === "general-skin-assessment" ? "Start Assessment" : "Use Image Processing"}</a>
+          <a href="schedule.html#${procedure.id}" class="button-secondary">Schedule Appointment</a>
+        </div>
       </div>
-
-      <a
-        href="treatment.html#${procedure.id}"
-        class="button"
-        style="margin-top:24px;"
-      >
-        Use Image Processing
-      </a>
-
     </div>
   `;
 }
@@ -315,8 +366,36 @@ function renderTreatment(id) {
     return;
   }
 
+  const isAssessment = procedure.id === "general-skin-assessment";
+  const resultsTitle = document.getElementById("results-title");
+  const workflowTitle = document.getElementById("workflow-title");
+  const workflowList = document.getElementById("workflow-list");
+
   document.getElementById("treatment-title").textContent = procedure.name;
   document.getElementById("treatment-description").textContent = procedure.description;
+
+  document.title = `DermaView | ${isAssessment ? "Skin Assessment" : procedure.name}`;
+
+  if (resultsTitle) {
+    resultsTitle.textContent = isAssessment ? "Skin Assessment Results" : "Treatment Visualization";
+  }
+
+  if (workflowTitle && workflowList) {
+    workflowTitle.textContent = isAssessment ? "How Assessment Works" : "How It Works";
+    workflowList.innerHTML = isAssessment
+      ? `
+        <li>Upload a clear, well-lit image of the skin area.</li>
+        <li>DermaView checks redness, texture, contrast, and brightness signals.</li>
+        <li>Review educational treatment suggestions to discuss with a dermatologist.</li>
+        <li>Use the result as guidance only, not as a diagnosis.</li>
+      `
+      : `
+        <li>Upload a clear image of the treatment area.</li>
+        <li>DermaView applies a preview effect for visualization.</li>
+        <li>Compare the before and after visuals.</li>
+        <li>Consult with your dermatologist for next steps.</li>
+      `;
+  }
 
   const uploadPreviewContainer = document.getElementById("upload-preview-container");
   if (uploadedImageUrl) {
@@ -324,7 +403,7 @@ function renderTreatment(id) {
       <div class="upload-preview">
         <img src="${uploadedImageUrl}" alt="Uploaded" />
       </div>
-      <button id="process-button" class="button" style="width:100%; margin-top:18px;">${isProcessing ? "Processing Image..." : "Analyze Image"}</button>
+      <button id="process-button" class="button" style="width:100%; margin-top:18px;">${isProcessing ? "Processing Image..." : isAssessment ? "Assess Skin Image" : "Analyze Image"}</button>
       <button id="clear-button" class="button-secondary" style="width:100%; margin-top:12px;">Clear Image</button>
     `;
   } else {
@@ -333,13 +412,13 @@ function renderTreatment(id) {
 
   const resultsContent = document.getElementById("results-content");
   if (showResults && uploadedImageUrl && processedImageUrl) {
-    resultsContent.innerHTML = `
+    resultsContent.innerHTML = isAssessment ? renderAssessmentResults() : `
       <div class="comparison-grid">
         <div class="image-card">
-          <img src="${uploadedImageUrl}" alt="Before Treatment" />
+          <img src="${uploadedImageUrl}" alt="Before Treatment" data-preview-image data-preview-title="Before Treatment" tabindex="0" />
         </div>
         <div class="image-card">
-          <img src="${processedImageUrl}" alt="Projected Result" />
+          <img src="${processedImageUrl}" alt="Projected Result" data-preview-image data-preview-title="Projected Result" tabindex="0" />
         </div>
       </div>
       <div class="stat-grid" style="margin-top:24px;">
@@ -360,8 +439,9 @@ function renderTreatment(id) {
           <li><strong>Expected Improvement</strong><br />60–85% visible improvement</li>
         </ul>
       </div>
+      ${renderAnalysisSaveStatus()}
       <div class="alert-box">Important: These results are for educational purposes only. Consult with a qualified dermatologist for personalized medical advice.</div>
-      <button class="button" style="width:100%; margin-top:20px;">Schedule Consultation</button>
+      <a href="schedule.html#${procedure.id}" class="button" style="width:100%; margin-top:20px;">Schedule Consultation</a>
     `;
   } else {
     resultsContent.innerHTML = `
@@ -372,13 +452,14 @@ function renderTreatment(id) {
             <path d="M12 8v12" />
             <path d="M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <p>Upload an image to see treatment visualization.</p>
+          <p>${isAssessment ? "Upload an image to start the skin assessment." : "Upload an image to see treatment visualization."}</p>
         </div>
       </div>
     `;
   }
 
   bindTreatmentEvents(id);
+  bindImagePreviewEvents();
 }
 
 function bindTreatmentEvents(id) {
@@ -395,6 +476,9 @@ function bindTreatmentEvents(id) {
         uploadedImageUrl = reader.result;
         showResults = false;
         processedImageUrl = null;
+        assessmentResult = null;
+        analysisSaveMessage = "";
+        lastSavedRecordId = null;
         renderTreatment(id);
       };
       reader.readAsDataURL(file);
@@ -405,12 +489,29 @@ function bindTreatmentEvents(id) {
     processButton.addEventListener("click", async () => {
       if (!uploadedImageUrl || isProcessing) return;
       isProcessing = true;
+      analysisSaveMessage = "";
+      lastSavedRecordId = null;
       renderTreatment(id);
       await new Promise((resolve) => setTimeout(resolve, 1200));
       processedImageUrl = await processImageWithFilters(uploadedImageUrl);
       isProcessing = false;
       showResults = true;
+      isSavingAnalysis = true;
+      analysisSaveMessage = "Saving analyzed images...";
       renderTreatment(id);
+
+      try {
+        const saveResult = await saveAnalyzedImages(id);
+        lastSavedRecordId = saveResult.id || null;
+        analysisSaveMessage = lastSavedRecordId
+          ? `Saved to processed images as record #${lastSavedRecordId}.`
+          : "Saved to processed images.";
+      } catch (error) {
+        analysisSaveMessage = "Analysis completed, but the image record could not be saved.";
+      } finally {
+        isSavingAnalysis = false;
+        renderTreatment(id);
+      }
     });
   }
 
@@ -420,34 +521,738 @@ function bindTreatmentEvents(id) {
       processedImageUrl = null;
       showResults = false;
       isProcessing = false;
+      assessmentResult = null;
+      isSavingAnalysis = false;
+      analysisSaveMessage = "";
+      lastSavedRecordId = null;
       renderTreatment(id);
     });
   }
 }
 
-function processImageWithFilters(imageUrl) {
+function renderImageDataUrl(imageUrl, options = {}) {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
+      const maxSize = options.maxSize || 1200;
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
       const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
       const ctx = canvas.getContext("2d");
 
       if (ctx) {
-        ctx.filter = "contrast(1.15) brightness(1.08) saturate(0.85) hue-rotate(5deg)";
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        if (options.analyze) {
+          assessmentResult = analyzeSkinImage(ctx, canvas.width, canvas.height);
+        }
+
+        if (options.filter) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.filter = options.filter;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
       }
 
-      resolve(canvas.toDataURL("image/png"));
+      resolve(canvas.toDataURL("image/jpeg", 0.88));
     };
     img.src = imageUrl;
   });
 }
 
-window.addEventListener("hashchange", render);
-window.addEventListener("load", () => {
+function processImageWithFilters(imageUrl) {
+  return renderImageDataUrl(imageUrl, {
+    analyze: true,
+    filter: "contrast(1.15) brightness(1.08) saturate(0.85) hue-rotate(5deg)"
+  });
+}
+
+function analyzeSkinImage(ctx, width, height) {
+  const imageData = ctx.getImageData(0, 0, width, height).data;
+  const step = Math.max(4, Math.floor(Math.min(width, height) / 90));
+  let count = 0;
+  let brightness = 0;
+  let brightnessSquared = 0;
+  let redness = 0;
+  let texture = 0;
+  let previousLuminance = null;
+
+  for (let y = 0; y < height; y += step) {
+    previousLuminance = null;
+
+    for (let x = 0; x < width; x += step) {
+      const index = (y * width + x) * 4;
+      const r = imageData[index];
+      const g = imageData[index + 1];
+      const b = imageData[index + 2];
+      const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      const redDelta = Math.max(0, r - (g + b) / 2) / 255;
+
+      brightness += luminance;
+      brightnessSquared += luminance * luminance;
+      redness += redDelta;
+
+      if (previousLuminance !== null) {
+        texture += Math.abs(luminance - previousLuminance);
+      }
+
+      previousLuminance = luminance;
+      count += 1;
+    }
+  }
+
+  const averageBrightness = brightness / count;
+  const contrast = Math.sqrt(Math.max(0, brightnessSquared / count - averageBrightness * averageBrightness));
+  const averageRedness = redness / count;
+  const textureScore = texture / Math.max(1, count);
+  const metrics = {
+    brightness: averageBrightness,
+    contrast,
+    redness: averageRedness,
+    texture: textureScore
+  };
+
+  return {
+    metrics,
+    recommendations: buildTreatmentRecommendations(metrics)
+  };
+}
+
+function buildTreatmentRecommendations(metrics) {
+  const scored = [
+    {
+      id: "pico-carbon-laser",
+      score: 55 + metrics.redness * 280 + metrics.contrast * 70,
+      reason: "Visible redness, blemish-like color variation, or uneven tone may be worth discussing with a dermatologist."
+    },
+    {
+      id: "co2-fractional-laser-dermapen",
+      score: 48 + metrics.texture * 420 + metrics.contrast * 95,
+      reason: "Texture and contrast patterns may point toward resurfacing or scar-texture consultation."
+    },
+    {
+      id: "diamond-peel-facial",
+      score: 45 + (1 - metrics.brightness) * 80 + metrics.contrast * 45,
+      reason: "Lower brightness or dull-looking areas may fit gentle exfoliation or brightening consultation."
+    },
+    {
+      id: "undereye-lip-filler",
+      score: 32 + metrics.contrast * 60,
+      reason: "Facial balance concerns require in-person assessment; filler options should be reviewed carefully."
+    }
+  ];
+
+  return scored
+    .map((item) => ({
+      ...item,
+      procedure: findProcedureById(item.id),
+      score: Math.min(96, Math.max(35, Math.round(item.score)))
+    }))
+    .filter((item) => item.procedure)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+}
+
+function formatMetric(value) {
+  return `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
+}
+
+function renderAnalysisSaveStatus() {
+  if (!analysisSaveMessage) {
+    return "";
+  }
+
+  const statusClass = isSavingAnalysis ? "analysis-save-status is-saving" : "analysis-save-status";
+
+  return `
+    <div class="${statusClass}">
+      ${analysisSaveMessage}
+    </div>
+  `;
+}
+
+function renderAssessmentResults() {
+  if (!assessmentResult) {
+    return `
+      <div class="empty-state">
+        <div>
+          <p>Analyze the uploaded image to see educational treatment suggestions.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  const { metrics, recommendations } = assessmentResult;
+
+  return `
+    <div class="comparison-grid">
+      <div class="image-card">
+        <img src="${uploadedImageUrl}" alt="Uploaded skin image" data-preview-image data-preview-title="Before Analysis" tabindex="0" />
+      </div>
+      <div class="image-card">
+        <img src="${processedImageUrl}" alt="Processed skin image preview" data-preview-image data-preview-title="After Analysis" tabindex="0" />
+      </div>
+    </div>
+    <div class="assessment-metrics">
+      <div class="stat-card">
+        <strong>${formatMetric(metrics.redness)}</strong>
+        <span>Redness signal</span>
+      </div>
+      <div class="stat-card">
+        <strong>${formatMetric(metrics.texture)}</strong>
+        <span>Texture signal</span>
+      </div>
+      <div class="stat-card">
+        <strong>${formatMetric(metrics.contrast)}</strong>
+        <span>Contrast signal</span>
+      </div>
+      <div class="stat-card">
+        <strong>${formatMetric(metrics.brightness)}</strong>
+        <span>Brightness</span>
+      </div>
+    </div>
+    <div class="assessment-recommendations">
+      <h4>Suggested treatments to discuss</h4>
+      <ul class="recommendation-list">
+        ${recommendations
+          .map(
+            (item) => `
+              <li>
+                <strong>${item.procedure.name}</strong>
+                <span>${item.score}% match strength</span>
+                <p>${item.reason}</p>
+                <a href="treatment.html#${item.procedure.id}">Preview this treatment</a>
+              </li>
+            `,
+          )
+          .join("")}
+      </ul>
+    </div>
+    ${renderAnalysisSaveStatus()}
+    <div class="alert-box">Important: This is an educational image-processing guide only. It cannot diagnose skin conditions or determine medical treatment. Please consult a licensed dermatologist.</div>
+    <a href="schedule.html#general-skin-assessment" class="button" style="width:100%; margin-top:20px;">Schedule Consultation</a>
+  `;
+}
+
+function ensureImagePreviewModal() {
+  let modal = document.getElementById("imagePreviewModal");
+
+  if (modal) {
+    return modal;
+  }
+
+  modal = document.createElement("div");
+  modal.id = "imagePreviewModal";
+  modal.className = "image-preview-modal";
+  modal.innerHTML = `
+    <div class="image-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="imagePreviewTitle">
+      <div class="image-preview-header">
+        <h3 id="imagePreviewTitle">Image Preview</h3>
+        <button type="button" class="image-preview-close" aria-label="Close image preview">&times;</button>
+      </div>
+      <img src="" alt="">
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector(".image-preview-close").addEventListener("click", closeImagePreview);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      closeImagePreview();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && modal.classList.contains("active")) {
+      closeImagePreview();
+    }
+  });
+
+  return modal;
+}
+
+function openImagePreview(src, title, alt) {
+  const modal = ensureImagePreviewModal();
+  const image = modal.querySelector("img");
+  const heading = modal.querySelector("#imagePreviewTitle");
+
+  image.src = src;
+  image.alt = alt || title || "Image preview";
+  heading.textContent = title || "Image Preview";
+  modal.classList.add("active");
+  modal.querySelector(".image-preview-close").focus();
+}
+
+function closeImagePreview() {
+  const modal = document.getElementById("imagePreviewModal");
+
+  if (!modal) return;
+
+  modal.classList.remove("active");
+  modal.querySelector("img").src = "";
+}
+
+function bindImagePreviewEvents(root = document) {
+  root.querySelectorAll("[data-preview-image]").forEach((image) => {
+    if (image.dataset.previewBound === "true") return;
+
+    image.dataset.previewBound = "true";
+    image.addEventListener("click", () => {
+      openImagePreview(image.src, image.dataset.previewTitle || image.alt, image.alt);
+    });
+    image.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openImagePreview(image.src, image.dataset.previewTitle || image.alt, image.alt);
+      }
+    });
+  });
+}
+
+function getProcessedImagesEndpoint() {
+  return window.location.pathname.includes("/pages/")
+    ? "../admin_pages/processed-images.php"
+    : "admin_pages/processed-images.php";
+}
+
+function buildSavedRecommendations() {
+  if (!assessmentResult || !assessmentResult.recommendations) {
+    return [];
+  }
+
+  return assessmentResult.recommendations.map((item) => ({
+    procedure_id: item.procedure?.id || item.id || "",
+    procedure_name: item.procedure?.name || "",
+    score: item.score,
+    reason: item.reason
+  }));
+}
+
+async function saveAnalyzedImages(id) {
+  const procedure = findProcedureById(id);
+
+  if (!procedure || !uploadedImageUrl || !processedImageUrl) {
+    throw new Error("Missing analysis record details.");
+  }
+
+  const beforeImageForSave = await renderImageDataUrl(uploadedImageUrl);
+  const formData = new FormData();
+  formData.append("action", "add");
+  formData.append("procedure_id", procedure.id);
+  formData.append("procedure_name", procedure.name);
+  formData.append(
+    "analysis_type",
+    procedure.id === "general-skin-assessment" ? "Skin Assessment" : "Treatment Visualization"
+  );
+  formData.append("before_image", beforeImageForSave);
+  formData.append("after_image", processedImageUrl);
+  formData.append("metrics_json", JSON.stringify(assessmentResult?.metrics || {}));
+  formData.append("recommendations_json", JSON.stringify(buildSavedRecommendations()));
+
+  const response = await fetch(getProcessedImagesEndpoint(), {
+    method: "POST",
+    body: formData
+  });
+  const data = await response.json();
+
+  if (!response.ok || data.status !== "ok") {
+    throw new Error(data.message || "Failed to save image record.");
+  }
+
+  return data;
+}
+
+function formatScheduleDateValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getScheduleEndpoint() {
+  return window.location.pathname.includes("/pages/")
+    ? "../admin_pages/manage-appointments.php"
+    : "admin_pages/manage-appointments.php";
+}
+
+function getScheduleCalendarDates(cursor) {
+  const year = cursor.getFullYear();
+  const month = cursor.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const startDay = firstOfMonth.getDay();
+  const firstCell = new Date(year, month, 1 - startDay);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(firstCell);
+    date.setDate(firstCell.getDate() + index);
+    return date;
+  });
+}
+
+function getScheduleTimeSlots() {
+  return [
+    { value: "09:00:00", label: "9:00 AM" },
+    { value: "10:00:00", label: "10:00 AM" },
+    { value: "11:00:00", label: "11:00 AM" },
+    { value: "13:00:00", label: "1:00 PM" },
+    { value: "14:00:00", label: "2:00 PM" },
+    { value: "15:00:00", label: "3:00 PM" },
+    { value: "16:00:00", label: "4:00 PM" }
+  ];
+}
+
+function isAppointmentBlocking(appointment) {
+  return !["Cancelled", "No Show"].includes(appointment.status);
+}
+
+function renderSchedule(id) {
+  const procedure = findProcedureById(id) || procedures[0];
+  const today = formatScheduleDateValue(new Date());
+  const timeSlots = getScheduleTimeSlots();
+
+  document.title = `DermaView | Schedule ${procedure.name}`;
+
+  app.innerHTML = `
+    <section class="schedule-header">
+      <div>
+        <a href="procedures.html" class="button-secondary">Back to Procedures</a>
+        <span class="section-kicker">Appointment</span>
+        <h2 class="section-heading">Clinic Schedule</h2>
+        <p class="section-text">Choose an available appointment date and time, then add the patient details for the clinic record.</p>
+      </div>
+    </section>
+
+    <section class="schedule-layout">
+      <form class="panel-card schedule-form" id="schedule-form">
+        <input type="hidden" name="action" value="add" />
+        <input type="hidden" name="source" value="online" />
+        <div class="schedule-selector">
+          <label class="schedule-procedure-field">
+            <span>Selected Procedure</span>
+            <select id="schedule-procedure" name="procedure_id">
+              ${procedures
+                .map(
+                  (item) => `<option value="${item.id}" ${item.id === procedure.id ? "selected" : ""}>${item.name}</option>`,
+                )
+                .join("")}
+            </select>
+          </label>
+
+          <div class="schedule-picker">
+            <div class="schedule-date-field">
+              <span>Appointment Date</span>
+              <input id="appointmentDateInput" type="hidden" name="appointment_date" value="${today}" required />
+              <button type="button" class="schedule-date-button" id="appointmentDateButton"></button>
+              <div class="schedule-date-dropdown" id="appointmentDateDropdown" hidden>
+                <div class="schedule-date-dropdown-header">
+                  <button type="button" id="appointmentDatePrev" aria-label="Previous month">&larr;</button>
+                  <strong id="appointmentDateMonth"></strong>
+                  <button type="button" id="appointmentDateNext" aria-label="Next month">&rarr;</button>
+                </div>
+                <div class="schedule-date-dropdown-grid" id="appointmentDateGrid"></div>
+              </div>
+            </div>
+
+            <div>
+              <h3 id="scheduleTimeTitle">Available Time Slots</h3>
+              <div class="schedule-time-grid" id="scheduleTimeGrid">
+                ${timeSlots
+                  .map(
+                    (slot, index) => `
+                      <label class="schedule-time-slot">
+                        <input type="radio" name="appointment_time" value="${slot.value}" ${index === 0 ? "checked" : ""} required />
+                        <span>${slot.label}</span>
+                      </label>
+                    `,
+                  )
+                  .join("")}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            <span>Full Name</span>
+            <input type="text" name="patient_name" autocomplete="name" required />
+          </label>
+
+          <label>
+            <span>Email Address</span>
+            <input type="email" name="email" autocomplete="email" required />
+          </label>
+
+          <label>
+            <span>Phone Number</span>
+            <input type="tel" name="phone" autocomplete="tel" required />
+          </label>
+
+          <label class="form-wide">
+            <span>Notes or Skin Concern</span>
+            <textarea name="notes" rows="5" placeholder="Briefly describe the concern or goal for this appointment."></textarea>
+          </label>
+        </div>
+
+        <button class="button" type="submit">Request Appointment</button>
+      </form>
+
+      <aside class="panel-card schedule-summary">
+        <span class="procedure-chip">${procedure.category}</span>
+        <h3>${procedure.name}</h3>
+        <p>${procedure.description}</p>
+        <div class="schedule-summary-box">
+          <strong>Before your visit</strong>
+          <ul class="detail-list">
+            <li>Bring a clear photo history if available.</li>
+            <li>Avoid editing or filtering reference images.</li>
+            <li>Final treatment advice must come from the dermatologist.</li>
+          </ul>
+        </div>
+        <div id="schedule-confirmation" class="schedule-confirmation" hidden></div>
+      </aside>
+    </section>
+  `;
+
+  bindScheduleEvents();
+}
+
+function renderAppointmentBookingCalendar(state) {
+  const dateInput = document.getElementById("appointmentDateInput");
+  const dateButton = document.getElementById("appointmentDateButton");
+  const dateDropdown = document.getElementById("appointmentDateDropdown");
+  const dateMonth = document.getElementById("appointmentDateMonth");
+  const dateGrid = document.getElementById("appointmentDateGrid");
+  const timeTitle = document.getElementById("scheduleTimeTitle");
+  const timeGrid = document.getElementById("scheduleTimeGrid");
+
+  if (!dateInput || !timeGrid) return;
+
+  state.selectedDateIso = dateInput.value || formatScheduleDateValue(new Date());
+  const blockingAppointments = state.appointments.filter(isAppointmentBlocking);
+  const bookedTimes = new Set(
+    blockingAppointments
+      .filter((appointment) => appointment.appointment_date === state.selectedDateIso)
+      .map((appointment) => appointment.appointment_time)
+  );
+  const appointmentCounts = new Map();
+
+  blockingAppointments.forEach((appointment) => {
+    appointmentCounts.set(
+      appointment.appointment_date,
+      (appointmentCounts.get(appointment.appointment_date) || 0) + 1
+    );
+  });
+
+  if (dateButton) {
+    const selectedDate = new Date(`${state.selectedDateIso}T00:00:00`);
+    dateButton.textContent = selectedDate.toLocaleDateString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric"
+    });
+  }
+
+  if (dateDropdown && dateMonth && dateGrid) {
+    const todayIso = formatScheduleDateValue(new Date());
+    const currentMonth = state.datePickerCursor.getMonth();
+    const dates = getScheduleCalendarDates(state.datePickerCursor);
+
+    dateMonth.textContent = state.datePickerCursor.toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric"
+    });
+
+    dateGrid.innerHTML = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+      .map((day) => `<span class="schedule-date-weekday">${day}</span>`)
+      .join("");
+
+    dates.forEach((date) => {
+      const iso = formatScheduleDateValue(date);
+      const count = appointmentCounts.get(iso) || 0;
+      const button = document.createElement("button");
+
+      button.type = "button";
+      button.className = "schedule-date-day" +
+        (date.getMonth() !== currentMonth ? " is-outside" : "") +
+        (iso === state.selectedDateIso ? " is-selected" : "") +
+        (count ? " has-bookings" : "");
+      button.disabled = iso < todayIso;
+      button.innerHTML = `<span>${date.getDate()}</span>${count ? `<small>${count}</small>` : ""}`;
+      button.addEventListener("click", () => {
+        state.selectedDateIso = iso;
+        state.datePickerCursor = new Date(date.getFullYear(), date.getMonth(), 1);
+        dateInput.value = iso;
+        dateDropdown.hidden = true;
+        renderAppointmentBookingCalendar(state);
+      });
+
+      dateGrid.appendChild(button);
+    });
+  }
+
+  if (timeTitle) {
+    const selectedDate = new Date(`${state.selectedDateIso}T00:00:00`);
+    const bookedCount = blockingAppointments.filter(
+      (appointment) => appointment.appointment_date === state.selectedDateIso
+    ).length;
+
+    timeTitle.textContent = `Available Time Slots for ${selectedDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric"
+    })}${bookedCount ? ` (${bookedCount} booked)` : ""}`;
+  }
+
+  timeGrid.querySelectorAll(".schedule-time-slot").forEach((label) => {
+    const input = label.querySelector("input");
+    const isBooked = input && bookedTimes.has(input.value);
+
+    label.classList.toggle("is-booked", Boolean(isBooked));
+
+    if (input) {
+      input.disabled = Boolean(isBooked);
+      if (isBooked && input.checked) {
+        input.checked = false;
+      }
+    }
+  });
+
+  const firstAvailableTime = timeGrid.querySelector("input:not(:disabled)");
+  const selectedTime = timeGrid.querySelector("input:checked:not(:disabled)");
+
+  if (!selectedTime && firstAvailableTime) {
+    firstAvailableTime.checked = true;
+  }
+}
+
+function loadAppointmentBookings(state) {
+  const formData = new FormData();
+  formData.append("action", "fetch_json");
+
+  return fetch(getScheduleEndpoint(), {
+    method: "POST",
+    body: formData
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      state.appointments = data.appointments || [];
+      renderAppointmentBookingCalendar(state);
+    })
+    .catch(() => {
+      state.appointments = [];
+      renderAppointmentBookingCalendar(state);
+    });
+}
+
+function bindScheduleEvents() {
+  const procedureSelect = document.getElementById("schedule-procedure");
+  const scheduleForm = document.getElementById("schedule-form");
+  const confirmation = document.getElementById("schedule-confirmation");
+  const dateInput = document.getElementById("appointmentDateInput");
+  const selectedDate = dateInput?.value || formatScheduleDateValue(new Date());
+  const state = {
+    cursor: new Date(`${selectedDate}T00:00:00`),
+    datePickerCursor: new Date(`${selectedDate}T00:00:00`),
+    selectedDateIso: selectedDate,
+    appointments: []
+  };
+  state.datePickerCursor = new Date(
+    state.datePickerCursor.getFullYear(),
+    state.datePickerCursor.getMonth(),
+    1
+  );
+  const dateButton = document.getElementById("appointmentDateButton");
+  const dateDropdown = document.getElementById("appointmentDateDropdown");
+  const datePrev = document.getElementById("appointmentDatePrev");
+  const dateNext = document.getElementById("appointmentDateNext");
+
+  if (procedureSelect) {
+    procedureSelect.addEventListener("change", () => {
+      const nextId = procedureSelect.value;
+      window.location.hash = nextId;
+    });
+  }
+
+  if (dateInput) {
+    dateInput.addEventListener("change", () => {
+      state.selectedDateIso = dateInput.value;
+      renderAppointmentBookingCalendar(state);
+    });
+  }
+
+  if (dateButton && dateDropdown) {
+    dateButton.addEventListener("click", () => {
+      dateDropdown.hidden = !dateDropdown.hidden;
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".schedule-date-field")) {
+        dateDropdown.hidden = true;
+      }
+    });
+  }
+
+  if (datePrev) {
+    datePrev.addEventListener("click", () => {
+      state.datePickerCursor = new Date(
+        state.datePickerCursor.getFullYear(),
+        state.datePickerCursor.getMonth() - 1,
+        1
+      );
+      renderAppointmentBookingCalendar(state);
+    });
+  }
+
+  if (dateNext) {
+    dateNext.addEventListener("click", () => {
+      state.datePickerCursor = new Date(
+        state.datePickerCursor.getFullYear(),
+        state.datePickerCursor.getMonth() + 1,
+        1
+      );
+      renderAppointmentBookingCalendar(state);
+    });
+  }
+
+  renderAppointmentBookingCalendar(state);
+  loadAppointmentBookings(state);
+
+  if (scheduleForm && confirmation) {
+    scheduleForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const formData = new FormData(scheduleForm);
+      const procedure = findProcedureById(formData.get("procedure_id"));
+      fetch(getScheduleEndpoint(), {
+        method: "POST",
+        body: formData
+      })
+        .then((response) => response.text())
+        .then((message) => {
+          confirmation.hidden = false;
+          confirmation.innerHTML = `
+            <strong>${message}</strong>
+            <p>${formData.get("patient_name")}, your request for ${procedure ? procedure.name : "this procedure"} has been recorded.</p>
+            <p>The clinic can now review it from the staff appointment dashboard.</p>
+          `;
+          scheduleForm.reset();
+          if (dateInput) {
+            dateInput.value = state.selectedDateIso;
+          }
+          loadAppointmentBookings(state);
+        })
+        .catch(() => {
+          confirmation.hidden = false;
+          confirmation.innerHTML = `
+            <strong>Unable to save request</strong>
+            <p>Please try again or contact the clinic directly.</p>
+          `;
+        });
+    });
+  }
+}
+
+function renderCurrentPage() {
   const path = window.location.pathname;
 
   if (path.includes("treatment.html")) {
@@ -456,6 +1261,9 @@ window.addEventListener("load", () => {
     if (hash) {
       selectedProcedureId = hash;
       renderTreatment(hash);
+    } else {
+      selectedProcedureId = "general-skin-assessment";
+      renderTreatment("general-skin-assessment");
     }
 
     return;
@@ -466,5 +1274,15 @@ window.addEventListener("load", () => {
     return;
   }
 
+  if (path.includes("schedule.html")) {
+    const hash = window.location.hash.slice(1) || "general-skin-assessment";
+    selectedProcedureId = hash;
+    renderSchedule(hash);
+    return;
+  }
+
   renderHome();
-});
+}
+
+window.addEventListener("hashchange", renderCurrentPage);
+window.addEventListener("load", renderCurrentPage);

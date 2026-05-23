@@ -4,174 +4,119 @@ document.addEventListener('DOMContentLoaded', function () {
   const pageTitle = document.getElementById('pageTitle');
   const pageContent = document.getElementById('pageContent');
 
-  function showLoading() {
-    pageContent.innerHTML = '<div class="card placeholder">Loading…</div>';
-  }
+  const titles = {
+    dashboard: 'Dashboard',
+    staff: 'Manage Staff / Employee Accounts',
+    appointments: 'Schedules / Appointments',
+    procedures: 'Manage Procedures',
+    beforeafter: 'Manage Before-and-After Images',
+    processed: 'View Processed Images',
+    processing: 'Configure Image Processing Settings',
+    records: 'View Consultation / Image Records',
+    reports: 'View Reports'
+  };
 
-  function initManageAccounts() {
-    const accountForm = document.getElementById('accountForm');
-    const accountsTableBody = document.getElementById('accountsTableBody');
-
-    if (!accountForm || !accountsTableBody) return;
-
-    function loadAccounts() {
-      const formData = new FormData();
-      formData.append('action', 'fetch');
-
-      fetch('admin_pages/manage-accounts.php', {
-        method: 'POST',
-        body: formData
-      })
-        .then(response => response.text())
-        .then(html => {
-          accountsTableBody.innerHTML = html;
-        })
-        .catch(() => {
-          accountsTableBody.innerHTML = `
-            <tr>
-              <td colspan="6" style="padding:10px; text-align:center;">
-                Failed to load accounts.
-              </td>
-            </tr>
-          `;
-        });
+  const pages = {
+    dashboard: {
+      init: function () {
+        window.initAdminDashboard(pageContent);
+      }
+    },
+    staff: {
+      url: 'admin_pages/manage-accounts.html',
+      init: window.initManageAccounts
+    },
+    appointments: {
+      url: 'admin_pages/manage-appointments.html',
+      init: window.initManageAppointments
+    },
+    procedures: {
+      url: 'admin_pages/manage-procedures.html'
+    },
+    beforeafter: {
+      url: 'admin_pages/manage-before-after.html'
+    },
+    processed: {
+      url: 'admin_pages/view-processed.html',
+      init: window.initProcessedImages
+    },
+    processing: {
+      url: 'admin_pages/configure-processing.html'
+    },
+    records: {
+      url: 'admin_pages/view-records.html'
+    },
+    reports: {
+      url: 'admin_pages/view-reports.html'
     }
+  };
 
-    accountForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-
-      const formData = new FormData(accountForm);
-
-      fetch('admin_pages/manage-accounts.php', {
-        method: 'POST',
-        body: formData
-      })
-        .then(response => response.text())
-        .then(message => {
-          alert(message);
-          accountForm.reset();
-          loadAccounts();
-        });
-    });
-
-    accountsTableBody.addEventListener('click', function (e) {
-      if (!e.target.classList.contains('deactivate-btn')) return;
-
-      const id = e.target.dataset.id;
-
-      if (!confirm('Deactivate this account?')) return;
-
-      const formData = new FormData();
-      formData.append('action', 'deactivate');
-      formData.append('id', id);
-
-      fetch('admin_pages/manage-accounts.php', {
-        method: 'POST',
-        body: formData
-      })
-        .then(response => response.text())
-        .then(message => {
-          alert(message);
-          loadAccounts();
-        });
-    });
-
-    loadAccounts();
+  function showLoading() {
+    pageContent.innerHTML = '<div class="card placeholder">Loading...</div>';
   }
 
-  function setActive(page) {
-    links.forEach(l => l.classList.toggle('active', l.dataset.page === page));
+  function setActiveNav(page) {
+    links.forEach(link => {
+      link.classList.toggle('active', link.dataset.page === page);
+    });
+  }
 
-    const titles = {
-      dashboard: 'Dashboard',
-      staff: 'Manage Staff / Employee Accounts',
-      procedures: 'Manage Procedures',
-      education: 'Manage Educational Content',
-      beforeafter: 'Manage Before-and-After Images',
-      processed: 'View Processed Images',
-      processing: 'Configure Image Processing Settings',
-      records: 'View Consultation / Image Records',
-      reports: 'View Reports'
-    };
+  function renderPage(page) {
+    const config = pages[page] || pages.dashboard;
 
-    pageTitle.textContent = titles[page] || 'Dashboard';
+    setActiveNav(page);
+    pageTitle.textContent = titles[page] || titles.dashboard;
 
-    const mapping = {
-      dashboard: null,
-      staff: 'admin_pages/manage-accounts.html',
-      procedures: 'admin_pages/manage-procedures.html',
-      education: 'admin_pages/manage-education.html',
-      beforeafter: 'admin_pages/manage-before-after.html',
-      processed: 'admin_pages/view-processed.html',
-      processing: 'admin_pages/configure-processing.html',
-      records: 'admin_pages/view-records.html',
-      reports: 'admin_pages/view-reports.html'
-    };
-
-    const url = mapping[page];
-
-    if (!url) {
-      pageContent.innerHTML = `
-        <div class="grid">
-          <div class="card">
-            <h3>Overview</h3>
-            <p class="muted">Quick stats and shortcuts for admins.</p>
-          </div>
-          <div class="card">
-            <h3>Recent Activity</h3>
-            <div class="placeholder">No recent activity</div>
-          </div>
-        </div>
-        <section style="margin-top:18px">
-          <div class="card placeholder">Select a menu item to manage content.</div>
-        </section>
-      `;
+    if (!config.url) {
+      config.init();
       return;
     }
 
     showLoading();
 
-    fetch(url, { cache: 'no-store' })
-      .then(r => {
-        if (!r.ok) throw new Error('Failed to load page');
-        return r.text();
+    fetch(`${config.url}?v=${Date.now()}`, { cache: 'no-store' })
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to load page');
+        return response.text();
       })
       .then(html => {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
+        const styles = Array.from(doc.head.querySelectorAll('style'))
+          .map(style => style.outerHTML)
+          .join('');
         const body = doc.body ? doc.body.innerHTML : html;
 
-        pageContent.innerHTML = body;
+        pageContent.innerHTML = styles + body;
 
-        if (page === 'staff') {
-          initManageAccounts();
+        if (typeof config.init === 'function') {
+          config.init();
         }
       })
-      .catch(err => {
-        pageContent.innerHTML = `<div class="card placeholder">Error loading page: ${err.message}</div>`;
+      .catch(error => {
+        pageContent.innerHTML = `<div class="card placeholder">Error loading page: ${error.message}</div>`;
       });
   }
 
   links.forEach(link => {
-    link.addEventListener('click', function (e) {
-      e.preventDefault();
+    link.addEventListener('click', function (event) {
+      event.preventDefault();
 
       const page = this.dataset.page;
 
       if (location.hash !== `#${page}`) {
         location.hash = page;
       } else {
-        setActive(page);
+        renderPage(page);
       }
     });
   });
 
   function handleHash() {
     const page = location.hash ? location.hash.replace('#', '') : 'dashboard';
-    setActive(page);
+    renderPage(page);
   }
 
   window.addEventListener('hashchange', handleHash);
-
   handleHash();
 });

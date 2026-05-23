@@ -32,6 +32,11 @@ if ($result->num_rows === 0) {
 
 $user = $result->fetch_assoc();
 
+if (($user['status'] ?? '') === 'Inactive') {
+    echo json_encode(['status' => 'error', 'message' => 'This account has been deactivated']);
+    exit;
+}
+
 if (password_verify($password, $user['password'])) {
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['employee_number'] = $user['employee_number'] ?? null;
