@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DermaView | Calendar</title>
+    <link rel="stylesheet" href="../styles/global.css?v=20260523-5" />
+    <link rel="stylesheet" href="../styles/header.css?v=20260523-5" />
+    <link rel="stylesheet" href="../styles/buttons.css?v=20260523-5" />
+    <link rel="stylesheet" href="../styles/cards.css?v=20260523-5" />
+    <link rel="stylesheet" href="../styles/procedures.css?v=20260523-5" />
+    <link rel="stylesheet" href="../styles/staff-calendar.css?v=20260523-3" />
+    <link rel="stylesheet" href="../styles/responsive.css?v=20260523-8" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <div class="header-inner">
+          <a href="../index.html" class="brand">
+            <span class="brand-mark">D</span>
+            <span class="brand-name">DermaView</span>
+          </a>
+          <nav class="top-nav">
+            <a href="../index.html">Home</a>
+            <a href="procedures.html">Procedures</a>
+            <a href="schedule.html">Appointment</a>
+            <a href="calendar.html" aria-current="page">Calendar</a>
+            <a href="../logout.php" class="logout-btn">Logout</a>
+          </nav>
+        </div>
+      </header>
+
+      <main id="app" class="app-content">
+        <section class="calendar-page-header">
+          <span class="section-kicker">Calendar</span>
+          <h2 class="section-heading">Appointment Calendar</h2>
+          <p class="section-text">View scheduled consultations by date and review the appointment list for each day.</p>
+        </section>
+
+        <div class="staff-cal-layout" data-staffcal>
+          <section class="staff-cal-wrap panel-card">
+            <div class="staff-cal-header">
+              <div class="staff-cal-title">
+                <h3>Schedule Calendar</h3>
+              </div>
+              <div class="staff-cal-controls">
+                <button
+                  type="button"
+                  class="staff-cal-nav"
+                  data-staffcal-prev
+                  aria-label="Previous month"
+                >&larr;</button>
+                <div class="staff-cal-month" data-staffcal-month></div>
+                <button
+                  type="button"
+                  class="staff-cal-nav"
+                  data-staffcal-next
+                  aria-label="Next month"
+                >&rarr;</button>
+              </div>
+            </div>
+
+            <div class="staff-cal-grid" data-staffcal-grid></div>
+          </section>
+
+          <aside class="staff-cal-list-panel panel-card">
+            <div>
+              <span class="section-kicker">Selected Day</span>
+              <h3 data-staffcal-list-title>Appointments</h3>
+            </div>
+            <div class="staff-cal-list" data-staffcal-list>
+              <p class="no-appointments">Loading appointments...</p>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    <script src="../logout-confirm.js?v=20260523-1"></script>
+    <script src="../staff-calendar.js?v=20260523-3"></script>
+  </body>
+</html>

@@ -1,0 +1,134 @@
+<div class="panel-card accounts-panel">
+  <div class="accounts-header">
+    <div>
+      <h3>Manage Schedules / Appointments</h3>
+      <p class="section-text">
+        Record clinic appointments, review online requests, and update appointment status.
+      </p>
+    </div>
+    <button type="button" class="accounts-create-btn" id="showAppointmentForm">
+      Record Appointment
+    </button>
+  </div>
+
+  <form id="appointmentForm" class="accounts-form" hidden>
+    <div class="accounts-form-title">
+      <h4>Record Appointment</h4>
+      <button type="button" class="accounts-close" id="cancelAppointmentForm" aria-label="Cancel appointment form">Cancel</button>
+    </div>
+
+    <input type="hidden" name="action" value="add">
+    <input type="hidden" name="source" value="staff">
+
+    <div class="accounts-field accounts-field-wide">
+      <label for="appointmentProcedure">Procedure</label>
+      <select id="appointmentProcedure" name="procedure_id" class="accounts-select" required>
+        <option value="">Select Procedure</option>
+        <option value="general-skin-assessment">General Skin Assessment</option>
+        <option value="co2-fractional-laser-dermapen">CO2 Fractional Laser + Dermapen</option>
+        <option value="face-slimming">Face Slimming</option>
+        <option value="diamond-peel-facial">Diamond Peel With Facial</option>
+        <option value="undereye-lip-filler">Undereye and Lip Filler Procedure</option>
+        <option value="pico-carbon-laser">PICO Carbon Laser Facial Procedure</option>
+        <option value="lip-chin-jawtox">Lip Filler, Chin Filler, and Jawtox</option>
+      </select>
+    </div>
+
+    <div class="accounts-field">
+      <label for="appointmentName">Patient Name</label>
+      <input id="appointmentName" type="text" name="patient_name" class="accounts-input" autocomplete="name" required>
+    </div>
+
+    <div class="accounts-field">
+      <label for="appointmentEmail">Email Address</label>
+      <input id="appointmentEmail" type="email" name="email" class="accounts-input" autocomplete="email">
+    </div>
+
+    <div class="accounts-field">
+      <label for="appointmentPhone">Phone Number</label>
+      <input id="appointmentPhone" type="tel" name="phone" class="accounts-input" autocomplete="tel" required>
+    </div>
+
+    <div class="accounts-field">
+      <label for="appointmentDate">Appointment Date</label>
+      <input id="appointmentDate" type="date" name="appointment_date" class="accounts-input" required>
+    </div>
+
+    <div class="accounts-field">
+      <label for="appointmentTime">Appointment Time</label>
+      <input id="appointmentTime" type="time" name="appointment_time" class="accounts-input" required>
+    </div>
+
+    <div class="accounts-field">
+      <label for="appointmentStatus">Status</label>
+      <select id="appointmentStatus" name="status" class="accounts-select" required>
+        <option value="Pending">Pending</option>
+        <option value="Confirmed">Confirmed</option>
+        <option value="Completed">Completed</option>
+        <option value="Cancelled">Cancelled</option>
+        <option value="No Show">No Show</option>
+      </select>
+    </div>
+
+    <div class="accounts-field accounts-field-full">
+      <label for="appointmentNotes">Notes</label>
+      <textarea id="appointmentNotes" name="notes" class="accounts-input" rows="4"></textarea>
+    </div>
+
+    <div class="accounts-actions">
+      <button type="submit" class="accounts-submit">Save Appointment</button>
+    </div>
+  </form>
+
+  <div class="accounts-calendar-header">
+    <div class="accounts-list-header" style="margin-bottom: 12px;">
+      <h4 style="display:flex; align-items:center; gap:12px;">Appointment Calendar</h4>
+      <div class="accounts-calendar-controls">
+        <button type="button" class="accounts-calendar-nav" id="calendarPrev">&larr;</button>
+        <div class="accounts-calendar-month" id="calendarMonthLabel">Loading…</div>
+        <button type="button" class="accounts-calendar-nav" id="calendarNext">&rarr;</button>
+      </div>
+    </div>
+
+    <div class="accounts-calendar-view-toggles">
+      <button type="button" class="button-secondary" id="showCalendarBtn">Calendar</button>
+      <button type="button" class="button-secondary" id="showTableBtn">List</button>
+    </div>
+
+
+    <label class="accounts-search" for="appointmentsSearch" style="margin-top: 10px;">
+      <span>Search appointments</span>
+      <input id="appointmentsSearch" type="search" placeholder="Search patient, procedure, status..." autocomplete="off">
+    </label>
+  </div>
+
+  <div id="calendarView" class="accounts-calendar-view">
+
+    <div class="accounts-calendar-grid" id="calendarGrid">
+      <!-- calendar days injected by admin.js -->
+    </div>
+  </div>
+
+  <div id="tableView" class="accounts-table-wrap">
+    <table class="accounts-table appointments-table">
+      <thead>
+        <tr>
+          <th>Date / Time</th>
+          <th>Patient</th>
+          <th>Contact</th>
+          <th>Procedure</th>
+          <th>Status</th>
+          <th>Source</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody id="appointmentsTableBody">
+        <tr>
+          <td colspan="7" class="accounts-empty-cell">Loading appointments...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+

@@ -1,7 +1,7 @@
 /* Header and Navigation */
 
 .site-header {
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(255, 255, 255, 0.92);
   border-bottom: 1px solid var(--color-border);
   backdrop-filter: blur(14px);
   position: sticky;
@@ -9,10 +9,14 @@
   z-index: 100;
 }
 
+.index-page .site-header {
+  position: static;
+}
+
 .header-inner {
-  max-width: 1140px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 18px 24px;
+  padding: 16px 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -28,8 +32,8 @@
 }
 
 .brand-mark {
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -40,31 +44,43 @@
 }
 
 .brand-name {
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 1.22rem;
+  font-weight: 800;
 }
 
 .top-nav {
   display: flex;
-  gap: 18px;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .top-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 8px;
   color: var(--color-text-light);
   text-decoration: none;
-  font-weight: 600;
-  transition: color var(--transition-fast);
+  font-weight: 700;
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .top-nav a:hover {
+  background: var(--color-bg-light);
+  color: var(--color-primary-dark);
+}
+
+.top-nav a[aria-current="page"] {
+  background: var(--color-bg-light);
   color: var(--color-primary-dark);
 }
 
 .app-content {
-  max-width: 1140px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 32px 24px 72px;
+  padding: 22px 32px 52px;
 }
 
 
@@ -74,9 +90,7 @@
   color: var(--color-text-light) !important;
   text-decoration: none;
   font-weight: 600;
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
+  background: transparent !important;
   transition: color var(--transition-fast);
 }
 

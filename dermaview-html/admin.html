@@ -7,31 +7,47 @@
   <link rel="stylesheet" href="styles/global.css" />
   <link rel="stylesheet" href="styles/header.css" />
   <link rel="stylesheet" href="styles/cards.css" />
+  <link rel="stylesheet" href="styles/admin-accounts.css?v=20260523-8" />
+  <link rel="stylesheet" href="styles/appointments-calendar.css" />
   <link rel="stylesheet" href="styles/hero.css" />
+
   <link rel="stylesheet" href="styles/buttons.css" />
   <link rel="stylesheet" href="styles/responsive.css" />
   <style>
     .app { min-height: 100vh; display: flex; }
     .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
       width: 260px;
+      height: 100vh;
+      overflow: hidden;
       background: var(--color-white);
       border-right: 1px solid var(--color-border);
-      padding: 28px;
+      padding: 18px 22px;
       box-sizing: border-box;
       flex-shrink: 0;
     }
-    .brand { font-weight: 800; color: var(--color-text); margin-bottom: 18px; font-size: 1.2rem; }
-    .nav { list-style: none; padding: 0; margin: 12px 0; }
-    .nav li { margin: 8px 0; }
+    .brand { font-weight: 800; color: var(--color-text); margin-bottom: 14px; font-size: 1.08rem; }
+    .sidebar .brand-mark {
+      width: 54px;
+      height: 54px;
+      border-radius: 16px;
+      font-size: 1.05rem;
+    }
+    .nav { list-style: none; padding: 0; margin: 10px 0; }
+    .nav li { margin: 5px 0; }
     .nav a {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 10px 12px;
-      border-radius: var(--radius-md);
+      min-height: 42px;
+      padding: 7px 12px;
+      border-radius: 12px;
       color: var(--color-text);
       text-decoration: none;
-      font-weight: 600;
+      font-size: 0.93rem;
+      font-weight: 700;
+      line-height: 1.25;
       transition: background var(--transition-fast), color var(--transition-fast);
     }
     .nav a.active,
@@ -39,7 +55,7 @@
       background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
       color: #fff;
     }
-    .main { flex: 1; padding: 28px; }
+    .main { flex: 1; min-width: 0; margin-left: 260px; padding: 28px; }
     .topbar {
       display: flex;
       justify-content: space-between;
@@ -61,9 +77,9 @@
       font-size: 1.05rem;
     }
     @media (max-width: 800px) {
-      .sidebar { display: none; }
+      .sidebar { display: none; position: static; }
       .app { flex-direction: column; }
-      .main { padding: 18px; }
+      .main { margin-left: 0; padding: 18px; }
     }
   </style>
 </head>
@@ -77,8 +93,8 @@
       <ul class="nav" id="adminNav">
         <li><a href="#" data-page="dashboard" class="active">Dashboard</a></li>
         <li><a href="#" data-page="staff">Manage Staff / Employee Accounts</a></li>
+        <li><a href="#" data-page="appointments">Schedules / Appointments</a></li>
         <li><a href="#" data-page="procedures">Manage Procedures</a></li>
-        <li><a href="#" data-page="education">Manage Educational Content</a></li>
         <li><a href="#" data-page="beforeafter">Manage Before-and-After Images</a></li>
         <li><a href="#" data-page="processed">View Processed Images</a></li>
         <li><a href="#" data-page="processing">Configure Image Processing Settings</a></li>
@@ -114,6 +130,11 @@
     </main>
   </div>
 
-  <script src="admin.js"></script>
+  <script src="logout-confirm.js?v=20260523-1"></script>
+  <script src="admin-dashboard.js?v=20260523-1"></script>
+  <script src="admin-accounts.js?v=20260523-1"></script>
+  <script src="admin-appointments.js?v=20260523-1"></script>
+  <script src="admin-processed-images.js?v=20260523-2"></script>
+  <script src="admin.js?v=20260523-8"></script>
 </body>
 </html>

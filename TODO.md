@@ -1,0 +1,8 @@
+- [x] Inspect appointment UI + admin appointment endpoints
+- [x] Design calendar view (month grid + appointment cards)
+- [x] Add front-end assets: HTML structure + CSS for calendar
+- [x] Update admin_pages/manage-appointments.html to include calendar container
+- [x] Update admin.js (appointments page init) to render calendar from existing fetch endpoint
+- [x] Keep existing appointments table working (toggle between calendar and table)
+- [ ] Test: load admin->Appointments, verify month navigation + appointment display
+- [ ] Smoke test: updating appointment status reflects in calendar

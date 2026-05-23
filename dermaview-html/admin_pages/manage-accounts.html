@@ -1,135 +1,90 @@
-<div class="panel-card">
-  <h3>Manage Staff / Employee Accounts</h3>
+<div class="panel-card accounts-panel">
+  <div class="accounts-header">
+    <div>
+      <h3>Manage Staff / Employee Accounts</h3>
+      <p class="section-text">
+        Create staff access, pause inactive accounts, and restore users when they need to sign in again.
+      </p>
+    </div>
+    <button type="button" class="accounts-create-btn" id="showAccountForm">
+      Create Account
+    </button>
+  </div>
 
-  <p class="section-text">
-    Create, update, deactivate, and manage accounts who can access the DermaView system.
-  </p>
+  <form id="accountForm" class="accounts-form" hidden>
+    <div class="accounts-form-title">
+      <h4>Create Account</h4>
+      <button type="button" class="accounts-close" id="cancelAccountForm" aria-label="Cancel account creation">Cancel</button>
+    </div>
 
-  <form id="accountForm" class="auth-form" style="margin-top: 18px;">
     <input type="hidden" name="action" value="add">
 
-    <input type="text" name="first_name" placeholder="First Name" class="auth-input" required>
-    <input type="text" name="last_name" placeholder="Last Name" class="auth-input" required>
-    <input type="email" name="email" placeholder="Email Address" class="auth-input" required>
-    <input type="text" name="employee_number" placeholder="Employee Number" class="auth-input" required>
+    <div class="accounts-field">
+      <label for="accountFirstName">First Name</label>
+      <input id="accountFirstName" type="text" name="first_name" class="accounts-input" autocomplete="given-name" required>
+    </div>
 
-    <select name="role" class="auth-input" required>
-      <option value="">Select Role</option>
-      <option value="admin">Admin</option>
-      <option value="staff">Staff / Employee</option>
-      <option value="patient">Patient / User</option>
-    </select>
+    <div class="accounts-field">
+      <label for="accountLastName">Last Name</label>
+      <input id="accountLastName" type="text" name="last_name" class="accounts-input" autocomplete="family-name" required>
+    </div>
 
-    <input type="password" name="password" placeholder="Temporary Password" class="auth-input" required>
+    <div class="accounts-field accounts-field-wide">
+      <label for="accountEmail">Email Address</label>
+      <input id="accountEmail" type="email" name="email" class="accounts-input" autocomplete="email" required>
+    </div>
 
-    <button type="submit" class="auth-button">
-      Add Account
-    </button>
+    <div class="accounts-field">
+      <label for="accountEmployeeNumber">Employee Number</label>
+      <input id="accountEmployeeNumber" type="text" name="employee_number" class="accounts-input" required>
+    </div>
+
+    <div class="accounts-field">
+      <label for="accountRole">Role</label>
+      <select id="accountRole" name="role" class="accounts-select" required>
+        <option value="">Select Role</option>
+        <option value="admin">Admin</option>
+        <option value="staff">Staff / Employee</option>
+        <option value="patient">Patient / User</option>
+      </select>
+    </div>
+
+    <div class="accounts-field">
+      <label for="accountPassword">Temporary Password</label>
+      <input id="accountPassword" type="password" name="password" class="accounts-input" autocomplete="new-password" required>
+    </div>
+
+    <div class="accounts-actions">
+      <button type="submit" class="accounts-submit">Add Account</button>
+    </div>
   </form>
 
-  <hr style="margin: 24px 0;">
+  <div class="accounts-list-header">
+    <h4>User / Staff / Employee Accounts</h4>
+    <label class="accounts-search" for="accountsSearch">
+      <span>Search accounts</span>
+      <input id="accountsSearch" type="search" placeholder="Search name, email, role..." autocomplete="off">
+    </label>
+  </div>
 
-  <h4>User / Staff / Employee Accounts</h4>
-
-  <table style="width:100%; border-collapse: collapse; margin-top: 12px;">
-    <thead>
-      <tr>
-        <th style="text-align:left; padding:10px; border-bottom:1px solid #ddd;">Name</th>
-        <th style="text-align:left; padding:10px; border-bottom:1px solid #ddd;">Email</th>
-        <th style="text-align:left; padding:10px; border-bottom:1px solid #ddd;">Employee Number</th>
-        <th style="text-align:left; padding:10px; border-bottom:1px solid #ddd;">Role</th>
-        <th style="text-align:left; padding:10px; border-bottom:1px solid #ddd;">Status</th>
-        <th style="text-align:left; padding:10px; border-bottom:1px solid #ddd;">Actions</th>
-      </tr>
-    </thead>
-
-    <tbody id="accountsTableBody">
-      <tr>
-        <td colspan="6" style="padding:10px; text-align:center;">
-          Loading accounts...
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<script>
-(function () {
-  const accountForm = document.getElementById('accountForm');
-  const accountsTableBody = document.getElementById('accountsTableBody');
-
-  if (!accountForm || !accountsTableBody) return;
-
-  const apiUrl = new URL('admin_pages/manage-accounts.php', window.location.href).href;
-
-  function loadAccounts() {
-    const formData = new FormData();
-    formData.append('action', 'fetch');
-
-    fetch(apiUrl, {
-      method: 'POST',
-      body: formData
-    })
-    .then(response => response.text())
-    .then(html => {
-      accountsTableBody.innerHTML = html;
-    })
-    .catch(() => {
-      accountsTableBody.innerHTML = `
+  <div class="accounts-table-wrap">
+    <table class="accounts-table">
+      <thead>
         <tr>
-          <td colspan="6" style="padding:10px; text-align:center;">
-            Failed to load accounts.
-          </td>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Employee Number</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Actions</th>
         </tr>
-      `;
-    });
-  }
+      </thead>
 
-  accountForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-
-    const formData = new FormData(accountForm);
-
-    fetch(apiUrl, {
-      method: 'POST',
-      body: formData
-    })
-    .then(response => response.text())
-    .then(message => {
-      alert(message);
-      accountForm.reset();
-      loadAccounts();
-    })
-    .catch(() => {
-      alert('Failed to add account.');
-    });
-  });
-
-  accountsTableBody.addEventListener('click', function (e) {
-    if (!e.target.classList.contains('deactivate-btn')) return;
-
-    const id = e.target.dataset.id;
-
-    if (!confirm('Deactivate this account?')) return;
-
-    const formData = new FormData();
-    formData.append('action', 'deactivate');
-    formData.append('id', id);
-
-    fetch(apiUrl, {
-      method: 'POST',
-      body: formData
-    })
-    .then(response => response.text())
-    .then(message => {
-      alert(message);
-      loadAccounts();
-    })
-    .catch(() => {
-      alert('Failed to deactivate account.');
-    });
-  });
-
-  loadAccounts();
-})();
-</script>
+      <tbody id="accountsTableBody">
+        <tr>
+          <td colspan="6" class="accounts-empty-cell">Loading accounts...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

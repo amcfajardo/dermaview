@@ -5,19 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DermaView</title>
     <!-- Global Styles -->
-    <link rel="stylesheet" href="styles/global.css" />
-    <link rel="stylesheet" href="styles/header.css" />
+    <link rel="stylesheet" href="styles/global.css?v=20260523-5" />
+    <link rel="stylesheet" href="styles/header.css?v=20260523-5" />
     <!-- Component Styles -->
-    <link rel="stylesheet" href="styles/hero.css" />
-    <link rel="stylesheet" href="styles/buttons.css" />
-    <link rel="stylesheet" href="styles/cards.css" />
-    <link rel="stylesheet" href="styles/procedures.css" />
-    <link rel="stylesheet" href="styles/upload.css" />
-    <link rel="stylesheet" href="styles/treatment.css" />
+    <link rel="stylesheet" href="styles/hero.css?v=20260523-5" />
+    <link rel="stylesheet" href="styles/buttons.css?v=20260523-5" />
+    <link rel="stylesheet" href="styles/cards.css?v=20260523-5" />
+    <link rel="stylesheet" href="styles/procedures.css?v=20260523-5" />
+    <link rel="stylesheet" href="styles/upload.css?v=20260523-5" />
+    <link rel="stylesheet" href="styles/treatment.css?v=20260523-5" />
     <!-- Responsive and Utilities -->
-    <link rel="stylesheet" href="styles/responsive.css" />
+    <link rel="stylesheet" href="styles/responsive.css?v=20260523-8" />
+
   </head>
-  <body>
+  <body class="index-page">
     <div class="page-shell">
       <header class="site-header">
         <div class="header-inner">
@@ -28,17 +29,20 @@
           <nav class="top-nav">
             <a href="#home">Home</a>
             <a href="pages/procedures.html">Procedures</a>
-
-            <a href="logout.php" class="logout-btn">
-    Logout
-  </a>
+            <a href="pages/schedule.html">Appointment</a>
+            <a href="pages/calendar.html">Calendar</a>
+            <a href="logout.php" class="logout-btn">Logout</a>
           </nav>
         </div>
       </header>
 
       <main id="app" class="app-content"></main>
+
     </div>
 
-    <script src="app.js"></script>
+    <script src="logout-confirm.js?v=20260523-1"></script>
+    <script src="app.js?v=20260523-16"></script>
+
   </body>
+
 </html>
