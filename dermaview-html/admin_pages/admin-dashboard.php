@@ -4,7 +4,6 @@ include '../config.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-$procedure_count = 7;
 $image_tables = ['processed_images', 'uploaded_images', 'image_records', 'consultations'];
 
 function table_exists($conn, $table_name) {
@@ -110,6 +109,10 @@ function fetch_recent_users($conn) {
 
 $total_staff = count_rows($conn, 'users');
 $active_staff = count_rows($conn, 'users', "status = 'Active'");
+$procedure_count = count_rows($conn, 'procedures');
+if ($procedure_count === 0) {
+    $procedure_count = 7;
+}
 $total_appointments = count_rows($conn, 'appointments');
 $pending_appointments = count_rows($conn, 'appointments', "status = 'Pending'");
 $confirmed_appointments = count_rows($conn, 'appointments', "status = 'Confirmed'");

@@ -44,8 +44,9 @@
       <select id="accountRole" name="role" class="accounts-select" required>
         <option value="">Select Role</option>
         <option value="admin">Admin</option>
-        <option value="staff">Staff / Employee</option>
-        <option value="patient">Patient / User</option>
+        <option value="staff">Staff</option>
+        <option value="encoder">Encoder</option>
+        <option value="viewer">Viewer</option>
       </select>
     </div>
 
@@ -86,5 +87,63 @@
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <div class="accounts-permissions-panel">
+    <div class="accounts-list-header">
+      <h4>Role Permissions</h4>
+      <p class="table-muted">Controls shown here define what each account type is expected to access.</p>
+    </div>
+
+    <div class="accounts-table-wrap">
+      <table class="accounts-table permissions-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Admin</th>
+            <th>Staff</th>
+            <th>Encoder</th>
+            <th>Viewer</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Edit Procedures</td>
+            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+          </tr>
+          <tr>
+            <td>View Reports</td>
+            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-check">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Delete Records</td>
+            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+          </tr>
+          <tr>
+            <td>Process Images</td>
+            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-no">No</span></td>
+          </tr>
+          <tr>
+            <td>Manage Staff Accounts</td>
+            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>

@@ -6,10 +6,7 @@
   }
 
   window.initManageAppointments = function () {
-    const appointmentForm = document.getElementById('appointmentForm');
     const appointmentsTableBody = document.getElementById('appointmentsTableBody');
-    const showAppointmentForm = document.getElementById('showAppointmentForm');
-    const cancelAppointmentForm = document.getElementById('cancelAppointmentForm');
     const appointmentsSearch = document.getElementById('appointmentsSearch');
     const calendarView = document.getElementById('calendarView');
     const tableView = document.getElementById('tableView');
@@ -19,19 +16,15 @@
     const calendarNext = document.getElementById('calendarNext');
     const showCalendarBtn = document.getElementById('showCalendarBtn');
     const showTableBtn = document.getElementById('showTableBtn');
+    const upcomingCount = document.getElementById('upcomingAppointmentsCount');
+    const pendingCount = document.getElementById('pendingAppointmentsCount');
+    const confirmedCount = document.getElementById('confirmedAppointmentsCount');
+    const assignedStaffCount = document.getElementById('assignedStaffCount');
 
-    if (!appointmentForm || !appointmentsTableBody) return;
+    if (!appointmentsTableBody) return;
 
     let allAppointments = [];
     let calendarMonthCursor = null;
-
-    function setFormVisible(isVisible) {
-      appointmentForm.hidden = !isVisible;
-
-      if (showAppointmentForm) {
-        showAppointmentForm.hidden = isVisible;
-      }
-    }
 
     function filterAppointments() {
       if (!appointmentsSearch) return;
@@ -64,8 +57,9 @@
         const patientTd = tds[1];
         const contactTd = tds[2];
         const procedureTd = tds[3];
-        const statusChip = tds[4]?.querySelector('.appointment-status');
-        const sourceTd = tds[5];
+        const assignedTd = tds[4];
+        const statusChip = tds[5]?.querySelector('.appointment-status');
+        const sourceTd = tds[6];
         const statusSelect = row.querySelector('select.appointment-status-select');
         const dateLabel = (dateStrong?.textContent || '').trim();
         const timeLabel = (timeSpan?.textContent || '').trim();
@@ -95,6 +89,7 @@
           minutes,
           patientName: (patientTd?.textContent || '').trim(),
           procedureName: (procedureTd?.textContent || '').trim(),
+          assignedStaff: (assignedTd?.textContent || '').trim(),
           status: (statusChip?.textContent || statusSelect?.value || '').trim(),
           source: (sourceTd?.textContent || '').trim(),
           notes: title,
@@ -103,6 +98,19 @@
       });
 
       return structured;
+    }
+
+    function renderAppointmentSummary() {
+      const today = new Date().toISOString().slice(0, 10);
+      const upcoming = allAppointments.filter(item => item.isoDate >= today && !['Cancelled', 'Completed', 'No Show'].includes(item.status)).length;
+      const pending = allAppointments.filter(item => item.status === 'Pending').length;
+      const confirmed = allAppointments.filter(item => item.status === 'Confirmed').length;
+      const assigned = new Set(allAppointments.map(item => item.assignedStaff).filter(name => name && name !== 'Unassigned')).size;
+
+      if (upcomingCount) upcomingCount.textContent = String(upcoming);
+      if (pendingCount) pendingCount.textContent = String(pending);
+      if (confirmedCount) confirmedCount.textContent = String(confirmed);
+      if (assignedStaffCount) assignedStaffCount.textContent = String(assigned);
     }
 
     function renderCalendar({ monthDate }) {
@@ -199,7 +207,7 @@
       const formData = new FormData();
       formData.append('action', 'fetch');
 
-      fetch('admin_pages/manage-appointments.php', {
+      fetch('admin-appointments.php', {
         method: 'POST',
         body: formData
       })
@@ -207,6 +215,7 @@
         .then(html => {
           appointmentsTableBody.innerHTML = html;
           allAppointments = parseAppointmentsFromRows();
+          renderAppointmentSummary();
           filterAppointments();
 
           if (calendarView && !calendarView.hidden) {
@@ -242,41 +251,6 @@
       });
     }
 
-    if (showAppointmentForm) {
-      showAppointmentForm.addEventListener('click', function () {
-        setFormVisible(true);
-        document.getElementById('appointmentProcedure')?.focus();
-      });
-    }
-
-    if (cancelAppointmentForm) {
-      cancelAppointmentForm.addEventListener('click', function () {
-        appointmentForm.reset();
-        setFormVisible(false);
-      });
-    }
-
-    appointmentForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-
-      const formData = new FormData(appointmentForm);
-
-      fetch('admin_pages/manage-appointments.php', {
-        method: 'POST',
-        body: formData
-      })
-        .then(response => response.text())
-        .then(message => {
-          alert(message);
-          appointmentForm.reset();
-          setFormVisible(false);
-          loadAppointments();
-        })
-        .catch(() => {
-          alert('Failed to save appointment.');
-        });
-    });
-
     appointmentsTableBody.addEventListener('change', function (e) {
       if (!e.target.classList.contains('appointment-status-select')) return;
 
@@ -285,7 +259,7 @@
       formData.append('id', e.target.dataset.id);
       formData.append('status', e.target.value);
 
-      fetch('admin_pages/manage-appointments.php', {
+      fetch('admin-appointments.php', {
         method: 'POST',
         body: formData
       })

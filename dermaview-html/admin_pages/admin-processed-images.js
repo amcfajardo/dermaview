@@ -33,6 +33,12 @@
       .join('');
   }
 
+  function displayPath(src) {
+    if (!src) return '';
+    if (/^(https?:|data:|blob:|\/|\.{1,2}\/)/i.test(src)) return src;
+    return `../${src}`;
+  }
+
   window.initProcessedImages = function () {
     const list = document.getElementById('processedImagesList');
     const search = document.getElementById('processedImagesSearch');
@@ -69,11 +75,11 @@
 
           <div class="processed-image-compare">
             <figure>
-              <img src="${escapeHtml(record.before_image_path)}" alt="Before analysis" data-preview-image data-preview-title="Before Analysis" tabindex="0">
+              <img src="${escapeHtml(displayPath(record.before_image_path))}" alt="Before analysis" data-preview-image data-preview-title="Before Analysis" tabindex="0">
               <figcaption>Before</figcaption>
             </figure>
             <figure>
-              <img src="${escapeHtml(record.after_image_path)}" alt="After analysis" data-preview-image data-preview-title="After Analysis" tabindex="0">
+              <img src="${escapeHtml(displayPath(record.after_image_path))}" alt="After analysis" data-preview-image data-preview-title="After Analysis" tabindex="0">
               <figcaption>After</figcaption>
             </figure>
           </div>
@@ -161,7 +167,7 @@
       const formData = new FormData();
       formData.append('action', 'fetch_json');
 
-      fetch('admin_pages/processed-images.php', {
+      fetch('admin-processed-images.php', {
         method: 'POST',
         body: formData
       })

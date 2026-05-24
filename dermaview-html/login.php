@@ -42,11 +42,14 @@ if (password_verify($password, $user['password'])) {
     $_SESSION['employee_number'] = $user['employee_number'] ?? null;
     $_SESSION['role'] = $user['role'];
 
-if ($user['must_change_password'] == 1) {
-    $_SESSION['user_id'] = $user['id'];
-    header("Location: change-password-first.php");
-    exit();
-}
+    if ((int) ($user['must_change_password'] ?? 0) === 1) {
+        echo json_encode([
+            'status' => 'ok',
+            'role' => $user['role'],
+            'redirect' => 'create-password-first.php'
+        ]);
+        exit;
+    }
 
     echo json_encode(['status' => 'ok', 'role' => $user['role']]);
 } else {

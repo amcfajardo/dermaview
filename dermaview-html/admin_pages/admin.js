@@ -6,14 +6,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const titles = {
     dashboard: 'Dashboard',
-    staff: 'Manage Staff / Employee Accounts',
-    appointments: 'Schedules / Appointments',
+    staff: 'Staff Accounts',
+    appointments: 'Appointments',
+    patients: 'Patient Records',
+    activity: 'Activity Logs',
     procedures: 'Manage Procedures',
-    beforeafter: 'Manage Before-and-After Images',
-    processed: 'View Processed Images',
-    processing: 'Configure Image Processing Settings',
-    records: 'View Consultation / Image Records',
-    reports: 'View Reports'
+    processing: 'Image Processing Settings',
+    system: 'System Settings',
+    records: 'Consultation / Image Records',
+    reports: 'Reports',
+    privacy: 'Privacy / Data Management'
   };
 
   const pages = {
@@ -23,31 +25,43 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     },
     staff: {
-      url: 'admin_pages/manage-accounts.html',
+      url: 'admin-accounts.html',
       init: window.initManageAccounts
     },
     appointments: {
-      url: 'admin_pages/manage-appointments.html',
+      url: 'admin-appointments.html',
       init: window.initManageAppointments
     },
+    patients: {
+      url: 'admin-patients.html',
+      init: window.initPatientRecords
+    },
+    activity: {
+      url: 'admin-activity.html',
+      init: window.initActivityLogs
+    },
     procedures: {
-      url: 'admin_pages/manage-procedures.html'
-    },
-    beforeafter: {
-      url: 'admin_pages/manage-before-after.html'
-    },
-    processed: {
-      url: 'admin_pages/view-processed.html',
-      init: window.initProcessedImages
+      url: 'admin-procedures.html',
+      init: window.initManageProcedures
     },
     processing: {
-      url: 'admin_pages/configure-processing.html'
+      url: 'admin-processing-settings.html',
+      init: window.initProcessingSettings
+    },
+    system: {
+      url: 'admin-system-settings.html',
+      init: window.initSystemSettings
     },
     records: {
-      url: 'admin_pages/view-records.html'
+      url: 'admin-consultation-records.html',
+      init: window.initConsultationRecords
     },
     reports: {
-      url: 'admin_pages/view-reports.html'
+      url: 'admin-reports.html',
+      init: window.initReports
+    },
+    privacy: {
+      url: 'admin-privacy-data.html'
     }
   };
 
@@ -113,7 +127,8 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   function handleHash() {
-    const page = location.hash ? location.hash.replace('#', '') : 'dashboard';
+    const requestedPage = location.hash ? location.hash.replace('#', '') : 'dashboard';
+    const page = pages[requestedPage] ? requestedPage : 'dashboard';
     renderPage(page);
   }
 

@@ -3,7 +3,7 @@ session_start();
 include 'config.php';
 
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    header("Location: login.html");
     exit();
 }
 
@@ -15,7 +15,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         echo "
         <script>
             alert('Passwords do not match.');
-            window.location.href = 'change-password-first.php';
+            window.location.href = 'create-password-first.php';
         </script>
         ";
         exit();
@@ -36,7 +36,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         echo "
         <script>
             alert('Password changed successfully. Please login again.');
-            window.location.href = 'login.php';
+            window.location.href = 'login.html';
         </script>
         ";
         session_destroy();
@@ -45,7 +45,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         echo "
         <script>
             alert('Failed to change password.');
-            window.location.href = 'change-password-first.php';
+            window.location.href = 'create-password-first.php';
         </script>
         ";
         exit();

@@ -1,0 +1,247 @@
+<style>
+.admin-details-modal.active {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.admin-details-dialog {
+  width: min(900px, 94vw);
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: 24px;
+  border-radius: 12px;
+}
+
+.procedure-view-modal .admin-details-dialog {
+  width: min(820px, 94vw);
+}
+
+.procedure-details-body {
+  gap: 14px;
+}
+
+.procedure-details-topline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.procedure-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.procedure-details-section {
+  display: grid;
+  gap: 7px;
+  padding: 13px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-lighter);
+}
+
+.procedure-details-intro {
+  background: #ffffff;
+}
+
+.procedure-details-section h4 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.procedure-details-section p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.94rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.procedure-edit-modal .procedures-admin-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.procedure-edit-modal .accounts-form-title {
+  display: none;
+}
+
+.procedure-edit-modal .accounts-field,
+.procedure-edit-modal .accounts-field-wide,
+.procedure-edit-modal .accounts-field-full {
+  grid-column: auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.procedure-edit-modal .accounts-field-full {
+  grid-column: 1 / -1;
+}
+
+.procedure-edit-modal .accounts-field-wide {
+  grid-column: span 1;
+}
+
+.procedure-edit-modal .accounts-input,
+.procedure-edit-modal .accounts-select,
+.procedure-edit-modal textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.procedure-edit-modal textarea.accounts-input {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.procedure-edit-modal .accounts-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+@media (max-width: 900px) {
+  .procedure-edit-modal .procedures-admin-form {
+    grid-template-columns: 1fr;
+  }
+
+  .procedure-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .procedure-edit-modal .accounts-field,
+  .procedure-edit-modal .accounts-field-wide,
+  .procedure-edit-modal .accounts-field-full {
+    grid-column: 1 / -1;
+  }
+}
+</style>
+
+<div class="panel-card accounts-panel admin-content-panel procedures-admin-panel">
+  <div class="accounts-header">
+    <div>
+      <h3>Manage Procedures</h3>
+      <p class="section-text">Add, update, hide from patient pages, or remove treatment procedures shown across DermaView.</p>
+    </div>
+    <button type="button" class="accounts-create-btn" id="showProcedureForm">Add Procedure</button>
+  </div>
+
+  <form id="procedureForm" class="accounts-form admin-content-form procedures-admin-form" hidden>
+    <div class="accounts-form-title">
+      <h4 id="procedureFormTitle">Add Procedure</h4>
+      <button type="button" class="accounts-close" id="cancelProcedureForm">Cancel</button>
+    </div>
+
+    <input type="hidden" id="procedureId">
+
+    <div class="accounts-field">
+      <label for="procedureName">Procedure Name</label>
+      <input id="procedureName" class="accounts-input" required>
+    </div>
+
+    <div class="accounts-field">
+      <label for="procedureCategory">Category</label>
+      <select id="procedureCategory" class="accounts-select" required>
+        <option value="">Select Category</option>
+        <option>Facial</option>
+        <option>Laser</option>
+        <option>Filler</option>
+        <option>Acne Treatment</option>
+        <option>Contouring</option>
+        <option>Skin Rejuvenation</option>
+      </select>
+    </div>
+
+    <div class="accounts-field">
+      <label for="procedureStatus">Status</label>
+      <select id="procedureStatus" class="accounts-select">
+        <option>Active</option>
+        <option>Inactive</option>
+      </select>
+      <p class="table-muted">Inactive keeps the record for staff but hides it from the public Procedures tab.</p>
+    </div>
+
+    <div class="accounts-field accounts-field-full">
+      <label for="procedureDescription">Short Description</label>
+      <textarea id="procedureDescription" class="accounts-input" required></textarea>
+    </div>
+
+    <div class="accounts-field accounts-field-full">
+      <label for="procedureFullDescription">Full Description</label>
+      <textarea id="procedureFullDescription" class="accounts-input"></textarea>
+    </div>
+
+    <div class="accounts-field accounts-field-wide">
+      <label for="procedureBenefits">Benefits</label>
+      <textarea id="procedureBenefits" class="accounts-input"></textarea>
+    </div>
+
+    <div class="accounts-field accounts-field-wide">
+      <label for="procedurePreparation">Preparation Guidelines</label>
+      <textarea id="procedurePreparation" class="accounts-input"></textarea>
+    </div>
+
+    <div class="accounts-field accounts-field-wide">
+      <label for="procedureAftercare">Aftercare Instructions</label>
+      <textarea id="procedureAftercare" class="accounts-input"></textarea>
+    </div>
+
+    <div class="accounts-field">
+      <label for="procedureDuration">Session Duration</label>
+      <input id="procedureDuration" class="accounts-input" placeholder="60 minutes">
+    </div>
+
+    <div class="accounts-field">
+      <label for="procedureSessions">Recommended Sessions</label>
+      <input id="procedureSessions" class="accounts-input" placeholder="3-5 sessions">
+    </div>
+
+    <div class="accounts-field">
+      <label for="procedureImage">Procedure Image</label>
+      <input id="procedureImage" type="file" accept="image/png,image/jpeg,image/jpg" class="accounts-input">
+    </div>
+
+    <div class="accounts-actions">
+      <button type="submit" class="accounts-submit">Save Procedure</button>
+    </div>
+  </form>
+
+  <div class="accounts-list-header procedures-list-header">
+    <h4>Procedure List</h4>
+    <label class="accounts-search" for="procedureSearch">
+      <span>Search procedures</span>
+      <input id="procedureSearch" type="search" placeholder="Search name, category, status..." autocomplete="off">
+    </label>
+  </div>
+
+  <div class="accounts-table-wrap">
+    <table class="accounts-table admin-wide-table procedures-admin-table">
+      <thead>
+        <tr>
+          <th>Procedure Name</th>
+          <th>Category</th>
+          <th>Description</th>
+          <th>Status</th>
+          <th>Date Updated</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="procedureTableBody">
+        <tr><td colspan="6" class="accounts-empty-cell">Loading procedures...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>

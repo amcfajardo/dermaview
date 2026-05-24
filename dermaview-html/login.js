@@ -21,7 +21,13 @@ document
       }
 
       if (parsed && parsed.status === 'ok') {
-        if (parsed.role === 'admin' || parsed.role === 'superadmin') {
+        if (parsed.redirect) {
+          window.location.href = parsed.redirect;
+          return;
+        }
+
+        const role = String(parsed.role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+        if (role === 'admin' || role === 'superadmin') {
           window.location.href = 'admin.html';
         } else {
           window.location.href = 'index.html';
@@ -34,7 +40,8 @@ document
         try {
           const s = await fetch('get-session.php');
           const session = await s.json();
-          if (session.status === 'ok' && (session.role === 'admin' || session.role === 'superadmin')) {
+          const role = String(session.role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+          if (session.status === 'ok' && (role === 'admin' || role === 'superadmin')) {
             window.location.href = 'admin.html';
             return;
           }

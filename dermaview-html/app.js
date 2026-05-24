@@ -1,4 +1,4 @@
-const procedures = [
+const defaultProcedures = [
   {
     id: "general-skin-assessment",
     name: "General Skin Assessment",
@@ -145,6 +145,8 @@ const procedures = [
   }
 ];
 
+let procedures = defaultProcedures.slice();
+
 const app = document.getElementById("app");
 let selectedProcedureId = null;
 let uploadedImageUrl = null;
@@ -156,6 +158,99 @@ let showResults = false;
 let isSavingAnalysis = false;
 let analysisSaveMessage = "";
 let lastSavedRecordId = null;
+
+function getClinicName() {
+  const settings = window.DermaViewBranding?.loadSettings?.() || {};
+  return (settings.clinicName || "DermaView").trim() || "DermaView";
+}
+
+const procedureIdByName = {
+  "General Skin Assessment": "general-skin-assessment",
+  "CO2 Fractional Laser + Dermapen": "co2-fractional-laser-dermapen",
+  "CO₂ Fractional Laser + Dermapen": "co2-fractional-laser-dermapen",
+  "Face Slimming Package": "face_slimming",
+  "Face Slimming": "face_slimming",
+  "Diamond Peel with Facial": "diamond-peel-facial",
+  "Diamond Peel With Facial": "diamond-peel-facial",
+  "Undereye and Lip Filler": "undereye-lip-filler",
+  "Undereye and Lip Filler Procedure": "undereye-lip-filler",
+  "PICO Carbon Laser Facial": "pico-carbon-laser",
+  "PICO Carbon Laser Facial Procedure": "pico-carbon-laser",
+  "Lip Filler, Chin Filler, and Jawtox": "lip-chin-jawtox"
+};
+
+const processableProcedureIds = new Set([
+  "general-skin-assessment",
+  "co2-fractional-laser-dermapen",
+  "face_slimming",
+  "diamond-peel-facial",
+  "undereye-lip-filler",
+  "pico-carbon-laser",
+  "lip-chin-jawtox"
+]);
+
+function slugifyProcedureName(name, id) {
+  const slug = String(name || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || `procedure-${id}`;
+}
+
+function splitProcedureText(value) {
+  return String(value || "")
+    .split(/\r?\n|;|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeDatabaseProcedure(row) {
+  const name = row.procedure_name || row.name || "";
+  const id = procedureIdByName[name] || slugifyProcedureName(name, row.id);
+  const details = [
+    ...splitProcedureText(row.benefits),
+    row.session_duration ? `Estimated duration: ${row.session_duration}` : "",
+    row.recommended_sessions ? `Recommended sessions: ${row.recommended_sessions}` : ""
+  ].filter(Boolean);
+
+  return {
+    id,
+    databaseId: row.id,
+    name,
+    description: row.short_description || row.description || "",
+    category: row.category || "Procedure",
+    details: details.length ? details : ["Review this procedure with clinic staff before treatment."],
+    info: row.full_description || row.short_description || "",
+    preparation: row.preparation_guidelines || "",
+    aftercare: row.aftercare_instructions || "",
+    supportsProcessing: processableProcedureIds.has(id)
+  };
+}
+
+function getProceduresEndpoint() {
+  return window.location.pathname.includes("/pages/")
+    ? "../admin_pages/admin-procedures.php"
+    : "admin_pages/admin-procedures.php";
+}
+
+async function loadProceduresFromDatabase() {
+  const formData = new FormData();
+  formData.append("action", "fetch_public");
+
+  try {
+    const response = await fetch(getProceduresEndpoint(), {
+      method: "POST",
+      body: formData
+    });
+    const data = await response.json();
+
+    if (data.status === "ok" && Array.isArray(data.procedures) && data.procedures.length) {
+      procedures = data.procedures.map(normalizeDatabaseProcedure);
+    }
+  } catch (error) {
+    procedures = defaultProcedures.slice();
+  }
+}
 
 function getCurrentRoute() {
   const hash = window.location.hash.slice(1) || "home";
@@ -320,6 +415,8 @@ function renderProcedures() {
 }
 
 function renderProcedureDetails(procedure) {
+  const supportsProcessing = procedure.supportsProcessing !== false;
+
   return `
     <div class="procedure-detail">
       <div class="procedure-detail-summary">
@@ -339,9 +436,11 @@ function renderProcedureDetails(procedure) {
         <div class="procedure-info-box">
           <h4>About This Procedure</h4>
           <p>${procedure.info}</p>
+          ${procedure.preparation ? `<p><strong>Preparation:</strong> ${procedure.preparation}</p>` : ""}
+          ${procedure.aftercare ? `<p><strong>Aftercare:</strong> ${procedure.aftercare}</p>` : ""}
         </div>
         <div class="procedure-detail-actions">
-          <a href="treatment.html#${procedure.id}" class="button">${procedure.id === "general-skin-assessment" ? "Start Assessment" : "Use Image Processing"}</a>
+          ${supportsProcessing ? `<a href="treatment.html#${procedure.id}" class="button">${procedure.id === "general-skin-assessment" ? "Start Assessment" : "Use Image Processing"}</a>` : ""}
           <a href="schedule.html#${procedure.id}" class="button-secondary">Schedule Appointment</a>
         </div>
       </div>
@@ -375,7 +474,7 @@ function renderTreatment(id) {
   document.getElementById("treatment-title").textContent = procedure.name;
   document.getElementById("treatment-description").textContent = procedure.description;
 
-  document.title = `DermaView | ${isAssessment ? "Skin Assessment" : procedure.name}`;
+  document.title = `${getClinicName()} | ${isAssessment ? "Skin Assessment" : procedure.name}`;
 
   if (resultsTitle) {
     resultsTitle.textContent = isAssessment ? "Skin Assessment Results" : "Treatment Visualization";
@@ -826,8 +925,8 @@ function bindImagePreviewEvents(root = document) {
 
 function getProcessedImagesEndpoint() {
   return window.location.pathname.includes("/pages/")
-    ? "../admin_pages/processed-images.php"
-    : "admin_pages/processed-images.php";
+    ? "../admin_pages/admin-processed-images.php"
+    : "admin_pages/admin-processed-images.php";
 }
 
 function buildSavedRecommendations() {
@@ -886,8 +985,8 @@ function formatScheduleDateValue(date) {
 
 function getScheduleEndpoint() {
   return window.location.pathname.includes("/pages/")
-    ? "../admin_pages/manage-appointments.php"
-    : "admin_pages/manage-appointments.php";
+    ? "../admin_pages/admin-appointments.php"
+    : "admin_pages/admin-appointments.php";
 }
 
 function getScheduleCalendarDates(cursor) {
@@ -925,7 +1024,7 @@ function renderSchedule(id) {
   const today = formatScheduleDateValue(new Date());
   const timeSlots = getScheduleTimeSlots();
 
-  document.title = `DermaView | Schedule ${procedure.name}`;
+  document.title = `${getClinicName()} | Schedule ${procedure.name}`;
 
   app.innerHTML = `
     <section class="schedule-header">
@@ -941,6 +1040,7 @@ function renderSchedule(id) {
       <form class="panel-card schedule-form" id="schedule-form">
         <input type="hidden" name="action" value="add" />
         <input type="hidden" name="source" value="online" />
+        <input type="hidden" id="schedule-procedure-name" name="procedure_name" value="${procedure.name}" />
         <div class="schedule-selector">
           <label class="schedule-procedure-field">
             <span>Selected Procedure</span>
@@ -1183,6 +1283,11 @@ function bindScheduleEvents() {
   if (procedureSelect) {
     procedureSelect.addEventListener("change", () => {
       const nextId = procedureSelect.value;
+      const nextProcedure = findProcedureById(nextId);
+      const procedureNameInput = document.getElementById("schedule-procedure-name");
+      if (procedureNameInput && nextProcedure) {
+        procedureNameInput.value = nextProcedure.name;
+      }
       window.location.hash = nextId;
     });
   }
@@ -1298,4 +1403,7 @@ function renderCurrentPage() {
 }
 
 window.addEventListener("hashchange", renderCurrentPage);
-window.addEventListener("load", renderCurrentPage);
+window.addEventListener("load", async () => {
+  await loadProceduresFromDatabase();
+  renderCurrentPage();
+});

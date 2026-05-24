@@ -31,7 +31,7 @@
       const formData = new FormData();
       formData.append('action', 'fetch');
 
-      fetch('admin_pages/manage-accounts.php', {
+      fetch('admin-accounts.php', {
         method: 'POST',
         body: formData
       })
@@ -60,7 +60,7 @@
 
       const formData = new FormData(accountForm);
 
-      fetch('admin_pages/manage-accounts.php', {
+      fetch('admin-accounts.php', {
         method: 'POST',
         body: formData
       })
@@ -106,7 +106,7 @@
       formData.append('action', action);
       formData.append('id', id);
 
-      fetch('admin_pages/manage-accounts.php', {
+      fetch('admin-accounts.php', {
         method: 'POST',
         body: formData
       })

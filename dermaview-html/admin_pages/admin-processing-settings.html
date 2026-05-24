@@ -1,0 +1,81 @@
+<div class="panel-card accounts-panel admin-content-panel visualization-settings-panel">
+  <div class="accounts-header">
+    <div>
+      <h3>Procedure Visualization Settings</h3>
+      <p class="section-text">Manage how treatment visualizations and comparison images are displayed to patients during consultation.</p>
+    </div>
+    <button type="button" class="accounts-create-btn" id="saveVisualizationSettingsTop">Save Changes</button>
+  </div>
+
+  <form id="visualizationSettingsForm" class="visualization-settings-form">
+    <section class="visualization-section">
+      <div>
+        <h4>Visualization Display</h4>
+      </div>
+      <div class="visualization-toggle-grid">
+        <label class="visualization-toggle-row">
+          <span>Enable Treatment Visualization</span>
+          <input type="checkbox" id="enableTreatmentVisualization" checked>
+        </label>
+        <label class="visualization-toggle-row">
+          <span>Enable Before-and-After Comparison</span>
+          <input type="checkbox" id="enableBeforeAfterComparison" checked>
+        </label>
+        <label class="visualization-toggle-row">
+          <span>Show Side-by-Side Comparison</span>
+          <input type="checkbox" id="showSideBySideComparison" checked>
+        </label>
+        <label class="visualization-toggle-row">
+          <span>Show Treatment Disclaimer</span>
+          <input type="checkbox" id="showTreatmentDisclaimer" checked>
+        </label>
+      </div>
+    </section>
+
+    <section class="visualization-section">
+      <div class="visualization-section-header">
+        <h4>Procedure Visualization Management</h4>
+      </div>
+      <div class="accounts-table-wrap">
+        <table class="accounts-table visualization-table">
+          <thead>
+            <tr>
+              <th>Procedure</th>
+              <th>Visualization Status</th>
+              <th>Comparison Images</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="visualizationProcedureBody">
+            <tr><td colspan="4" class="accounts-empty-cell">Loading procedures...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="visualization-section visualization-two-column">
+      <div>
+        <h4>Patient Disclaimer</h4>
+        <textarea id="visualizationDisclaimer" class="accounts-input visualization-disclaimer">These visualizations are for consultation support and treatment awareness only.
+Actual results may vary per patient.</textarea>
+      </div>
+      <div>
+        <h4>Image Upload Rules</h4>
+        <div class="visualization-rules-grid">
+          <label>
+            <span>Allowed File Types</span>
+            <input id="visualizationAllowedTypes" class="accounts-input" value="JPG, PNG">
+          </label>
+          <label>
+            <span>Maximum Upload Size</span>
+            <input id="visualizationMaxUpload" class="accounts-input" value="10 MB">
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <div class="visualization-save-row">
+      <button type="submit" class="accounts-submit">Save Changes</button>
+    </div>
+  </form>
+</div>

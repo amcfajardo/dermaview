@@ -1,0 +1,58 @@
+<div class="panel-card accounts-panel admin-content-panel">
+  <div class="accounts-header">
+    <div>
+      <h3>Consultation / Image Records</h3>
+      <p class="section-text">Review uploaded and processed image history, consultation notes, status, and staff handling details.</p>
+    </div>
+    <div class="admin-button-row">
+      <button type="button" class="accounts-create-btn" id="exportRecordsCsv">Export</button>
+      <button type="button" class="accounts-close" id="clearOldRecords">Clear Old Records</button>
+    </div>
+  </div>
+
+  <div class="admin-filter-grid">
+    <label class="accounts-search" for="recordsSearch">
+      <span>Search records</span>
+      <input id="recordsSearch" type="search" placeholder="Search procedure, status, staff, notes..." autocomplete="off">
+    </label>
+    <label class="accounts-search" for="recordsProcedureFilter">
+      <span>Procedure</span>
+      <select id="recordsProcedureFilter" class="accounts-select"></select>
+    </label>
+    <label class="accounts-search" for="recordsStatusFilter">
+      <span>Status</span>
+      <select id="recordsStatusFilter" class="accounts-select">
+        <option value="">All statuses</option>
+        <option>Completed</option>
+        <option>Failed</option>
+        <option>Pending</option>
+        <option>Deleted</option>
+      </select>
+    </label>
+    <label class="accounts-search" for="recordsDateFilter">
+      <span>Date</span>
+      <input id="recordsDateFilter" type="date" class="accounts-input">
+    </label>
+  </div>
+
+  <div class="accounts-table-wrap">
+    <table class="accounts-table admin-wide-table">
+      <thead>
+        <tr>
+          <th>Record ID</th>
+          <th>Date Processed</th>
+          <th>Procedure</th>
+          <th>Original Image</th>
+          <th>Processed Image</th>
+          <th>Processing Status</th>
+          <th>Handled By</th>
+          <th>Notes</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="recordsTableBody">
+        <tr><td colspan="9" class="accounts-empty-cell">Loading records...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>

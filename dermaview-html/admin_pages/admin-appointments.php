@@ -74,6 +74,46 @@ function status_class($status) {
     return 'appointment-status-' . $key;
 }
 
+function ensure_appointment_columns($conn) {
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS appointments (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            procedure_id VARCHAR(120) NOT NULL,
+            procedure_name VARCHAR(180) NOT NULL,
+            patient_name VARCHAR(160) NOT NULL,
+            email VARCHAR(180) NULL,
+            phone VARCHAR(60) NOT NULL,
+            appointment_date DATE NOT NULL,
+            appointment_time TIME NOT NULL,
+            notes TEXT NULL,
+            status ENUM('Pending','Confirmed','Completed','Cancelled','No Show') NOT NULL DEFAULT 'Pending',
+            assigned_staff VARCHAR(160) NULL,
+            source ENUM('online','staff') NOT NULL DEFAULT 'online',
+            recorded_by INT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_appointments_date (appointment_date),
+            INDEX idx_appointments_status (status),
+            INDEX idx_appointments_procedure (procedure_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    $result = $conn->query("
+        SELECT COUNT(*) AS total
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'appointments'
+          AND column_name = 'assigned_staff'
+    ");
+    $row = $result ? $result->fetch_assoc() : null;
+
+    if (!$row || (int) $row['total'] === 0) {
+        $conn->query("ALTER TABLE appointments ADD COLUMN assigned_staff VARCHAR(160) NULL AFTER status");
+    }
+}
+
+ensure_appointment_columns($conn);
+
 $action = $_POST['action'] ?? '';
 
 if ($action === 'add') {
@@ -86,6 +126,7 @@ if ($action === 'add') {
     $appointment_time = clean_text($_POST['appointment_time'] ?? '');
     $notes = clean_text($_POST['notes'] ?? '');
     $status = clean_text($_POST['status'] ?? 'Pending');
+    $assigned_staff = clean_text($_POST['assigned_staff'] ?? '');
     $source = clean_text($_POST['source'] ?? 'online');
     $recorded_by = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
 
@@ -106,12 +147,12 @@ if ($action === 'add') {
 
     $stmt = $conn->prepare("
         INSERT INTO appointments
-        (procedure_id, procedure_name, patient_name, email, phone, appointment_date, appointment_time, notes, status, source, recorded_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (procedure_id, procedure_name, patient_name, email, phone, appointment_date, appointment_time, notes, status, assigned_staff, source, recorded_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     $stmt->bind_param(
-        "ssssssssssi",
+        "sssssssssssi",
         $procedure_id,
         $procedure_name,
         $patient_name,
@@ -121,6 +162,7 @@ if ($action === 'add') {
         $appointment_time,
         $notes,
         $status,
+        $assigned_staff,
         $source,
         $recorded_by
     );
@@ -223,7 +265,7 @@ if ($action === 'fetch_json') {
     header('Content-Type: application/json; charset=utf-8');
 
     $result = $conn->query("
-        SELECT id, procedure_id, procedure_name, patient_name, email, phone, appointment_date, appointment_time, notes, status, source
+        SELECT id, procedure_id, procedure_name, patient_name, email, phone, appointment_date, appointment_time, notes, status, assigned_staff, source
         FROM appointments
         ORDER BY appointment_date ASC, appointment_time ASC, id ASC
     ");
@@ -244,6 +286,7 @@ if ($action === 'fetch_json') {
                 'time_label' => format_time_label($row['appointment_time']),
                 'notes' => $row['notes'],
                 'status' => $row['status'],
+                'assigned_staff' => $row['assigned_staff'],
                 'source' => $row['source']
             ];
         }
@@ -258,7 +301,7 @@ if ($action === 'fetch_json') {
 
 if ($action === 'fetch') {
     $result = $conn->query("
-        SELECT id, procedure_name, patient_name, email, phone, appointment_date, appointment_time, notes, status, source
+        SELECT id, procedure_name, patient_name, email, phone, appointment_date, appointment_time, notes, status, assigned_staff, source
         FROM appointments
         ORDER BY appointment_date DESC, appointment_time DESC, id DESC
     ");
@@ -272,6 +315,7 @@ if ($action === 'fetch') {
             $email = htmlspecialchars($row['email']);
             $phone = htmlspecialchars($row['phone']);
             $procedure_name = htmlspecialchars($row['procedure_name']);
+            $assigned_staff = htmlspecialchars($row['assigned_staff'] ?: 'Unassigned');
             $status = htmlspecialchars($row['status']);
             $source = htmlspecialchars(ucfirst($row['source']));
             $notes = htmlspecialchars($row['notes']);
@@ -283,6 +327,7 @@ if ($action === 'fetch') {
               <td>$patient_name</td>
               <td>$phone<br><span class='table-muted'>$email</span></td>
               <td>$procedure_name</td>
+              <td>$assigned_staff</td>
               <td><span class='appointment-status $status_class'>$status</span></td>
               <td>$source</td>
               <td>
@@ -300,7 +345,7 @@ if ($action === 'fetch') {
     } else {
         echo "
         <tr>
-          <td colspan='7' class='accounts-empty-cell'>
+          <td colspan='8' class='accounts-empty-cell'>
             No appointments found.
           </td>
         </tr>

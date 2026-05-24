@@ -9,10 +9,16 @@ if ($action === 'add') {
     $last_name = trim($_POST['last_name']);
     $email = trim($_POST['email']);
     $employee_number = trim($_POST['employee_number']);
-    $role = trim($_POST['role']);
+    $role = strtolower(trim($_POST['role']));
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
     $status = "Active";
     $must_change_password = 1;
+    $allowed_roles = ['admin', 'staff', 'encoder', 'viewer'];
+
+    if (!in_array($role, $allowed_roles, true)) {
+        echo "Invalid role selected.";
+        exit();
+    }
 
     $stmt = $conn->prepare("
         INSERT INTO users
@@ -104,7 +110,14 @@ if ($action === 'fetch') {
             $name = htmlspecialchars($row['first_name'] . ' ' . $row['last_name']);
             $email = htmlspecialchars($row['email']);
             $employee_number = htmlspecialchars($row['employee_number']);
-            $role = htmlspecialchars(ucfirst($row['role']));
+            $role_labels = [
+                'admin' => 'Admin',
+                'staff' => 'Staff',
+                'encoder' => 'Encoder',
+                'viewer' => 'Viewer'
+            ];
+            $role_key = strtolower($row['role']);
+            $role = htmlspecialchars($role_labels[$role_key] ?? ucfirst($row['role']));
             $status = htmlspecialchars($row['status']);
             $status_class = $row['status'] === 'Active' ? 'account-status-active' : 'account-status-inactive';
 

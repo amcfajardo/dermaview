@@ -13,8 +13,8 @@ function staffCalIsoDate(date) {
 
 function staffCalEndpoint() {
   return window.location.pathname.includes('/pages/')
-    ? '../admin_pages/manage-appointments.php'
-    : 'admin_pages/manage-appointments.php';
+    ? '../admin_pages/admin-appointments.php'
+    : 'admin_pages/admin-appointments.php';
 }
 
 function staffCalFromJsonRows(rows) {

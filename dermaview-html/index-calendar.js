@@ -249,7 +249,7 @@ function initIndexCalendar() {
     const formData = new FormData();
     formData.append("action", "fetch");
 
-    fetch("admin_pages/manage-appointments.php", { method: "POST", body: formData })
+    fetch("admin_pages/admin-appointments.php", { method: "POST", body: formData })
       .then((r) => r.text())
       .then((html) => {
         appointments = parseMonthAppointmentsFromAdminRows(html);

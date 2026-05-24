@@ -138,7 +138,7 @@
   }
 
   function loadDashboard(pageContent) {
-    fetch(`admin_pages/dashboard.php?v=${Date.now()}`, { cache: 'no-store' })
+    fetch(`admin-dashboard.php?v=${Date.now()}`, { cache: 'no-store' })
       .then(response => response.json())
       .then(data => {
         if (!data || data.status !== 'ok') {

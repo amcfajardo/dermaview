@@ -1,0 +1,89 @@
+<div class="panel-card accounts-panel admin-content-panel">
+  <div class="accounts-header">
+    <div>
+      <h3>Manage Reference Images</h3>
+      <p class="section-text">Manage patient-awareness images. These are references only and must not be presented as guaranteed results.</p>
+    </div>
+    <button type="button" class="accounts-create-btn" id="showReferenceForm">Upload Images</button>
+  </div>
+
+  <div class="admin-disclaimer">Default disclaimer: Results may vary per patient.</div>
+
+  <form id="referenceForm" class="accounts-form admin-content-form" hidden>
+    <div class="accounts-form-title">
+      <h4 id="referenceFormTitle">Upload Before-and-After Images</h4>
+      <button type="button" class="accounts-close" id="cancelReferenceForm">Cancel</button>
+    </div>
+    <input type="hidden" id="referenceId">
+
+    <div class="accounts-field accounts-field-wide">
+      <label for="referenceProcedure">Select Procedure</label>
+      <select id="referenceProcedure" class="accounts-select" required></select>
+    </div>
+    <div class="accounts-field">
+      <label for="referenceType">Image Type</label>
+      <select id="referenceType" class="accounts-select">
+        <option>Before-and-after sample</option>
+        <option>Reference image</option>
+        <option>Treatment awareness image</option>
+      </select>
+    </div>
+    <div class="accounts-field">
+      <label for="referenceStatus">Status</label>
+      <select id="referenceStatus" class="accounts-select">
+        <option>Active</option>
+        <option>Inactive</option>
+      </select>
+    </div>
+    <div class="accounts-field">
+      <label for="referenceBefore">Before Image</label>
+      <input id="referenceBefore" type="file" accept="image/png,image/jpeg,image/jpg" class="accounts-input">
+    </div>
+    <div class="accounts-field">
+      <label for="referenceAfter">After Image</label>
+      <input id="referenceAfter" type="file" accept="image/png,image/jpeg,image/jpg" class="accounts-input">
+    </div>
+    <div class="accounts-field accounts-field-full">
+      <label for="referenceCaption">Caption / Description</label>
+      <textarea id="referenceCaption" class="accounts-input" required></textarea>
+    </div>
+    <div class="accounts-field accounts-field-wide">
+      <label for="referenceConsent">Source / Consent Note</label>
+      <input id="referenceConsent" class="accounts-input" placeholder="Clinic-owned sample with consent">
+    </div>
+    <div class="accounts-field accounts-field-wide">
+      <label for="referenceDisclaimer">Disclaimer Field</label>
+      <input id="referenceDisclaimer" class="accounts-input" value="Results may vary per patient.">
+    </div>
+    <div class="accounts-actions">
+      <button type="submit" class="accounts-submit">Save Images</button>
+    </div>
+  </form>
+
+  <div class="accounts-list-header">
+    <h4>Image Gallery</h4>
+    <label class="accounts-search" for="referenceSearch">
+      <span>Search images</span>
+      <input id="referenceSearch" type="search" placeholder="Search procedure, caption, status..." autocomplete="off">
+    </label>
+  </div>
+
+  <div class="accounts-table-wrap">
+    <table class="accounts-table admin-wide-table">
+      <thead>
+        <tr>
+          <th>Procedure Name</th>
+          <th>Before Image</th>
+          <th>After Image</th>
+          <th>Caption</th>
+          <th>Status</th>
+          <th>Date Uploaded</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="referenceTableBody">
+        <tr><td colspan="7" class="accounts-empty-cell">Loading reference images...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
