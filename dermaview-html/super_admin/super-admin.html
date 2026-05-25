@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Super Admin Dashboard</title>
+  <link rel="stylesheet" href="../styles/global.css" />
+  <link rel="stylesheet" href="../styles/header.css?v=20260525-2" />
+  <link rel="stylesheet" href="../styles/cards.css" />
+  <link rel="stylesheet" href="../styles/admin-accounts.css?v=20260525-15" />
+  <link rel="stylesheet" href="../styles/appointments-calendar.css" />
+  <link rel="stylesheet" href="../styles/hero.css" />
+
+  <link rel="stylesheet" href="../styles/buttons.css" />
+  <link rel="stylesheet" href="../styles/responsive.css" />
+  <style>
+  :root {
+    --admin-sidebar-width: 288px;
+  }
+
+  .app {
+    min-height: 100vh;
+    display: flex;
+    background: #f3f6fb;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: var(--admin-sidebar-width);
+    height: 100vh;
+    overflow-y: auto;
+    background: #111827;
+    border-right: 0;
+    padding: 22px 18px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    z-index: 20;
+    color: #e5eefb;
+  }
+
+  .brand {
+    width: 100%;
+    min-height: 46px;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 10px;
+    font-size: 0.92rem;
+    line-height: 1.1;
+    max-width: 100%;
+  }
+
+  .sidebar .brand-mark {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 10px;
+    font-size: 0.96rem;
+    flex: 0 0 46px;
+  }
+
+  .sidebar .brand-mark img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+  }
+
+  .sidebar .brand-name {
+    min-width: 0;
+    max-width: 182px;
+    font-size: 0.92rem;
+    font-weight: 800;
+    line-height: 1.08;
+    overflow-wrap: anywhere;
+  }
+
+  .super-admin-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    margin: 0 0 18px 58px;
+    border: 1px solid rgba(125, 211, 252, 0.34);
+    border-radius: 999px;
+    padding: 0 10px;
+    color: #bae6fd;
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.nav li.nav-gap {
+  margin-top: 6px;
+}
+
+.nav-section-label {
+  margin: 14px 10px 5px;
+  color: #94a3b8;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+  .nav a {
+  display: flex;
+  align-items: center;
+  min-height: 39px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: #dbeafe;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+  .nav a.active,
+  .nav a:hover,
+  .nav a:focus-visible {
+    background: #2563eb;
+    color: #fff;
+    outline: 0;
+  }
+
+  .nav .nav-logout {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(148, 163, 184, 0.24);
+  }
+
+  .main {
+    flex: 1;
+    min-width: 0;
+    width: calc(100% - var(--admin-sidebar-width));
+    margin-left: var(--admin-sidebar-width);
+    padding: 28px;
+    box-sizing: border-box;
+  }
+
+  .super-admin-topbar {
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    padding: 18px 20px;
+    background: #ffffff;
+  }
+
+  .super-admin-topbar .page-title {
+    font-size: 1.75rem;
+  }
+
+  .super-admin-context {
+    margin: 6px 0 0;
+    color: #475569;
+    font-weight: 700;
+    line-height: 1.45;
+  }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .page-title {
+    margin: 0;
+    font-size: 1.75rem;
+    color: var(--color-text);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 18px;
+  }
+
+  #pageContent {
+    min-width: 0;
+    display: grid;
+    gap: 18px;
+  }
+
+  .placeholder {
+    height: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    font-size: 1.05rem;
+  }
+
+  @media (max-width: 800px) {
+    .sidebar {
+      position: static;
+      width: 100%;
+      height: auto;
+      max-height: none;
+      border-right: 0;
+      border-bottom: 0;
+      padding: 16px;
+    }
+
+    .app {
+      flex-direction: column;
+    }
+
+    .nav {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 6px;
+    }
+
+    .nav-section-label,
+    .super-admin-badge {
+      grid-column: 1 / -1;
+      margin-left: 0;
+    }
+
+    .nav .nav-logout {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .main {
+      width: 100%;
+      margin-left: 0;
+      padding: 16px;
+    }
+
+    .page-title {
+      font-size: 1.5rem;
+    }
+
+    .super-admin-topbar {
+      padding: 16px;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <a href="super-admin.html" class="brand" style="text-decoration:none; display:inline-flex; align-items:center; gap:12px;">
+        <span class="brand-mark">D</span>
+        <span class="brand-name">DermaView Super Admin</span>
+      </a>
+      <span class="super-admin-badge">Full System Access</span>
+      <ul class="nav" id="adminNav">
+        <li><a href="#" data-page="dashboard" class="active">Dashboard</a></li>
+        <li class="nav-section-label">Clinic Operations</li>
+        <li class="nav-gap"><a href="#" data-page="appointments">Appointments</a></li>
+        <li><a href="#" data-page="patients">Patient Records</a></li>
+        <li><a href="#" data-page="records">Consultation / Image Records</a></li>
+
+        <li class="nav-section-label">Clinical Configuration</li>
+        <li class="nav-gap"><a href="#" data-page="procedures">Procedure Management</a></li>
+        <li><a href="#" data-page="reports">Reports</a></li>
+
+        <li class="nav-section-label">Access Control</li>
+        <li class="nav-gap"><a href="#" data-page="adminAccounts">Admin Accounts</a></li>
+        <li><a href="#" data-page="staff">Staff / Employees</a></li>
+        <li><a href="#" data-page="roles">Roles & Permissions</a></li>
+
+        <li class="nav-section-label">System Control</li>
+        <li><a href="#" data-page="processing">Image Processing Settings</a></li>
+        <li><a href="#" data-page="system">System Settings</a></li>
+        <li><a href="#" data-page="privacy">Privacy / Data Management</a></li>
+
+        <li class="nav-section-label">Audit and Recovery</li>
+        <li class="nav-gap"><a href="#" data-page="activity">Activity Logs</a></li>
+        <li><a href="#" data-page="backup">Backup / Restore</a></li>
+        <li class="nav-logout"><a href="../logout.php" class="logout-btn">Logout</a></li>
+      </ul>
+    </aside>
+
+    <main class="main">
+      <div class="topbar super-admin-topbar">
+        <div>
+          <h2 class="page-title" id="pageTitle">Super Admin Dashboard</h2>
+          <p class="super-admin-context">Govern access, procedures, system settings, privacy controls, reports, and recovery tools.</p>
+        </div>
+      </div>
+
+      <div id="pageContent">
+        <div class="grid">
+          <div class="panel-card">
+            <h3>Overview</h3>
+            <p class="section-text">Quick stats and shortcuts for admins.</p>
+          </div>
+          <div class="panel-card">
+            <h3>Recent Activity</h3>
+            <div class="placeholder">No recent activity</div>
+          </div>
+        </div>
+
+        <section style="margin-top: 18px">
+          <div class="panel-card" id="mainPlaceholder" style="min-height: 320px; display:flex; align-items:center; justify-content:center; color: var(--color-text-muted);">
+            Select a menu item to manage content.
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="../system-branding.js?v=20260525-2"></script>
+  <script src="../logout-confirm.js?v=20260523-1"></script>
+  <script src="admin-dashboard.js?v=20260525-2"></script>
+  <script src="admin-accounts.js?v=20260525-4"></script>
+  <script src="admin-appointments.js?v=20260525-4"></script>
+  <script src="admin-procedures.js?v=20260525-2"></script>
+  <script src="admin-processing-settings.js?v=20260525-3"></script>
+  <script src="admin-consultation-records.js?v=20260525-2"></script>
+  <script src="admin-reports.js?v=20260525-2"></script>
+  <script src="admin-system-settings.js?v=20260525-3"></script>
+  <script src="admin-patients.js?v=20260525-2"></script>
+  <script src="admin-activity.js?v=20260525-2"></script>
+  <script src="admin-super-admin.js?v=20260525-3"></script>
+  <script src="admin.js?v=20260525-5"></script>
+</body>
+</html>

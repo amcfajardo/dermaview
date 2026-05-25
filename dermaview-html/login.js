@@ -27,7 +27,9 @@ document
         }
 
         const role = String(parsed.role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
-        if (role === 'admin' || role === 'superadmin') {
+        if (role === 'superadmin') {
+          window.location.href = 'super_admin/super-admin.html';
+        } else if (role === 'admin') {
           window.location.href = 'admin.html';
         } else {
           window.location.href = 'index.html';
@@ -41,7 +43,11 @@ document
           const s = await fetch('get-session.php');
           const session = await s.json();
           const role = String(session.role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
-          if (session.status === 'ok' && (role === 'admin' || role === 'superadmin')) {
+          if (session.status === 'ok' && role === 'superadmin') {
+            window.location.href = 'super_admin/super-admin.html';
+            return;
+          }
+          if (session.status === 'ok' && role === 'admin') {
             window.location.href = 'admin.html';
             return;
           }

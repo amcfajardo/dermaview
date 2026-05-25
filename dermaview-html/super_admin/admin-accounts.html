@@ -1,0 +1,153 @@
+<div class="panel-card accounts-panel" data-account-scope="staff">
+  <div class="accounts-header">
+    <div>
+      <h3>Manage Staff / Employee Accounts</h3>
+      <p class="section-text">
+        Create staff access, pause inactive accounts, and restore users when they need to sign in again.
+      </p>
+    </div>
+    <button type="button" class="accounts-create-btn" id="showAccountForm">
+      Create Account
+    </button>
+  </div>
+
+  <form id="accountForm" class="accounts-form" hidden>
+    <div class="accounts-form-title">
+      <h4>Create Account</h4>
+      <button type="button" class="accounts-close" id="cancelAccountForm" aria-label="Cancel account creation">Cancel</button>
+    </div>
+
+    <input type="hidden" name="action" value="add">
+    <input type="hidden" name="id" value="">
+
+    <div class="accounts-field">
+      <label for="accountFirstName">First Name</label>
+      <input id="accountFirstName" type="text" name="first_name" class="accounts-input" autocomplete="given-name" required>
+    </div>
+
+    <div class="accounts-field">
+      <label for="accountLastName">Last Name</label>
+      <input id="accountLastName" type="text" name="last_name" class="accounts-input" autocomplete="family-name" required>
+    </div>
+
+    <div class="accounts-field accounts-field-wide">
+      <label for="accountEmail">Email Address</label>
+      <input id="accountEmail" type="email" name="email" class="accounts-input" autocomplete="email" required>
+    </div>
+
+    <div class="accounts-field">
+      <label for="accountEmployeeNumber">Employee Number</label>
+      <input id="accountEmployeeNumber" type="text" name="employee_number" class="accounts-input" required>
+    </div>
+
+    <div class="accounts-field">
+      <label for="accountRole">Role</label>
+      <select id="accountRole" name="role" class="accounts-select" required>
+        <option value="">Select Role</option>
+        <option value="dermatologist">Dermatologist</option>
+        <option value="aesthetician">Aesthetician</option>
+        <option value="manager">Manager</option>
+        <option value="receptionist">Receptionist</option>
+        <option value="staff">Staff</option>
+        <option value="encoder">Encoder</option>
+        <option value="viewer">Viewer</option>
+      </select>
+    </div>
+
+    <div class="accounts-field">
+      <label for="accountPassword">Temporary Password</label>
+      <input id="accountPassword" type="password" name="password" class="accounts-input" autocomplete="new-password" required>
+    </div>
+
+    <div class="accounts-actions">
+      <button type="submit" class="accounts-submit" id="accountSubmitButton">Add Account</button>
+    </div>
+  </form>
+
+  <div class="accounts-list-header">
+    <h4>User / Staff / Employee Accounts</h4>
+    <label class="accounts-search" for="accountsSearch">
+      <span>Search accounts</span>
+      <input id="accountsSearch" type="search" placeholder="Search name, email, role..." autocomplete="off">
+    </label>
+  </div>
+
+  <div class="accounts-table-wrap">
+    <table class="accounts-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Employee Number</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody id="accountsTableBody">
+        <tr>
+          <td colspan="6" class="accounts-empty-cell">Loading accounts...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="accounts-permissions-panel">
+    <div class="accounts-list-header">
+      <h4>Role Permissions</h4>
+      <p class="table-muted">Controls shown here define what each account type is expected to access.</p>
+    </div>
+
+    <div class="accounts-table-wrap">
+      <table class="accounts-table permissions-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Dermatologist</th>
+            <th>Aesthetician</th>
+            <th>Receptionist</th>
+            <th>Staff</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Edit Procedures</td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+          </tr>
+          <tr>
+            <td>View Reports</td>
+            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-check">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Delete Records</td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+          </tr>
+          <tr>
+            <td>Process Images</td>
+            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+          </tr>
+          <tr>
+            <td>Manage Staff Accounts</td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+            <td><span class="permission-no">No</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

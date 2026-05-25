@@ -3,6 +3,21 @@ import numpy as np
 import sys
 
 
+def resize_for_processing(img, max_size=900):
+    h, w = img.shape[:2]
+    longest_side = max(h, w)
+
+    if longest_side <= max_size:
+        return img
+
+    scale = max_size / longest_side
+    return cv2.resize(
+        img,
+        (int(w * scale), int(h * scale)),
+        interpolation=cv2.INTER_AREA
+    )
+
+
 def process_lip_chin_jawtox(input_path, output_path):
     img = cv2.imread(input_path)
 
@@ -10,6 +25,7 @@ def process_lip_chin_jawtox(input_path, output_path):
         print("Image not found")
         sys.exit(1)
 
+    img = resize_for_processing(img)
     h, w = img.shape[:2]
     result = img.copy()
 
@@ -17,32 +33,18 @@ def process_lip_chin_jawtox(input_path, output_path):
     # SUBTLE FACE CONTOUR / JAWTOX EFFECT
     # ---------------------------------------------------
 
-    map_x = np.zeros((h, w), np.float32)
-    map_y = np.zeros((h, w), np.float32)
+    yy, xx = np.indices((h, w), dtype=np.float32)
+    center_x = w / 2
+    distance = np.abs(xx - center_x)
+    strength = 0.055 * np.exp(
+        -(distance ** 2) / (2 * (w * 0.26) ** 2)
+    )
+    lower_face = (yy > h * 0.48) & (yy < h * 0.88)
+    direction = np.where(xx < center_x, -1, 1)
 
-    center_x = w // 2
-
-    for y in range(h):
-        for x in range(w):
-            new_x = x
-            new_y = y
-
-            # lower face only
-            if h * 0.48 < y < h * 0.88:
-                distance = abs(x - center_x)
-
-                strength = 0.055 * np.exp(
-                    -(distance ** 2) / (2 * (w * 0.26) ** 2)
-                )
-
-                # slim jaw naturally
-                if x < center_x:
-                    new_x = x - strength * distance
-                else:
-                    new_x = x + strength * distance
-
-            map_x[y, x] = np.clip(new_x, 0, w - 1)
-            map_y[y, x] = np.clip(new_y, 0, h - 1)
+    map_x = np.where(lower_face, xx + direction * strength * distance, xx)
+    map_x = np.clip(map_x, 0, w - 1).astype(np.float32)
+    map_y = yy.astype(np.float32)
 
     result = cv2.remap(
         result,
@@ -55,35 +57,20 @@ def process_lip_chin_jawtox(input_path, output_path):
     # CHIN FILLER EFFECT
     # ---------------------------------------------------
 
-    map_x = np.zeros((h, w), np.float32)
-    map_y = np.zeros((h, w), np.float32)
-
     chin_center = (
         int(w * 0.50),
         int(h * 0.80)
     )
 
     chin_radius = int(w * 0.16)
+    dx = xx - chin_center[0]
+    dy = yy - chin_center[1]
+    distance = np.sqrt(dx * dx + dy * dy)
+    chin_area = distance < chin_radius
+    factor = np.where(chin_area, 1 - (distance / max(chin_radius, 1)), 0)
 
-    for y in range(h):
-        for x in range(w):
-            dx = x - chin_center[0]
-            dy = y - chin_center[1]
-
-            distance = np.sqrt(dx * dx + dy * dy)
-
-            if distance < chin_radius:
-                factor = 1 - (distance / chin_radius)
-
-                new_x = x
-                new_y = y - dy * factor * 0.045
-
-            else:
-                new_x = x
-                new_y = y
-
-            map_x[y, x] = np.clip(new_x, 0, w - 1)
-            map_y[y, x] = np.clip(new_y, 0, h - 1)
+    map_x = xx.astype(np.float32)
+    map_y = np.clip(yy - dy * factor * 0.045, 0, h - 1).astype(np.float32)
 
     result = cv2.remap(
         result,
@@ -96,35 +83,20 @@ def process_lip_chin_jawtox(input_path, output_path):
     # LIP FILLER EFFECT
     # ---------------------------------------------------
 
-    map_x = np.zeros((h, w), np.float32)
-    map_y = np.zeros((h, w), np.float32)
-
     lip_center = (
         int(w * 0.50),
         int(h * 0.68)
     )
 
     lip_radius = int(w * 0.13)
+    dx = xx - lip_center[0]
+    dy = yy - lip_center[1]
+    distance = np.sqrt(dx * dx + dy * dy)
+    lip_area = distance < lip_radius
+    factor = np.where(lip_area, 1 - (distance / max(lip_radius, 1)), 0)
 
-    for y in range(h):
-        for x in range(w):
-            dx = x - lip_center[0]
-            dy = y - lip_center[1]
-
-            distance = np.sqrt(dx * dx + dy * dy)
-
-            if distance < lip_radius:
-                factor = 1 - (distance / lip_radius)
-
-                new_x = x - dx * factor * 0.045
-                new_y = y - dy * factor * 0.070
-
-            else:
-                new_x = x
-                new_y = y
-
-            map_x[y, x] = np.clip(new_x, 0, w - 1)
-            map_y[y, x] = np.clip(new_y, 0, h - 1)
+    map_x = np.clip(xx - dx * factor * 0.045, 0, w - 1).astype(np.float32)
+    map_y = np.clip(yy - dy * factor * 0.070, 0, h - 1).astype(np.float32)
 
     result = cv2.remap(
         result,
@@ -188,11 +160,15 @@ def process_lip_chin_jawtox(input_path, output_path):
         0
     )
 
-    cv2.imwrite(
+    saved = cv2.imwrite(
         output_path,
         result,
         [cv2.IMWRITE_JPEG_QUALITY, 95]
     )
+
+    if not saved:
+        print("Failed to save output image")
+        sys.exit(1)
 
     print("Lip Filler, Chin Filler, and Jawtox visualization saved:", output_path)
     sys.exit(0)

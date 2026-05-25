@@ -1,0 +1,33 @@
+<div class="panel-card accounts-panel admin-content-panel">
+  <div class="accounts-header">
+    <div>
+      <h3>Audit Trail / Activity Logs</h3>
+      <p class="section-text">Track logins, logouts, patient changes, appointment updates, image processing, record deletion, report generation, and system setting changes.</p>
+    </div>
+    <button type="button" class="accounts-create-btn" id="refreshActivityLogs">Refresh</button>
+  </div>
+
+  <div class="accounts-list-header">
+    <h4>Recent Activity</h4>
+    <label class="accounts-search" for="activitySearch">
+      <span>Search logs</span>
+      <input id="activitySearch" type="search" placeholder="Search activity, type, date..." autocomplete="off">
+    </label>
+  </div>
+
+  <div class="accounts-table-wrap">
+    <table class="accounts-table admin-wide-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Activity</th>
+          <th>Status</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="activityLogsBody">
+        <tr><td colspan="4" class="accounts-empty-cell">Loading activity logs...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>

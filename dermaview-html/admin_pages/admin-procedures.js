@@ -122,6 +122,8 @@
       setField('procedureAftercare', item ? item.aftercare_instructions : '');
       setField('procedureDuration', item ? item.session_duration : '');
       setField('procedureSessions', item ? item.recommended_sessions : '');
+      setField('procedurePrice', item ? item.procedure_price : '');
+      setField('procedureScript', item ? item.processing_script : '');
 
       setFormVisible(true);
     }
@@ -129,7 +131,7 @@
     function render() {
       const query = search ? search.value.trim().toLowerCase() : '';
       const rows = query
-        ? procedures.filter(item => `${item.procedure_name} ${item.category} ${item.short_description} ${item.status}`.toLowerCase().includes(query))
+        ? procedures.filter(item => `${item.procedure_name} ${item.category} ${item.short_description} ${item.status} ${item.procedure_price} ${item.processing_script}`.toLowerCase().includes(query))
         : procedures;
 
       body.innerHTML = rows.length ? rows.map(item => `
@@ -188,6 +190,8 @@
               <div><strong>Aftercare</strong><span>${detailValue(item.aftercare_instructions)}</span></div>
               <div><strong>Duration</strong><span>${detailValue(item.session_duration)}</span></div>
               <div><strong>Sessions</strong><span>${detailValue(item.recommended_sessions)}</span></div>
+              <div><strong>Price</strong><span>${detailValue(item.procedure_price)}</span></div>
+              <div><strong>Processing Script</strong><span>${detailValue(item.processing_script)}</span></div>
               <div><strong>Updated</strong><span>${escapeHtml(formatDate(item.updated_at))}</span></div>
             </div>
           </div>
@@ -334,6 +338,14 @@
             <h4>Recommended Sessions</h4>
             <p>${escapeHtml(item.recommended_sessions || 'N/A')}</p>
           </section>
+          <section class="procedure-details-section">
+            <h4>Procedure Price</h4>
+            <p>${escapeHtml(item.procedure_price || 'N/A')}</p>
+          </section>
+          <section class="procedure-details-section">
+            <h4>Image Processing Script</h4>
+            <p>${escapeHtml(item.processing_script || 'No image processor assigned')}</p>
+          </section>
         </div>
       `;
 
@@ -472,6 +484,8 @@ function ensureProcedureEditModal() {
       data.append('aftercare_instructions', document.getElementById('procedureAftercare').value);
       data.append('session_duration', document.getElementById('procedureDuration').value);
       data.append('recommended_sessions', document.getElementById('procedureSessions').value);
+      data.append('procedure_price', document.getElementById('procedurePrice').value);
+      data.append('processing_script', document.getElementById('procedureScript').value);
 
       const image = document.getElementById('procedureImage').files[0];
       if (image) data.append('procedure_image', image);

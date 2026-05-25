@@ -306,6 +306,7 @@
 
     const storageKey = 'dermaview.admin.visualizationSettings';
     const fallbackCounts = [12, 8, 5, 7, 4, 6, 3];
+    let currentProcedures = [];
 
     function loadSettings() {
       try {
@@ -333,6 +334,14 @@
         disclaimer: document.getElementById('visualizationDisclaimer').value,
         allowedTypes: document.getElementById('visualizationAllowedTypes').value,
         maxUpload: document.getElementById('visualizationMaxUpload').value,
+        brightness: document.getElementById('processingBrightness')?.value || '1.08',
+        contrast: document.getElementById('processingContrast')?.value || '1.15',
+        sharpness: document.getElementById('processingSharpness')?.value || '1.08',
+        quality: document.getElementById('processingQuality')?.value || '95',
+        uploadFolder: document.getElementById('processingUploadFolder')?.value || 'uploads/',
+        outputFolder: document.getElementById('processingOutputFolder')?.value || 'uploads/',
+        scriptMapping: document.getElementById('processingScriptMapping')?.value || 'Managed in Procedure Management',
+        disclaimerMode: document.getElementById('processingDisclaimerMode')?.value || 'Required',
         procedureStatus
       };
     }
@@ -345,19 +354,272 @@
       document.getElementById('visualizationDisclaimer').value = data.disclaimer || 'These visualizations are for consultation support and treatment awareness only.\nActual results may vary per patient.';
       document.getElementById('visualizationAllowedTypes').value = data.allowedTypes || 'JPG, PNG';
       document.getElementById('visualizationMaxUpload').value = data.maxUpload || '10 MB';
+      if (document.getElementById('processingBrightness')) document.getElementById('processingBrightness').value = data.brightness || '1.08';
+      if (document.getElementById('processingContrast')) document.getElementById('processingContrast').value = data.contrast || '1.15';
+      if (document.getElementById('processingSharpness')) document.getElementById('processingSharpness').value = data.sharpness || '1.08';
+      if (document.getElementById('processingQuality')) document.getElementById('processingQuality').value = data.quality || '95';
+      if (document.getElementById('processingUploadFolder')) document.getElementById('processingUploadFolder').value = data.uploadFolder || 'uploads/';
+      if (document.getElementById('processingOutputFolder')) document.getElementById('processingOutputFolder').value = data.outputFolder || 'uploads/';
+      if (document.getElementById('processingScriptMapping')) document.getElementById('processingScriptMapping').value = data.scriptMapping || 'Managed in Procedure Management';
+      if (document.getElementById('processingDisclaimerMode')) document.getElementById('processingDisclaimerMode').value = data.disclaimerMode || 'Required';
+    }
+
+    function procedureKey(item, index) {
+      return String(item.id || item.databaseId || `procedure-${index}`);
+    }
+
+    function procedureName(item) {
+      return item.name || item.procedure_name || 'Procedure';
+    }
+
+    function referencesForProcedure(item) {
+      const id = String(item.id || '');
+      const name = procedureName(item);
+      return references().filter(ref =>
+        String(ref.procedureId || '') === id ||
+        String(ref.procedureName || '') === name
+      );
+    }
+
+    function activeReferencesForProcedure(item) {
+      return referencesForProcedure(item).filter(ref => ref.status !== 'Inactive');
+    }
+
+    function imagePreviewBox(src, label) {
+      return src
+        ? `<img src="${escapeHtml(src)}" alt="${escapeHtml(label)}">`
+        : `<div class="visualization-patient-placeholder">${escapeHtml(label)}</div>`;
+    }
+
+    function ensurePatientVisualizationModal() {
+      let modal = document.getElementById('patientVisualizationPreviewModal');
+
+      if (modal) {
+        return modal;
+      }
+
+      modal = document.createElement('div');
+      modal.id = 'patientVisualizationPreviewModal';
+      modal.className = 'image-preview-modal visualization-patient-modal';
+      modal.innerHTML = `
+        <div class="image-preview-dialog visualization-patient-dialog" role="dialog" aria-modal="true" aria-labelledby="patientVisualizationTitle">
+          <div class="image-preview-header">
+            <h3 id="patientVisualizationTitle">Treatment Visualization</h3>
+            <button type="button" class="image-preview-close" aria-label="Close patient visualization">&times;</button>
+          </div>
+          <div id="patientVisualizationBody" class="visualization-patient-body"></div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      modal.addEventListener('click', event => {
+        if (event.target === modal || event.target.classList.contains('image-preview-close')) {
+          modal.classList.remove('active');
+        }
+      });
+
+      return modal;
+    }
+
+    function openPatientVisualization(item) {
+      const modal = ensurePatientVisualizationModal();
+      const refs = activeReferencesForProcedure(item);
+      const ref = refs[0] || {};
+      const data = loadSettings();
+      const title = procedureName(item);
+      const description = ref.caption || item.short_description || item.description || data.disclaimer || 'Expected visual outcome reference for patient consultation.';
+
+      modal.querySelector('#patientVisualizationTitle').textContent = `${title} Preview`;
+      modal.querySelector('#patientVisualizationBody').innerHTML = `
+        <div class="visualization-patient-stage">
+          <div class="visualization-patient-stage-header">
+            <strong>${escapeHtml(title)}</strong>
+            <span>Image 1 of ${Math.max(refs.length, 1)}</span>
+          </div>
+          <div class="visualization-patient-compare">
+            <figure>
+              ${imagePreviewBox(ref.beforeImage, 'Before Image')}
+              <figcaption>Before Image</figcaption>
+            </figure>
+            <div class="visualization-patient-slider" aria-hidden="true"></div>
+            <figure>
+              ${imagePreviewBox(ref.afterImage, 'After Image')}
+              <figcaption>After Image</figcaption>
+            </figure>
+          </div>
+          <div class="visualization-patient-copy">
+            <strong>Description</strong>
+            <p>${escapeHtml(description)}</p>
+            ${data.showTreatmentDisclaimer === false ? '' : `<small>${escapeHtml(data.disclaimer || 'Results may vary per patient.')}</small>`}
+          </div>
+          <div class="visualization-patient-actions">
+            <button type="button" class="accounts-close" data-preview-prev>Previous</button>
+            <button type="button" class="accounts-close" data-preview-next>Next</button>
+            <button type="button" class="accounts-create-btn" data-preview-close>Close</button>
+          </div>
+        </div>
+      `;
+
+      modal.querySelector('[data-preview-close]')?.addEventListener('click', () => {
+        modal.classList.remove('active');
+      });
+      modal.classList.add('active');
+    }
+
+    function ensureVisualizationEditModal() {
+      let modal = document.getElementById('visualizationEditModal');
+
+      if (modal) {
+        return modal;
+      }
+
+      modal = document.createElement('div');
+      modal.id = 'visualizationEditModal';
+      modal.className = 'image-preview-modal visualization-edit-modal';
+      modal.innerHTML = `
+        <div class="image-preview-dialog visualization-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="visualizationEditTitle">
+          <div class="image-preview-header">
+            <h3 id="visualizationEditTitle">Edit Procedure Visualization</h3>
+            <button type="button" class="image-preview-close" aria-label="Close visualization editor">&times;</button>
+          </div>
+          <form id="visualizationEditForm" class="visualization-edit-form"></form>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      modal.addEventListener('click', event => {
+        if (event.target === modal || event.target.classList.contains('image-preview-close')) {
+          modal.classList.remove('active');
+        }
+      });
+
+      return modal;
+    }
+
+    function renderReferenceList(items) {
+      return items.length ? items.map(ref => `
+        <div class="visualization-reference-row">
+          <div class="visualization-reference-thumbs">
+            ${imagePreviewBox(ref.beforeImage, 'Before')}
+            ${imagePreviewBox(ref.afterImage, 'After')}
+          </div>
+          <div>
+            <strong>${escapeHtml(ref.caption || 'Comparison image')}</strong>
+            <span>${escapeHtml(ref.status || 'Active')}</span>
+          </div>
+          <button type="button" class="account-action-btn deactivate-btn" data-remove-reference="${escapeHtml(ref.id)}">Remove</button>
+        </div>
+      `).join('') : '<p class="table-muted">No comparison images uploaded for this procedure yet.</p>';
+    }
+
+    function openVisualizationEditor(item, id) {
+      const modal = ensureVisualizationEditModal();
+      const editForm = modal.querySelector('#visualizationEditForm');
+      const data = loadSettings();
+      const procedureStatus = data.procedureStatus || {};
+      const enabled = procedureStatus[id] !== false;
+      const refs = referencesForProcedure(item);
+      const primaryRef = refs[0] || {};
+      const title = procedureName(item);
+
+      modal.querySelector('#visualizationEditTitle').textContent = `Edit Procedure: ${title}`;
+      editForm.innerHTML = `
+        <input type="hidden" id="visualizationEditProcedureId" value="${escapeHtml(id)}">
+        <div class="accounts-field accounts-field-full">
+          <label for="visualizationEditProcedureName">Procedure Name</label>
+          <input id="visualizationEditProcedureName" class="accounts-input" value="${escapeHtml(title)}" readonly>
+        </div>
+        <label class="visualization-toggle-row visualization-edit-toggle">
+          <span>Visualization Status</span>
+          <input type="checkbox" id="visualizationEditEnabled" ${enabled ? 'checked' : ''}>
+        </label>
+        <div class="visualization-edit-block">
+          <h4>Comparison Images</h4>
+          <div id="visualizationReferenceList" class="visualization-reference-list">
+            ${renderReferenceList(refs)}
+          </div>
+        </div>
+        <div class="visualization-edit-grid">
+          <label class="accounts-field">
+            <span>Before Image</span>
+            <input id="visualizationEditBefore" type="file" accept="image/png,image/jpeg,image/jpg,image/webp" class="accounts-input">
+          </label>
+          <label class="accounts-field">
+            <span>After Image</span>
+            <input id="visualizationEditAfter" type="file" accept="image/png,image/jpeg,image/jpg,image/webp" class="accounts-input">
+          </label>
+        </div>
+        <label class="accounts-field accounts-field-full">
+          <span>Description</span>
+          <textarea id="visualizationEditDescription" class="accounts-input">${escapeHtml(primaryRef.caption || item.description || '')}</textarea>
+        </label>
+        <div class="admin-button-row">
+          <button type="button" class="accounts-close" data-visualization-editor-cancel>Cancel</button>
+          <button type="submit" class="accounts-submit">Save Changes</button>
+        </div>
+      `;
+
+      editForm.querySelector('[data-visualization-editor-cancel]')?.addEventListener('click', () => {
+        modal.classList.remove('active');
+      });
+
+      editForm.querySelector('#visualizationReferenceList')?.addEventListener('click', event => {
+        const removeButton = event.target.closest('[data-remove-reference]');
+        if (!removeButton) return;
+        const nextRefs = references().filter(ref => ref.id !== removeButton.dataset.removeReference);
+        save(keys.references, nextRefs);
+        editForm.querySelector('#visualizationReferenceList').innerHTML = renderReferenceList(referencesForProcedure(item));
+      });
+
+      editForm.onsubmit = async event => {
+        event.preventDefault();
+        const nextSettings = collectSettings();
+        nextSettings.procedureStatus[id] = editForm.querySelector('#visualizationEditEnabled').checked;
+        saveSettings(nextSettings);
+
+        const beforeImage = await fileToDataUrl(editForm.querySelector('#visualizationEditBefore').files[0]);
+        const afterImage = await fileToDataUrl(editForm.querySelector('#visualizationEditAfter').files[0]);
+        const description = editForm.querySelector('#visualizationEditDescription').value.trim();
+        const allRefs = references();
+        const existing = refs[0] ? allRefs.find(ref => ref.id === refs[0].id) : null;
+
+        if (beforeImage || afterImage || description) {
+          const nextRef = {
+            id: existing ? existing.id : `ref-${Date.now()}`,
+            procedureId: id,
+            procedureName: title,
+            type: 'Before-and-after sample',
+            beforeImage: beforeImage || (existing ? existing.beforeImage : ''),
+            afterImage: afterImage || (existing ? existing.afterImage : ''),
+            caption: description || (existing ? existing.caption : `${title} visual reference.`),
+            consent: existing ? existing.consent : 'Clinic-managed visualization reference.',
+            disclaimer: existing ? existing.disclaimer : 'Results may vary per patient.',
+            status: 'Active',
+            uploadedAt: existing ? existing.uploadedAt : new Date().toISOString()
+          };
+          save(keys.references, existing
+            ? allRefs.map(ref => ref.id === existing.id ? nextRef : ref)
+            : [nextRef].concat(allRefs));
+        }
+
+        modal.classList.remove('active');
+        renderProcedures(currentProcedures, loadSettings());
+        alert('Procedure visualization updated.');
+      };
+
+      modal.classList.add('active');
     }
 
     function renderProcedures(items, data) {
       const procedureStatus = data.procedureStatus || {};
+      currentProcedures = items;
 
       body.innerHTML = items.length ? items.map((item, index) => {
-        const id = item.id || item.databaseId || `procedure-${index}`;
+        const id = procedureKey(item, index);
         const enabled = procedureStatus[id] !== false;
-        const count = fallbackCounts[index % fallbackCounts.length];
+        const count = referencesForProcedure(item).length || fallbackCounts[index % fallbackCounts.length];
 
         return `
           <tr>
-            <td><strong>${escapeHtml(item.name || item.procedure_name)}</strong></td>
+            <td><strong>${escapeHtml(procedureName(item))}</strong></td>
             <td>
               <label class="visualization-status-toggle">
                 <input type="checkbox" data-visualization-status="${escapeHtml(id)}" ${enabled ? 'checked' : ''}>
@@ -419,8 +681,8 @@
 
       const id = button.dataset.visualizationDisable || button.dataset.visualizationEdit || button.dataset.visualizationPreview;
       const row = button.closest('tr');
-      const name = row ? row.querySelector('td strong')?.textContent || 'this procedure' : 'this procedure';
       const toggle = row ? row.querySelector('[data-visualization-status]') : null;
+      const item = currentProcedures.find((procedure, index) => procedureKey(procedure, index) === String(id));
 
       if (button.dataset.visualizationDisable && toggle) {
         toggle.checked = !toggle.checked;
@@ -430,12 +692,12 @@
       }
 
       if (button.dataset.visualizationPreview) {
-        alert(`${name}\n\nPreview opens the patient-facing visualization workflow for review.`);
+        if (item) openPatientVisualization(item);
         return;
       }
 
       if (button.dataset.visualizationEdit) {
-        alert(`${name}\n\nUse the procedure management page to edit details and comparison images.`);
+        if (item) openVisualizationEditor(item, String(id));
       }
     });
 

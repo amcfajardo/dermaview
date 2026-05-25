@@ -1,0 +1,48 @@
+<div class="panel-card accounts-panel admin-content-panel">
+  <div class="accounts-header">
+    <div>
+      <h3>All Patient Records Management</h3>
+      <p class="section-text">Review patient profiles, consultation history, uploaded images, treatment history, and staff notes.</p>
+    </div>
+    <button type="button" class="accounts-create-btn" id="exportPatientsCsv">Export Patients</button>
+  </div>
+
+  <div class="admin-filter-grid">
+    <label class="accounts-search" for="patientsSearch">
+      <span>Search patients</span>
+      <input id="patientsSearch" type="search" placeholder="Search name, contact, procedure, notes..." autocomplete="off">
+    </label>
+    <label class="accounts-search" for="patientsProcedureFilter">
+      <span>Treatment</span>
+      <select id="patientsProcedureFilter" class="accounts-select"></select>
+    </label>
+    <label class="accounts-search" for="patientsActivityFilter">
+      <span>Activity</span>
+      <select id="patientsActivityFilter" class="accounts-select">
+        <option value="">All patients</option>
+        <option value="appointments">With appointments</option>
+        <option value="images">With uploaded images</option>
+        <option value="notes">With notes</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="accounts-table-wrap" style="margin-top: 16px;">
+    <table class="accounts-table admin-wide-table">
+      <thead>
+        <tr>
+          <th>Patient Name</th>
+          <th>Contact</th>
+          <th>Consultations</th>
+          <th>Uploaded Images</th>
+          <th>Treatment History</th>
+          <th>Last Activity</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="patientsTableBody">
+        <tr><td colspan="7" class="accounts-empty-cell">Loading patient records...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>

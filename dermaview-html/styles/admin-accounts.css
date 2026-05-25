@@ -66,6 +66,11 @@
   gap: 16px;
 }
 
+.super-admin-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  margin-bottom: 18px;
+}
+
 .dashboard-stat-card {
   display: grid;
   gap: 8px;
@@ -348,6 +353,7 @@
   width: min(1040px, 96vw);
   max-height: 92vh;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   border-radius: 18px;
   padding: 16px;
@@ -461,6 +467,32 @@
   display: none;
 }
 
+body.accounts-modal-open {
+  overflow: hidden;
+}
+
+body.accounts-modal-open::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(15, 23, 42, 0.44);
+}
+
+.accounts-panel[data-account-scope] > .accounts-form:not([hidden]) {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 90;
+  width: min(860px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  box-shadow: 0 28px 90px rgba(15, 23, 42, 0.28);
+}
+
 .accounts-form-title {
   display: flex;
   justify-content: space-between;
@@ -482,6 +514,7 @@
 
 .accounts-field {
   display: grid;
+  align-content: start;
   gap: 7px;
   grid-column: span 2;
 }
@@ -643,7 +676,7 @@ textarea.accounts-input {
 
 .appointment-summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
 }
 
@@ -674,6 +707,32 @@ textarea.accounts-input {
   justify-content: flex-end;
 }
 
+.system-settings-form {
+  align-items: start;
+}
+
+.system-settings-form .accounts-field {
+  align-self: start;
+}
+
+.system-settings-form .accounts-input,
+.system-settings-form .accounts-select {
+  align-self: start;
+}
+
+.system-logo-upload {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  max-width: 620px;
+}
+
+.system-logo-upload .accounts-input {
+  width: auto;
+  min-height: 42px;
+  flex: 1 1 320px;
+}
+
 .system-logo-preview {
   width: 72px;
   height: 72px;
@@ -685,6 +744,7 @@ textarea.accounts-input {
   color: #ffffff;
   font-size: 1.4rem;
   font-weight: 900;
+  flex: 0 0 72px;
 }
 
 .system-logo-preview img {
@@ -731,6 +791,122 @@ textarea.accounts-input {
 .permission-no {
   background: #fee2e2;
   color: #991b1b;
+}
+
+.super-admin-permissions-table td:not(:first-child),
+.super-admin-permissions-table th:not(:first-child) {
+  text-align: center;
+}
+
+.super-admin-permissions-table td:first-child span {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.super-admin-permissions-table input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
+.super-admin-permissions-table input[disabled] {
+  opacity: 0.65;
+}
+
+.accounts-panel,
+.admin-content-panel,
+.dashboard-shell,
+.dashboard-main-grid,
+.reports-panel,
+.procedures-admin-panel,
+.visualization-settings-panel {
+  min-width: 0;
+}
+
+.panel-card {
+  min-width: 0;
+}
+
+.accounts-header {
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.accounts-header > div {
+  min-width: 0;
+}
+
+.accounts-header .section-text,
+.dashboard-hero .section-text {
+  max-width: 780px;
+}
+
+.accounts-list-header {
+  gap: 14px;
+}
+
+.accounts-search,
+.accounts-search input,
+.accounts-search select {
+  min-width: 0;
+}
+
+.accounts-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.accounts-table {
+  min-width: 760px;
+}
+
+.admin-wide-table {
+  min-width: 980px;
+}
+
+.accounts-form,
+.system-settings-form,
+.procedures-admin-form,
+.visualization-settings-form {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.accounts-input,
+.accounts-select,
+textarea.accounts-input {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-button-row {
+  flex-wrap: wrap;
+}
+
+.dashboard-stat-card strong {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .accounts-header,
+  .accounts-list-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .accounts-search {
+    width: 100%;
+  }
+
+  .accounts-actions,
+  .admin-button-row,
+  .reports-export-buttons {
+    width: 100%;
+  }
 }
 
 .appointments-table {
@@ -1438,6 +1614,192 @@ textarea.accounts-input {
   width: min(220px, 100%);
 }
 
+.visualization-patient-dialog,
+.visualization-edit-dialog {
+  width: min(980px, 94vw);
+}
+
+.visualization-patient-body,
+.visualization-edit-form {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.visualization-patient-stage {
+  display: grid;
+  gap: 16px;
+}
+
+.visualization-patient-stage-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  color: var(--color-text);
+}
+
+.visualization-patient-stage-header strong {
+  font-size: 1rem;
+}
+
+.visualization-patient-stage-header span {
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.visualization-patient-compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.visualization-patient-compare figure {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.visualization-patient-compare img,
+.visualization-patient-placeholder {
+  width: 100%;
+  min-height: 220px;
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  object-fit: cover;
+  background: var(--color-bg-lighter);
+  color: var(--color-text-muted);
+  font-weight: 900;
+}
+
+.visualization-patient-compare figcaption {
+  padding: 9px 11px;
+  color: var(--color-text);
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.visualization-patient-slider {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  position: relative;
+}
+
+.visualization-patient-slider::before {
+  content: "";
+  position: absolute;
+  inset: 12px 18px;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid #ffffff;
+}
+
+.visualization-patient-copy {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-lighter);
+}
+
+.visualization-patient-copy strong {
+  color: var(--color-text);
+}
+
+.visualization-patient-copy p,
+.visualization-patient-copy small {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: 1.55;
+}
+
+.visualization-patient-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.visualization-edit-form {
+  display: grid;
+  gap: 14px;
+  padding-right: 4px;
+}
+
+.visualization-edit-toggle {
+  width: min(460px, 100%);
+}
+
+.visualization-edit-block {
+  display: grid;
+  gap: 10px;
+}
+
+.visualization-edit-block h4 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.visualization-reference-list {
+  display: grid;
+  gap: 10px;
+}
+
+.visualization-reference-row {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-lighter);
+}
+
+.visualization-reference-row strong,
+.visualization-reference-row span {
+  display: block;
+}
+
+.visualization-reference-row strong {
+  color: var(--color-text);
+  font-size: 0.92rem;
+}
+
+.visualization-reference-row span {
+  margin-top: 4px;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.visualization-reference-thumbs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.visualization-reference-thumbs img,
+.visualization-reference-thumbs .visualization-patient-placeholder {
+  min-height: 62px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+}
+
+.visualization-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .admin-report-grid {
   margin-bottom: 18px;
 }
@@ -1454,12 +1816,17 @@ textarea.accounts-input {
 
 .reports-panel {
   display: grid;
-  gap: 20px;
+  gap: 18px;
+}
+
+.reports-panel .accounts-header {
+  align-items: flex-start;
+  margin-bottom: 2px;
 }
 
 .reports-section {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .reports-section h4 {
@@ -1560,13 +1927,36 @@ textarea.accounts-input {
 }
 
 .reports-table {
-  min-width: 0;
+  min-width: 720px;
+  table-layout: fixed;
 }
 
 .reports-table th,
 .reports-table td {
-  padding: 12px 14px;
-  font-size: 0.92rem;
+  padding: 11px 12px;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.reports-records-table th:last-child,
+.reports-records-table td:last-child {
+  width: 92px;
+  text-align: right;
+}
+
+.reports-logs-table th:last-child,
+.reports-logs-table td:last-child {
+  width: 136px;
+}
+
+.reports-usage-table th:last-child,
+.reports-usage-table td:last-child {
+  width: 130px;
+  text-align: right;
+}
+
+.reports-table .account-status {
+  white-space: nowrap;
 }
 
 .reports-link-button {
@@ -1591,6 +1981,8 @@ textarea.accounts-input {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  justify-content: flex-end;
+  flex: 0 0 auto;
 }
 
 .reports-export-buttons .accounts-create-btn,
@@ -1599,6 +1991,7 @@ textarea.accounts-input {
   border-radius: 8px;
   padding: 0 12px;
   font-size: 0.86rem;
+  white-space: nowrap;
 }
 
 @media print {
@@ -1627,6 +2020,9 @@ textarea.accounts-input {
   display: grid;
   gap: 16px;
   color: var(--color-text);
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .admin-details-body p {
@@ -1723,12 +2119,21 @@ textarea.accounts-input {
 
 .patient-record-modal .admin-details-dialog {
   width: min(980px, 94vw);
+  max-height: 92vh;
+}
+
+.patient-record-modal .admin-details-body {
+  gap: 14px;
 }
 
 .patient-image-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 12px;
+}
+
+.patient-image-grid:has(> p:only-child) {
+  display: block;
 }
 
 .patient-image-grid figure {
@@ -1758,6 +2163,24 @@ textarea.accounts-input {
   line-height: 1.35;
 }
 
+.patient-notes-field {
+  display: grid;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.patient-notes-field span {
+  color: var(--color-text);
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.patient-notes-field textarea {
+  min-height: 118px;
+  max-height: 190px;
+  resize: vertical;
+}
+
 .account-status-completed,
 .account-status-active {
   background: #dcfce7;
@@ -1774,6 +2197,188 @@ textarea.accounts-input {
 .account-status-inactive {
   background: #fee2e2;
   color: #991b1b;
+}
+
+/* Admin surfaces use a denser operations layout than the public pages. */
+.panel-card,
+.accounts-panel,
+.dashboard-stat-card,
+.dashboard-activity-card,
+.dashboard-status-card,
+.processed-image-card,
+.accounts-table-wrap,
+.accounts-form,
+.appointment-summary-grid div,
+.dashboard-appointment-summary div,
+.dashboard-empty,
+.dashboard-status-item,
+.dashboard-activity-item {
+  border-radius: 8px;
+}
+
+.panel-card {
+  position: static;
+  top: auto;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+}
+
+.panel-card:hover {
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+}
+
+.accounts-panel,
+.dashboard-hero,
+.dashboard-activity-card,
+.dashboard-status-card {
+  padding: 22px;
+}
+
+.dashboard-stat-card {
+  min-height: 124px;
+  padding: 18px;
+}
+
+.dashboard-activity-icon,
+.processed-image-compare figure,
+.processed-image-compare img,
+.image-preview-dialog img,
+.image-preview-close {
+  border-radius: 8px;
+}
+
+.image-preview-dialog {
+  border-radius: 8px;
+}
+
+.accounts-table th,
+.accounts-table td {
+  line-height: 1.45;
+}
+
+.accounts-panel[data-account-scope] .accounts-table th,
+.accounts-panel[data-account-scope] .accounts-table td {
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  vertical-align: middle;
+}
+
+.accounts-panel[data-account-scope] .accounts-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.accounts-panel[data-account-scope] .accounts-table th:nth-child(1),
+.accounts-panel[data-account-scope] .accounts-table td:nth-child(1) {
+  width: 17%;
+}
+
+.accounts-panel[data-account-scope] .accounts-table th:nth-child(2),
+.accounts-panel[data-account-scope] .accounts-table td:nth-child(2) {
+  width: 27%;
+  overflow-wrap: anywhere;
+}
+
+.accounts-panel[data-account-scope] .accounts-table th:nth-child(3),
+.accounts-panel[data-account-scope] .accounts-table td:nth-child(3) {
+  width: 14%;
+}
+
+.accounts-panel[data-account-scope] .accounts-table th:nth-child(4),
+.accounts-panel[data-account-scope] .accounts-table td:nth-child(4) {
+  width: 10%;
+}
+
+.accounts-panel[data-account-scope] .accounts-table th:nth-child(5),
+.accounts-panel[data-account-scope] .accounts-table td:nth-child(5) {
+  width: 10%;
+  white-space: nowrap;
+}
+
+.accounts-panel[data-account-scope] .accounts-table th:nth-child(6),
+.accounts-panel[data-account-scope] .accounts-table td:nth-child(6) {
+  width: 22%;
+}
+
+.accounts-panel[data-account-scope] .account-status {
+  white-space: nowrap;
+}
+
+.account-row-actions,
+.admin-button-row,
+.reports-export-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.account-row-actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.accounts-panel[data-account-scope] .account-row-actions {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 7px;
+  justify-content: flex-start;
+  width: min(100%, 176px);
+}
+
+.accounts-panel[data-account-scope] .account-action-btn {
+  min-height: 32px;
+  border-radius: 8px;
+  padding: 0 9px;
+  font-size: 0.78rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.accounts-panel[data-account-scope] .deactivate-btn,
+.accounts-panel[data-account-scope] .reactivate-btn {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.accounts-panel[data-account-scope] .edit-account-btn {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.accounts-panel[data-account-scope] .reset-password-btn {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.accounts-panel[data-account-scope] .account-status {
+  min-height: 24px;
+  padding: 2px 9px;
+  font-size: 0.78rem;
+}
+
+.activity-logs-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.activity-logs-table {
+  min-width: 860px;
+}
+
+.activity-logs-table th,
+.activity-logs-table td {
+  white-space: nowrap;
+}
+
+.activity-logs-table th:nth-child(2),
+.activity-logs-table td:nth-child(2) {
+  min-width: 430px;
+  white-space: normal;
+}
+
+.super-admin-permissions-table input[disabled] {
+  cursor: not-allowed;
 }
 
 @media (max-width: 1100px) {
@@ -1873,6 +2478,16 @@ textarea.accounts-input {
     grid-column: 1 / -1;
   }
 
+  .system-logo-upload {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .system-logo-upload .accounts-input {
+    width: 100%;
+    flex: 0 0 auto;
+  }
+
   .accounts-form-title {
     align-items: stretch;
     flex-direction: column;
@@ -1908,6 +2523,26 @@ textarea.accounts-input {
   }
 
   .visualization-save-row .accounts-submit {
+    width: 100%;
+  }
+
+  .visualization-patient-compare,
+  .visualization-edit-grid,
+  .visualization-reference-row {
+    grid-template-columns: 1fr;
+  }
+
+  .visualization-patient-slider {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+
+  .visualization-patient-actions {
+    justify-content: stretch;
+  }
+
+  .visualization-patient-actions .accounts-close,
+  .visualization-patient-actions .accounts-create-btn {
     width: 100%;
   }
 

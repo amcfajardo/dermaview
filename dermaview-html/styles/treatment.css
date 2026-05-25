@@ -32,16 +32,13 @@
   height: auto;
   object-fit: contain;
   display: block;
-<<<<<<< HEAD
   border-radius: 14px;
-=======
   cursor: zoom-in;
 }
 
 .image-card img:focus {
   outline: 3px solid rgba(37, 99, 235, 0.28);
   outline-offset: -3px;
->>>>>>> for-editing
 }
 
 /* Statistics Grid */
@@ -116,7 +113,6 @@
   margin-bottom: 4px;
 }
 
-<<<<<<< HEAD
 .results-panel {
   min-height: 850px;
 }
@@ -124,7 +120,7 @@
 .results-panel .comparison-grid {
   margin-top: 10px;
 }
-=======
+
 .recommendation-list li span {
   display: inline-flex;
   margin-bottom: 8px;
@@ -230,4 +226,3 @@
   border-radius: 12px;
   background: var(--color-bg-lighter);
 }
->>>>>>> for-editing

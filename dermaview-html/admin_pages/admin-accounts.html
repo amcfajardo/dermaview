@@ -1,4 +1,4 @@
-<div class="panel-card accounts-panel">
+<div class="panel-card accounts-panel" data-account-scope="staff">
   <div class="accounts-header">
     <div>
       <h3>Manage Staff / Employee Accounts</h3>
@@ -18,6 +18,7 @@
     </div>
 
     <input type="hidden" name="action" value="add">
+    <input type="hidden" name="id" value="">
 
     <div class="accounts-field">
       <label for="accountFirstName">First Name</label>
@@ -43,7 +44,9 @@
       <label for="accountRole">Role</label>
       <select id="accountRole" name="role" class="accounts-select" required>
         <option value="">Select Role</option>
-        <option value="admin">Admin</option>
+        <option value="dermatologist">Dermatologist</option>
+        <option value="aesthetician">Aesthetician</option>
+        <option value="receptionist">Receptionist</option>
         <option value="staff">Staff</option>
         <option value="encoder">Encoder</option>
         <option value="viewer">Viewer</option>
@@ -56,7 +59,7 @@
     </div>
 
     <div class="accounts-actions">
-      <button type="submit" class="accounts-submit">Add Account</button>
+      <button type="submit" class="accounts-submit" id="accountSubmitButton">Add Account</button>
     </div>
   </form>
 
@@ -100,16 +103,16 @@
         <thead>
           <tr>
             <th>Feature</th>
-            <th>Admin</th>
+            <th>Dermatologist</th>
+            <th>Aesthetician</th>
+            <th>Receptionist</th>
             <th>Staff</th>
-            <th>Encoder</th>
-            <th>Viewer</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td>Edit Procedures</td>
-            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-no">No</span></td>
             <td><span class="permission-no">No</span></td>
             <td><span class="permission-no">No</span></td>
             <td><span class="permission-no">No</span></td>
@@ -117,13 +120,13 @@
           <tr>
             <td>View Reports</td>
             <td><span class="permission-check">Yes</span></td>
-            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-no">No</span></td>
             <td><span class="permission-no">No</span></td>
             <td><span class="permission-check">Yes</span></td>
           </tr>
           <tr>
             <td>Delete Records</td>
-            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-no">No</span></td>
             <td><span class="permission-no">No</span></td>
             <td><span class="permission-no">No</span></td>
             <td><span class="permission-no">No</span></td>
@@ -132,12 +135,12 @@
             <td>Process Images</td>
             <td><span class="permission-check">Yes</span></td>
             <td><span class="permission-check">Yes</span></td>
-            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-no">No</span></td>
             <td><span class="permission-no">No</span></td>
           </tr>
           <tr>
             <td>Manage Staff Accounts</td>
-            <td><span class="permission-check">Yes</span></td>
+            <td><span class="permission-no">No</span></td>
             <td><span class="permission-no">No</span></td>
             <td><span class="permission-no">No</span></td>
             <td><span class="permission-no">No</span></td>

@@ -1,0 +1,95 @@
+<div class="panel-card accounts-panel" data-account-scope="admin">
+  <div class="accounts-header">
+    <div>
+      <h3>Manage Admin Accounts</h3>
+      <p class="section-text">Create super admin and admin accounts, assign management roles, reset passwords, and review account activity.</p>
+    </div>
+    <button type="button" class="accounts-create-btn" id="showAccountForm">Create Admin</button>
+  </div>
+
+  <form id="accountForm" class="accounts-form" hidden>
+    <div class="accounts-form-title">
+      <h4>Create Admin Account</h4>
+      <button type="button" class="accounts-close" id="cancelAccountForm" aria-label="Cancel account form">Cancel</button>
+    </div>
+
+    <input type="hidden" name="action" value="add">
+    <input type="hidden" name="id" value="">
+
+    <div class="accounts-field">
+      <label for="accountFirstName">First Name</label>
+      <input id="accountFirstName" type="text" name="first_name" class="accounts-input" autocomplete="given-name" required>
+    </div>
+
+    <div class="accounts-field">
+      <label for="accountLastName">Last Name</label>
+      <input id="accountLastName" type="text" name="last_name" class="accounts-input" autocomplete="family-name" required>
+    </div>
+
+    <div class="accounts-field accounts-field-wide">
+      <label for="accountEmail">Email Address</label>
+      <input id="accountEmail" type="email" name="email" class="accounts-input" autocomplete="email" required>
+    </div>
+
+    <div class="accounts-field">
+      <label for="accountEmployeeNumber">Employee Number</label>
+      <input id="accountEmployeeNumber" type="text" name="employee_number" class="accounts-input" required>
+    </div>
+
+    <div class="accounts-field">
+      <label for="accountRole">Role</label>
+      <select id="accountRole" name="role" class="accounts-select" required>
+        <option value="">Select Role</option>
+        <option value="super_admin">Super Admin</option>
+        <option value="admin">Admin</option>
+        <option value="manager">Manager</option>
+      </select>
+    </div>
+
+    <div class="accounts-field">
+      <label for="accountPassword">Temporary Password</label>
+      <input id="accountPassword" type="password" name="password" class="accounts-input" autocomplete="new-password" required>
+    </div>
+
+    <div class="accounts-actions">
+      <button type="submit" class="accounts-submit" id="accountSubmitButton">Add Admin</button>
+    </div>
+  </form>
+
+  <div class="accounts-list-header">
+    <h4>Super Admin / Admin Accounts</h4>
+    <label class="accounts-search" for="accountsSearch">
+      <span>Search admins</span>
+      <input id="accountsSearch" type="search" placeholder="Search name, email, role..." autocomplete="off">
+    </label>
+  </div>
+
+  <div class="accounts-table-wrap">
+    <table class="accounts-table admin-wide-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Employee Number</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="accountsTableBody">
+        <tr><td colspan="6" class="accounts-empty-cell">Loading admin accounts...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="accounts-permissions-panel">
+    <div class="accounts-list-header">
+      <h4>Admin Activity</h4>
+      <p class="table-muted">Use Activity Logs to review sign-ins, updates, processed images, generated reports, and setting changes.</p>
+    </div>
+    <div class="admin-button-row">
+      <a class="accounts-create-btn" href="super-admin.html#activity">View Admin Activity</a>
+      <a class="accounts-close" href="super-admin.html#roles">Review Role Permissions</a>
+    </div>
+  </div>
+</div>

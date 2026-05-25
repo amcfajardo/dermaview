@@ -1,0 +1,89 @@
+<div class="panel-card accounts-panel">
+  <div class="accounts-header">
+    <div>
+      <h3>All Appointment Management</h3>
+      <p class="section-text">
+        Approve, reject, reschedule, assign staff, complete, cancel, and monitor every appointment across the clinic.
+      </p>
+    </div>
+  </div>
+
+  <div class="accounts-calendar-header">
+    <div class="appointment-summary-grid">
+      <div>
+        <span>Upcoming Consultations</span>
+        <strong id="upcomingAppointmentsCount">0</strong>
+      </div>
+      <div>
+        <span>Pending</span>
+        <strong id="pendingAppointmentsCount">0</strong>
+      </div>
+      <div>
+        <span>Confirmed</span>
+        <strong id="confirmedAppointmentsCount">0</strong>
+      </div>
+      <div>
+        <span>Completed</span>
+        <strong id="completedAppointmentsCount">0</strong>
+      </div>
+      <div>
+        <span>Cancelled / No Show</span>
+        <strong id="cancelledAppointmentsCount">0</strong>
+      </div>
+      <div>
+        <span>Assigned Staff</span>
+        <strong id="assignedStaffCount">0</strong>
+      </div>
+    </div>
+
+    <div class="accounts-list-header" style="margin-bottom: 12px;">
+      <h4 style="display:flex; align-items:center; gap:12px;">Appointment Calendar</h4>
+      <div class="accounts-calendar-controls">
+        <button type="button" class="accounts-calendar-nav" id="calendarPrev">&larr;</button>
+        <div class="accounts-calendar-month" id="calendarMonthLabel">Loading…</div>
+        <button type="button" class="accounts-calendar-nav" id="calendarNext">&rarr;</button>
+      </div>
+    </div>
+
+    <div class="accounts-calendar-view-toggles">
+      <button type="button" class="button-secondary" id="showCalendarBtn">Calendar</button>
+      <button type="button" class="button-secondary" id="showTableBtn">List</button>
+    </div>
+
+
+    <label class="accounts-search" for="appointmentsSearch" style="margin-top: 10px;">
+      <span>Search appointments</span>
+      <input id="appointmentsSearch" type="search" placeholder="Search patient, procedure, status..." autocomplete="off">
+    </label>
+  </div>
+
+  <div id="calendarView" class="accounts-calendar-view">
+
+    <div class="accounts-calendar-grid" id="calendarGrid">
+      <!-- calendar days injected by admin.js -->
+    </div>
+  </div>
+
+  <div id="tableView" class="accounts-table-wrap">
+    <table class="accounts-table appointments-table">
+      <thead>
+        <tr>
+          <th>Date / Time</th>
+          <th>Patient</th>
+          <th>Contact</th>
+          <th>Procedure</th>
+          <th>Assigned Staff</th>
+          <th>Status</th>
+          <th>Source</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody id="appointmentsTableBody">
+        <tr>
+          <td colspan="8" class="accounts-empty-cell">Loading appointments...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

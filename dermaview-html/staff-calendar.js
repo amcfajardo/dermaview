@@ -21,6 +21,7 @@ function staffCalFromJsonRows(rows) {
   return rows.map(row => {
     const timeParts = String(row.appointment_time || '00:00:00').split(':');
     return {
+      id: row.id,
       isoDate: row.appointment_date,
       hours: parseInt(timeParts[0] || '0', 10),
       minutes: parseInt(timeParts[1] || '0', 10),
@@ -30,7 +31,8 @@ function staffCalFromJsonRows(rows) {
       procedureName: row.procedure_name || '',
       status: row.status || '',
       source: row.source || '',
-      notes: row.notes || ''
+      notes: row.notes || '',
+      canManage: Boolean(row.can_manage)
     };
   });
 }
@@ -92,11 +94,38 @@ function staffCalParseFromAdminRows(html) {
       procedureName: (procedureTd?.textContent || '').trim(),
       status,
       source: (sourceTd?.textContent || '').trim(),
-      notes: title
+      notes: title,
+      canManage: Boolean(statusSelect)
     });
   });
 
   return structured;
+}
+
+function staffCalStatusOptions(currentStatus) {
+  const statuses = [
+    ['Pending', 'Pending'],
+    ['Confirmed', 'Confirmed'],
+    ['Completed', 'Done'],
+    ['Cancelled', 'Cancelled'],
+    ['No Show', 'No Show']
+  ];
+
+  return statuses
+    .map(([value, label]) => `<option value="${value}" ${value === currentStatus ? 'selected' : ''}>${label}</option>`)
+    .join('');
+}
+
+function staffCalStatusControl(apt, statusKey) {
+  if (!apt.canManage || !apt.id) {
+    return apt.status ? `<span class="apt-status status-${statusKey}">${staffCalEscapeHtml(apt.status)}</span>` : '';
+  }
+
+  return `
+    <select class="apt-status apt-status-select status-${statusKey}" data-staffcal-status="${staffCalEscapeHtml(String(apt.id))}" data-current-status="${staffCalEscapeHtml(apt.status || '')}" data-status-key="${staffCalEscapeHtml(statusKey)}" aria-label="Appointment status">
+      ${staffCalStatusOptions(apt.status)}
+    </select>
+  `;
 }
 
 function staffCalAppointmentCards(appointments) {
@@ -106,6 +135,8 @@ function staffCalAppointmentCards(appointments) {
 
   return appointments.map(apt => {
     const statusKey = apt.status ? apt.status.toLowerCase().replace(/\s+/g, '-') : '';
+    const statusControl = staffCalStatusControl(apt, statusKey);
+
     return `
       <div class="appointment-detail-card">
         <div class="apt-time">${staffCalEscapeHtml(apt.timeLabel || '')}</div>
@@ -113,7 +144,7 @@ function staffCalAppointmentCards(appointments) {
           <div class="apt-patient">${staffCalEscapeHtml(apt.patientName || '')}</div>
           <div class="apt-procedure">${staffCalEscapeHtml(apt.procedureName || '')}</div>
           ${apt.contact ? `<div class="apt-contact">${staffCalEscapeHtml(apt.contact)}</div>` : ''}
-          ${apt.status ? `<span class="apt-status status-${statusKey}">${staffCalEscapeHtml(apt.status)}</span>` : ''}
+          ${statusControl}
         </div>
       </div>
     `;
@@ -300,6 +331,38 @@ function initStaffCalendar() {
         render();
       });
   }
+
+  function updateStatus(id, status) {
+    const fd = new FormData();
+    fd.append('action', 'update_status');
+    fd.append('id', id);
+    fd.append('status', status);
+
+    return fetch(staffCalEndpoint(), { method: 'POST', body: fd })
+      .then(response => response.text())
+      .then(message => {
+        alert(message);
+        return load();
+      })
+      .catch(() => {
+        alert('Failed to update appointment status.');
+        return load();
+      });
+  }
+
+  mount.addEventListener('change', event => {
+    const select = event.target.closest('[data-staffcal-status]');
+    if (!select) return;
+    const previousStatus = select.dataset.currentStatus || '';
+    const nextLabel = select.options[select.selectedIndex]?.textContent || select.value;
+
+    if (!confirm(`Update this appointment status to ${nextLabel}?`)) {
+      select.value = previousStatus;
+      return;
+    }
+
+    updateStatus(select.dataset.staffcalStatus, select.value);
+  });
 
   if (prevBtn) prevBtn.addEventListener('click', () => {
     cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);

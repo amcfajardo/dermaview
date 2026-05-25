@@ -1,10 +1,30 @@
-<div class="panel-card accounts-panel admin-content-panel">
+  <div class="panel-card accounts-panel admin-content-panel">
   <div class="accounts-header">
     <div>
       <h3>Activity Logs</h3>
       <p class="section-text">Review recent appointment, account, procedure, and record activity across the admin system.</p>
     </div>
     <button type="button" class="accounts-create-btn" id="refreshActivityLogs">Refresh</button>
+  </div>
+
+  <div class="accounts-list-header">
+    <h4>Online Now</h4>
+    <p class="section-text" style="margin:4px 0 14px;">Accounts active in the last ~90 seconds.</p>
+  </div>
+
+  <div class="accounts-table-wrap" style="margin-bottom:18px;">
+    <table class="accounts-table admin-wide-table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Role</th>
+          <th>Last Seen</th>
+        </tr>
+      </thead>
+      <tbody id="onlineUsersBody">
+        <tr><td colspan="3" class="accounts-empty-cell">Loading online users...</td></tr>
+      </tbody>
+    </table>
   </div>
 
   <div class="accounts-list-header">
@@ -15,8 +35,9 @@
     </label>
   </div>
 
-  <div class="accounts-table-wrap">
-    <table class="accounts-table admin-wide-table">
+
+  <div class="accounts-table-wrap activity-logs-table-wrap">
+    <table class="accounts-table activity-logs-table">
       <thead>
         <tr>
           <th>Type</th>

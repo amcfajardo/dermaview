@@ -1,7 +1,9 @@
 <?php
 
+require_once '../auth_common.php';
 session_start();
 include '../config.php';
+require_once '../audit_common.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -29,12 +31,13 @@ function sendAppointmentEmail($toEmail, $patientName, $subject, $messageBody) {
         $mail->Port = 587;
         $mail->CharSet = 'UTF-8';
 
-        $mail->setFrom('YOUR_GMAIL@gmail.com', 'DermaView');
+        $mail->setFrom('dermaview2026@gmail.com', 'DermaView Clinic');
         $mail->addAddress($toEmail, $patientName);
 
         $mail->isHTML(true);
         $mail->Subject = $subject;
         $mail->Body = $messageBody;
+        $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>'], "\n", $messageBody));
 
         $mail->send();
         return true;
@@ -72,6 +75,63 @@ function format_time_label($time) {
 function status_class($status) {
     $key = strtolower(str_replace(' ', '-', $status));
     return 'appointment-status-' . $key;
+}
+
+function current_staff_name($conn) {
+    $user_id = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0;
+
+    if ($user_id <= 0) {
+        return '';
+    }
+
+    $stmt = $conn->prepare("
+        SELECT first_name, last_name, email, employee_number
+        FROM users
+        WHERE id = ?
+        LIMIT 1
+    ");
+
+    if (!$stmt) {
+        return '';
+    }
+
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result ? $result->fetch_assoc() : null;
+
+    if (!$user) {
+        return '';
+    }
+
+    $name = trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''));
+
+    if ($name !== '') {
+        return $name;
+    }
+
+    return trim($user['email'] ?? $user['employee_number'] ?? '');
+}
+
+function current_user_id() {
+    return isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0;
+}
+
+function can_manage_appointment($row, $conn) {
+    $user_id = current_user_id();
+
+    if ($user_id <= 0) {
+        return false;
+    }
+
+    if (isset($row['recorded_by']) && (int) $row['recorded_by'] > 0) {
+        return (int) $row['recorded_by'] === $user_id;
+    }
+
+    $staff_name = current_staff_name($conn);
+    $assigned_staff = trim((string) ($row['assigned_staff'] ?? ''));
+
+    return $staff_name !== '' && $assigned_staff !== '' && strcasecmp($staff_name, $assigned_staff) === 0;
 }
 
 function ensure_appointment_columns($conn) {
@@ -116,6 +176,10 @@ ensure_appointment_columns($conn);
 
 $action = $_POST['action'] ?? '';
 
+if ($action !== 'add') {
+    auth_require_admin(false);
+}
+
 if ($action === 'add') {
     $procedure_id = clean_text($_POST['procedure_id'] ?? '');
     $procedure_name = $procedure_names[$procedure_id] ?? clean_text($_POST['procedure_name'] ?? '');
@@ -125,8 +189,8 @@ if ($action === 'add') {
     $appointment_date = clean_text($_POST['appointment_date'] ?? '');
     $appointment_time = clean_text($_POST['appointment_time'] ?? '');
     $notes = clean_text($_POST['notes'] ?? '');
-    $status = clean_text($_POST['status'] ?? 'Pending');
-    $assigned_staff = clean_text($_POST['assigned_staff'] ?? '');
+    $status = clean_text($_POST['status'] ?? 'Confirmed');
+    $assigned_staff = current_staff_name($conn);
     $source = clean_text($_POST['source'] ?? 'online');
     $recorded_by = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
 
@@ -137,7 +201,7 @@ if ($action === 'add') {
 
     $allowed_statuses = ['Pending', 'Confirmed', 'Completed', 'Cancelled', 'No Show'];
     if (!in_array($status, $allowed_statuses, true)) {
-        $status = 'Pending';
+        $status = 'Confirmed';
     }
 
     $allowed_sources = ['online', 'staff'];
@@ -168,27 +232,53 @@ if ($action === 'add') {
     );
 
     if ($stmt->execute()) {
+    $appointment_id = (int) $conn->insert_id;
+    audit_log(
+        $conn,
+        'Appointment',
+        $patient_name . ' scheduled ' . $procedure_name,
+        $status,
+        'appointment',
+        (string) $appointment_id,
+        [
+            'date' => $appointment_date,
+            'time' => $appointment_time,
+            'source' => $source,
+            'phone' => $phone,
+            'email' => $email
+        ]
+    );
+
+    $clinic_name = 'DermaView Clinic';
+    $preferred_date = date('F j, Y', strtotime($appointment_date));
+    $preferred_time = format_time_label($appointment_time);
 
     sendAppointmentEmail(
         $email,
         $patient_name,
-        "DermaView Appointment Scheduled",
+        "DermaView Clinic Appointment Scheduled",
         "
-        <h2>Appointment Scheduled</h2>
         <p>Hello <b>$patient_name</b>,</p>
-        <p>Your appointment has been successfully scheduled.</p>
 
-        <p><b>Procedure:</b> $procedure_name</p>
-        <p><b>Date:</b> $appointment_date</p>
-        <p><b>Time:</b> " . format_time_label($appointment_time) . "</p>
-        <p><b>Status:</b> $status</p>
+        <p>Thank you for scheduling an appointment with <b>$clinic_name</b>.</p>
 
-        <br>
-        <p>Thank you for choosing DermaView.</p>
+        <p>Your appointment has been scheduled with the following details:</p>
+
+        <p>
+          <b>Procedure:</b> $procedure_name<br>
+          <b>Date:</b> $preferred_date<br>
+          <b>Time:</b> $preferred_time<br>
+          <b>Contact Number:</b> $phone<br>
+          <b>Email Address:</b> $email
+        </p>
+
+        <p>Please arrive on time and contact the clinic if you need to change or cancel your appointment.</p>
+
+        <p>Thank you,<br>$clinic_name</p>
         "
     );
 
-    echo "Appointment saved successfully.";
+    echo "Appointment scheduled successfully.";
 
 } else {
     echo "Failed to save appointment.";
@@ -204,6 +294,22 @@ if ($action === 'update_status') {
 
     if ($id <= 0 || !in_array($status, $allowed_statuses, true)) {
         echo "Invalid appointment update.";
+        exit();
+    }
+
+    $ownerStmt = $conn->prepare("
+        SELECT recorded_by, assigned_staff
+        FROM appointments
+        WHERE id = ?
+        LIMIT 1
+    ");
+    $ownerStmt->bind_param("i", $id);
+    $ownerStmt->execute();
+    $ownerResult = $ownerStmt->get_result();
+    $owner = $ownerResult ? $ownerResult->fetch_assoc() : null;
+
+    if (!$owner || !can_manage_appointment($owner, $conn)) {
+        echo "Only the staff member who scheduled this appointment can update its status.";
         exit();
     }
 
@@ -229,6 +335,19 @@ if ($action === 'update_status') {
 
     if ($infoResult && $infoResult->num_rows > 0) {
         $appointment = $infoResult->fetch_assoc();
+        audit_log(
+            $conn,
+            'Appointment',
+            $appointment['patient_name'] . ' appointment status updated',
+            $status,
+            'appointment',
+            (string) $id,
+            [
+                'procedure' => $appointment['procedure_name'],
+                'date' => $appointment['appointment_date'],
+                'time' => $appointment['appointment_time']
+            ]
+        );
 
         sendAppointmentEmail(
             $appointment['email'],
@@ -265,7 +384,7 @@ if ($action === 'fetch_json') {
     header('Content-Type: application/json; charset=utf-8');
 
     $result = $conn->query("
-        SELECT id, procedure_id, procedure_name, patient_name, email, phone, appointment_date, appointment_time, notes, status, assigned_staff, source
+        SELECT id, procedure_id, procedure_name, patient_name, email, phone, appointment_date, appointment_time, notes, status, assigned_staff, source, recorded_by
         FROM appointments
         ORDER BY appointment_date ASC, appointment_time ASC, id ASC
     ");
@@ -287,7 +406,8 @@ if ($action === 'fetch_json') {
                 'notes' => $row['notes'],
                 'status' => $row['status'],
                 'assigned_staff' => $row['assigned_staff'],
-                'source' => $row['source']
+                'source' => $row['source'],
+                'can_manage' => can_manage_appointment($row, $conn)
             ];
         }
     }
@@ -301,7 +421,7 @@ if ($action === 'fetch_json') {
 
 if ($action === 'fetch') {
     $result = $conn->query("
-        SELECT id, procedure_name, patient_name, email, phone, appointment_date, appointment_time, notes, status, assigned_staff, source
+        SELECT id, procedure_name, patient_name, email, phone, appointment_date, appointment_time, notes, status, assigned_staff, source, recorded_by
         FROM appointments
         ORDER BY appointment_date DESC, appointment_time DESC, id DESC
     ");
@@ -320,6 +440,18 @@ if ($action === 'fetch') {
             $source = htmlspecialchars(ucfirst($row['source']));
             $notes = htmlspecialchars($row['notes']);
             $status_class = htmlspecialchars(status_class($row['status']));
+            $can_manage = can_manage_appointment($row, $conn);
+            $status_action = $can_manage
+                ? "
+                <select class='appointment-status-select' data-id='$id'>
+                  <option value='Pending' " . ($row['status'] === 'Pending' ? 'selected' : '') . ">Pending</option>
+                  <option value='Confirmed' " . ($row['status'] === 'Confirmed' ? 'selected' : '') . ">Confirmed</option>
+                  <option value='Completed' " . ($row['status'] === 'Completed' ? 'selected' : '') . ">Completed</option>
+                  <option value='Cancelled' " . ($row['status'] === 'Cancelled' ? 'selected' : '') . ">Cancelled</option>
+                  <option value='No Show' " . ($row['status'] === 'No Show' ? 'selected' : '') . ">No Show</option>
+                </select>
+                "
+                : "<span class='table-muted'>Assigned staff only</span>";
 
             echo "
             <tr title='$notes'>
@@ -331,13 +463,7 @@ if ($action === 'fetch') {
               <td><span class='appointment-status $status_class'>$status</span></td>
               <td>$source</td>
               <td>
-                <select class='appointment-status-select' data-id='$id'>
-                  <option value='Pending' " . ($row['status'] === 'Pending' ? 'selected' : '') . ">Pending</option>
-                  <option value='Confirmed' " . ($row['status'] === 'Confirmed' ? 'selected' : '') . ">Confirmed</option>
-                  <option value='Completed' " . ($row['status'] === 'Completed' ? 'selected' : '') . ">Completed</option>
-                  <option value='Cancelled' " . ($row['status'] === 'Cancelled' ? 'selected' : '') . ">Cancelled</option>
-                  <option value='No Show' " . ($row['status'] === 'No Show' ? 'selected' : '') . ">No Show</option>
-                </select>
+                $status_action
               </td>
             </tr>
             ";

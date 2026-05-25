@@ -3,6 +3,21 @@ import numpy as np
 import sys
 
 
+def resize_for_processing(img, max_size=900):
+    h, w = img.shape[:2]
+    longest_side = max(h, w)
+
+    if longest_side <= max_size:
+        return img
+
+    scale = max_size / longest_side
+    return cv2.resize(
+        img,
+        (int(w * scale), int(h * scale)),
+        interpolation=cv2.INTER_AREA
+    )
+
+
 def process_undereye_lip_filler(input_path, output_path):
 
     img = cv2.imread(input_path)
@@ -11,6 +26,7 @@ def process_undereye_lip_filler(input_path, output_path):
         print("Image not found")
         sys.exit(1)
 
+    img = resize_for_processing(img)
     original = img.copy()
     h, w = img.shape[:2]
 

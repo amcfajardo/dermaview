@@ -43,7 +43,7 @@
     }
 
     function loadLogs() {
-      fetch(`admin-dashboard.php?v=${Date.now()}`, { cache: 'no-store' })
+      fetch(`admin-log-mirror.php?v=${Date.now()}`, { cache: 'no-store' })
         .then(response => response.json())
         .then(payload => {
           if (!payload || payload.status !== 'ok') throw new Error('Failed to load activity logs.');
@@ -59,5 +59,53 @@
     if (refresh) refresh.addEventListener('click', loadLogs);
 
     loadLogs();
+
+    // Presence: heartbeat
+    function startPresenceHeartbeat() {
+      if (window.__presenceHeartbeatStarted) return;
+      window.__presenceHeartbeatStarted = true;
+
+      function touch() {
+        fetch('../set-presence.php?v=' + Date.now(), { method: 'POST', cache: 'no-store' }).catch(() => {});
+      }
+
+      touch();
+      setInterval(touch, 30000);
+    }
+
+    startPresenceHeartbeat();
+
+    function loadOnlineUsers() {
+      const presenceBody = document.getElementById('onlineUsersBody');
+      if (!presenceBody) return;
+
+      fetch(`../get-online-users.php?v=${Date.now()}`, { cache: 'no-store' })
+        .then(r => {
+          if (!r.ok) throw new Error('Failed to load online users');
+          return r.json();
+        })
+        .then(payload => {
+          if (!payload || payload.status !== 'ok') throw new Error('Failed to load online users');
+          const list = payload.online_users || [];
+          if (!list.length) {
+            presenceBody.innerHTML = `<tr><td colspan="3" class="accounts-empty-cell">No one online.</td></tr>`;
+            return;
+          }
+          presenceBody.innerHTML = list.map(u => `
+            <tr>
+              <td>${escapeHtml(u.user_name || '')}</td>
+              <td>${escapeHtml(u.role || '')}</td>
+              <td>${escapeHtml(formatDate(u.last_seen))}</td>
+            </tr>
+          `).join('');
+        })
+        .catch(err => {
+          presenceBody.innerHTML = `<tr><td colspan="3" class="accounts-empty-cell">${escapeHtml(err.message || 'Failed to load online users')}</td></tr>`;
+        });
+    }
+
+    // initial + periodic
+    loadOnlineUsers();
+    setInterval(loadOnlineUsers, 30000);
   };
 })();

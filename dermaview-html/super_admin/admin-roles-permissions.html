@@ -1,0 +1,90 @@
+<div class="panel-card accounts-panel admin-content-panel">
+  <div class="accounts-header">
+    <div>
+      <h3>Role and Permission Management</h3>
+      <p class="section-text">Control what each user type can access across appointments, patients, reports, procedures, image records, settings, privacy tools, and backups.</p>
+    </div>
+    <button type="button" class="accounts-create-btn" id="saveRolePermissions">Save Permissions</button>
+  </div>
+
+  <div class="accounts-table-wrap">
+    <table class="accounts-table admin-wide-table super-admin-permissions-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Super Admin</th>
+          <th>Admin</th>
+          <th>Dermatologist</th>
+          <th>Aesthetician</th>
+          <th>Staff</th>
+        </tr>
+      </thead>
+      <tbody id="rolePermissionsBody">
+        <tr data-feature="Dashboard overview">
+          <td><strong>Dashboard Overview</strong><span>Total users, patients, appointments, image records, and alerts</span></td>
+          <td><input type="checkbox" checked disabled></td>
+          <td><input type="checkbox" checked></td>
+          <td><input type="checkbox"></td>
+          <td><input type="checkbox"></td>
+          <td><input type="checkbox"></td>
+        </tr>
+        <tr data-feature="Appointments">
+          <td><strong>Appointment Management</strong><span>Approve, reject, reschedule, assign staff, complete, cancel, and send updates</span></td>
+          <td><input type="checkbox" checked disabled></td>
+          <td><input type="checkbox" checked></td>
+          <td><input type="checkbox" checked></td>
+          <td><input type="checkbox" checked></td>
+          <td><input type="checkbox" checked></td>
+        </tr>
+        <tr data-feature="Patients">
+          <td><strong>Patient Records</strong><span>View profiles, history, images, consultation records, exports, and edits</span></td>
+          <td><input type="checkbox" checked disabled></td>
+          <td><input type="checkbox" checked></td>
+          <td><input type="checkbox" checked></td>
+          <td><input type="checkbox" checked></td>
+          <td><input type="checkbox"></td>
+        </tr>
+        <tr data-feature="Consultation images">
+          <td><strong>Consultation / Image Records</strong><span>View original image, processed image, selected procedure, staff, date, download, and delete</span></td>
+          <td><input type="checkbox" checked disabled></td>
+          <td><input type="checkbox" checked></td>
+          <td><input type="checkbox" checked></td>
+          <td><input type="checkbox" checked></td>
+          <td><input type="checkbox"></td>
+        </tr>
+        <tr data-feature="Procedures" data-super-admin-only="true">
+          <td><strong>Procedure Management</strong><span>Add, edit, delete, price, image, status, and script mapping</span></td>
+          <td><input type="checkbox" checked disabled></td>
+          <td><input type="checkbox" disabled></td>
+          <td><input type="checkbox" disabled></td>
+          <td><input type="checkbox" disabled></td>
+          <td><input type="checkbox" disabled></td>
+        </tr>
+        <tr data-feature="Reports">
+          <td><strong>Reports and Analytics</strong><span>Appointment, patient, procedure usage, processed image, staff activity, monthly exports</span></td>
+          <td><input type="checkbox" checked disabled></td>
+          <td><input type="checkbox" checked></td>
+          <td><input type="checkbox"></td>
+          <td><input type="checkbox"></td>
+          <td><input type="checkbox"></td>
+        </tr>
+        <tr data-feature="Settings" data-super-admin-only="true">
+          <td><strong>System and Processing Settings</strong><span>Clinic identity, slots, email settings, upload limits, image quality, folders, disclaimer</span></td>
+          <td><input type="checkbox" checked disabled></td>
+          <td><input type="checkbox" disabled></td>
+          <td><input type="checkbox" disabled></td>
+          <td><input type="checkbox" disabled></td>
+          <td><input type="checkbox" disabled></td>
+        </tr>
+        <tr data-feature="Privacy backup activity" data-super-admin-only="true">
+          <td><strong>Privacy, Backup, and Audit Trail</strong><span>Retention rules, consent, cleanup history, backup, restore, and logs</span></td>
+          <td><input type="checkbox" checked disabled></td>
+          <td><input type="checkbox" disabled></td>
+          <td><input type="checkbox" disabled></td>
+          <td><input type="checkbox" disabled></td>
+          <td><input type="checkbox" disabled></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

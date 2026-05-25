@@ -1,21 +1,20 @@
 document.addEventListener('DOMContentLoaded', function () {
   const nav = document.getElementById('adminNav');
+  if (!nav) return;
+
   const links = nav.querySelectorAll('a[data-page]');
   const pageTitle = document.getElementById('pageTitle');
   const pageContent = document.getElementById('pageContent');
 
   const titles = {
     dashboard: 'Dashboard',
-    staff: 'Staff Accounts',
     appointments: 'Appointments',
     patients: 'Patient Records',
+    staff: 'Staff / Employee Accounts',
     activity: 'Activity Logs',
-    procedures: 'Manage Procedures',
-    processing: 'Image Processing Settings',
-    system: 'System Settings',
     records: 'Consultation / Image Records',
     reports: 'Reports',
-    privacy: 'Privacy / Data Management'
+    restricted: 'Super Admin Access Required'
   };
 
   const pages = {
@@ -40,18 +39,6 @@ document.addEventListener('DOMContentLoaded', function () {
       url: 'admin-activity.html',
       init: window.initActivityLogs
     },
-    procedures: {
-      url: 'admin-procedures.html',
-      init: window.initManageProcedures
-    },
-    processing: {
-      url: 'admin-processing-settings.html',
-      init: window.initProcessingSettings
-    },
-    system: {
-      url: 'admin-system-settings.html',
-      init: window.initSystemSettings
-    },
     records: {
       url: 'admin-consultation-records.html',
       init: window.initConsultationRecords
@@ -59,10 +46,33 @@ document.addEventListener('DOMContentLoaded', function () {
     reports: {
       url: 'admin-reports.html',
       init: window.initReports
-    },
-    privacy: {
-      url: 'admin-privacy-data.html'
     }
+  };
+
+  const pageAliases = {
+    accounts: 'staff',
+    'admin-accounts': 'staff',
+    employees: 'staff',
+    procedures: 'restricted',
+    procedure: 'restricted',
+    'procedure-management': 'restricted',
+    processing: 'restricted',
+    'image-processing-settings': 'restricted',
+    settings: 'restricted',
+    system: 'restricted',
+    'system-settings': 'restricted',
+    privacy: 'restricted',
+    'privacy-data': 'restricted',
+    backup: 'restricted',
+    roles: 'restricted',
+    permissions: 'restricted',
+    adminaccounts: 'restricted',
+    admins: 'restricted',
+    logs: 'activity',
+    'activity-logs': 'activity',
+    consultation: 'records',
+    'consultation-records': 'records',
+    'image-records': 'records'
   };
 
   function showLoading() {
@@ -75,7 +85,61 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  function normalizePage(value) {
+    const key = String(value || '').replace(/^#/, '').trim();
+    return pages[key] ? key : (pageAliases[key.toLowerCase()] || 'dashboard');
+  }
+
+  function renderRestrictedPage() {
+    setActiveNav('');
+    pageTitle.textContent = titles.restricted;
+    pageContent.innerHTML = `
+      <section class="panel-card" style="max-width: 760px;">
+        <h3>Super Admin Access Required</h3>
+        <p class="section-text">
+          Procedure configuration, image-processing settings, system settings, privacy controls,
+          role permissions, admin accounts, and backup tools are reserved for Super Admin.
+        </p>
+        <div class="admin-button-row" style="margin-top: 16px;">
+          <a class="accounts-create-btn" href="../super_admin/super-admin.html">Open Super Admin</a>
+          <button type="button" class="accounts-close" id="returnToAdminDashboard">Back to Admin Dashboard</button>
+        </div>
+      </section>
+    `;
+
+    const back = document.getElementById('returnToAdminDashboard');
+    if (back) {
+      back.addEventListener('click', function () {
+        location.hash = 'dashboard';
+      });
+    }
+  }
+
+  function guardAdminSession() {
+    fetch('../get-session.php', { cache: 'no-store' })
+      .then(response => response.json())
+      .then(session => {
+        const role = String(session.role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+        if (session.status !== 'ok' || (role !== 'admin' && role !== 'superadmin')) {
+          window.location.replace('../login.html');
+          return;
+        }
+
+        if (role === 'superadmin') {
+          window.location.replace(`../super_admin/super-admin.html${location.hash || ''}`);
+        }
+      })
+      .catch(() => {
+        window.location.replace('../login.html');
+      });
+  }
+
   function renderPage(page) {
+    if (page === 'restricted') {
+      renderRestrictedPage();
+      return;
+    }
+
     const config = pages[page] || pages.dashboard;
 
     setActiveNav(page);
@@ -127,11 +191,10 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   function handleHash() {
-    const requestedPage = location.hash ? location.hash.replace('#', '') : 'dashboard';
-    const page = pages[requestedPage] ? requestedPage : 'dashboard';
-    renderPage(page);
+    renderPage(normalizePage(location.hash || 'dashboard'));
   }
 
   window.addEventListener('hashchange', handleHash);
+  guardAdminSession();
   handleHash();
 });

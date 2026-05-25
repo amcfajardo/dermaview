@@ -56,6 +56,17 @@ if (!file_exists($uploadDir)) {
 
 }
 
+$archiveDirs = [
+    "archive/files/",
+    "archive/images/"
+];
+
+foreach ($archiveDirs as $archiveDir) {
+    if (!file_exists($archiveDir)) {
+        mkdir($archiveDir, 0777, true);
+    }
+}
+
 /*
 |--------------------------------------------------------------------------
 | FILE PATHS
@@ -119,7 +130,7 @@ if (
 ) {
 
     $pythonScript =
-        "process_co2_dermapen.py";
+        "python/process_co2_dermapen.py";
 
     /*
     |--------------------------------------------------------------------------
@@ -181,7 +192,7 @@ if (
 ) {
 
     $pythonScript =
-        "process_face_slimming.py";
+        "python/process_face_slimming.py";
 
     /*
     |--------------------------------------------------------------------------
@@ -243,7 +254,7 @@ if (
 ) {
 
     $pythonScript =
-        "process_diamond_peel.py";
+        "python/process_diamond_peel.py";
 
     $command =
     "python \"$pythonScript\" " .
@@ -291,7 +302,7 @@ if (
 ) {
 
     $pythonScript =
-        "process_undereye_lip_filler.py";
+        "python/process_undereye_lip_filler.py";
 
     $command =
     "python \"$pythonScript\" " .
@@ -339,7 +350,7 @@ if (
 ) {
 
     $pythonScript =
-        "process_pico_carbon_laser.py";
+        "python/process_pico_carbon_laser.py";
 
     $command =
     "python \"$pythonScript\" " .
@@ -389,7 +400,7 @@ if (
 ) {
 
     $pythonScript =
-        "process_lip_chin_jawtox.py";
+        "python/process_lip_chin_jawtox.py";
 
     $command =
     "python \"$pythonScript\" " .
@@ -436,7 +447,7 @@ if (
 
 if ($procedure === "general-skin-assessment") {
 
-    $pythonScript = "process_general_skin_assessment.py";
+    $pythonScript = "python/process_general_skin_assessment.py";
 
     $command =
         "python \"$pythonScript\" " .

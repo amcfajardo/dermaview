@@ -19,6 +19,8 @@
     const upcomingCount = document.getElementById('upcomingAppointmentsCount');
     const pendingCount = document.getElementById('pendingAppointmentsCount');
     const confirmedCount = document.getElementById('confirmedAppointmentsCount');
+    const completedCount = document.getElementById('completedAppointmentsCount');
+    const cancelledCount = document.getElementById('cancelledAppointmentsCount');
     const assignedStaffCount = document.getElementById('assignedStaffCount');
 
     if (!appointmentsTableBody) return;
@@ -105,11 +107,15 @@
       const upcoming = allAppointments.filter(item => item.isoDate >= today && !['Cancelled', 'Completed', 'No Show'].includes(item.status)).length;
       const pending = allAppointments.filter(item => item.status === 'Pending').length;
       const confirmed = allAppointments.filter(item => item.status === 'Confirmed').length;
+      const completed = allAppointments.filter(item => item.status === 'Completed').length;
+      const cancelled = allAppointments.filter(item => item.status === 'Cancelled' || item.status === 'No Show').length;
       const assigned = new Set(allAppointments.map(item => item.assignedStaff).filter(name => name && name !== 'Unassigned')).size;
 
       if (upcomingCount) upcomingCount.textContent = String(upcoming);
       if (pendingCount) pendingCount.textContent = String(pending);
       if (confirmedCount) confirmedCount.textContent = String(confirmed);
+      if (completedCount) completedCount.textContent = String(completed);
+      if (cancelledCount) cancelledCount.textContent = String(cancelled);
       if (assignedStaffCount) assignedStaffCount.textContent = String(assigned);
     }
 
@@ -225,7 +231,7 @@
         .catch(() => {
           appointmentsTableBody.innerHTML = `
             <tr>
-              <td colspan="7" style="padding:10px; text-align:center;">
+              <td colspan="8" style="padding:10px; text-align:center;">
                 Failed to load appointments.
               </td>
             </tr>

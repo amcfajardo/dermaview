@@ -12,31 +12,31 @@
           <div>
             <span class="dashboard-kicker">Admin Overview</span>
             <h3>DermaView System Dashboard</h3>
-            <p class="section-text">Monitor procedures, image records, staff accounts, appointment activity, and system health.</p>
+            <p class="section-text">Monitor appointment activity, patient records, consultation images, reports, and recent clinic updates.</p>
           </div>
           <button type="button" class="dashboard-refresh" id="dashboardRefresh">Refresh</button>
         </div>
 
         <div class="dashboard-stat-grid">
           <div class="dashboard-stat-card panel-card">
-            <span>Total Procedures</span>
-            <strong data-stat="procedures">--</strong>
-            <p>Supported treatment catalog</p>
+            <span>Pending Requests</span>
+            <strong data-stat="pending_appointments">--</strong>
+            <p>Appointments awaiting approval</p>
           </div>
           <div class="dashboard-stat-card panel-card">
-            <span>Processed Images</span>
+            <span>Confirmed</span>
+            <strong data-stat="confirmed_appointments">--</strong>
+            <p>Approved consultation schedules</p>
+          </div>
+          <div class="dashboard-stat-card panel-card">
+            <span>Completed</span>
+            <strong data-stat="completed_appointments">--</strong>
+            <p>Finished consultation records</p>
+          </div>
+          <div class="dashboard-stat-card panel-card">
+            <span>Image Records</span>
             <strong data-stat="images">--</strong>
-            <p>Uploaded or processed image records</p>
-          </div>
-          <div class="dashboard-stat-card panel-card">
-            <span>Staff Accounts</span>
-            <strong data-stat="staff">--</strong>
-            <p>Admin and staff users</p>
-          </div>
-          <div class="dashboard-stat-card panel-card">
-            <span>Appointments</span>
-            <strong data-stat="appointments">--</strong>
-            <p>Recorded schedule requests</p>
+            <p>Consultation and processed image records</p>
           </div>
         </div>
 

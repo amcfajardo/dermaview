@@ -120,7 +120,7 @@
           <div><dt>Treatment History</dt><dd>${escapeHtml((patient.treatment_history || []).join(', ') || 'No treatments recorded.')}</dd></div>
         </dl>
         <div class="patient-image-grid">${images || '<p class="table-muted">No uploaded images recorded.</p>'}</div>
-        <label class="accounts-field accounts-field-full">
+        <label class="accounts-field accounts-field-full patient-notes-field">
           <span>Patient Notes</span>
           <textarea id="patientNotesInput" class="accounts-input">${escapeHtml(patient.notes || '')}</textarea>
         </label>

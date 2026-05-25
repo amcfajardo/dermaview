@@ -26,6 +26,20 @@ function clean_text($value) {
     return trim((string) $value);
 }
 
+function ensure_archive_directories() {
+    $root = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'archive';
+    $dirs = [
+        $root . DIRECTORY_SEPARATOR . 'files',
+        $root . DIRECTORY_SEPARATOR . 'images'
+    ];
+
+    foreach ($dirs as $dir) {
+        if (!is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+    }
+}
+
 function save_data_url_image($data_url, $prefix) {
     if (!preg_match('/^data:image\/(png|jpe?g|webp);base64,/', $data_url, $matches)) {
         return null;
@@ -60,6 +74,7 @@ function save_data_url_image($data_url, $prefix) {
 }
 
 ensure_processed_images_table($conn);
+ensure_archive_directories();
 
 $action = $_POST['action'] ?? 'fetch_json';
 

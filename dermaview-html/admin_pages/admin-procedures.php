@@ -1,11 +1,26 @@
 <?php
 
+require_once '../auth_common.php';
 include '../config.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
 function clean_text($value) {
     return trim((string) $value);
+}
+
+function ensure_archive_directories() {
+    $root = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'archive';
+    $dirs = [
+        $root . DIRECTORY_SEPARATOR . 'files',
+        $root . DIRECTORY_SEPARATOR . 'images'
+    ];
+
+    foreach ($dirs as $dir) {
+        if (!is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+    }
 }
 
 function ensure_procedures_table($conn) {
@@ -21,6 +36,8 @@ function ensure_procedures_table($conn) {
             aftercare_instructions TEXT NULL,
             session_duration VARCHAR(80) NULL,
             recommended_sessions VARCHAR(80) NULL,
+            procedure_price VARCHAR(80) NULL,
+            processing_script VARCHAR(160) NULL,
             status ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
             procedure_image VARCHAR(255) NULL,
             sort_order INT UNSIGNED NOT NULL DEFAULT 0,
@@ -44,6 +61,26 @@ function ensure_procedures_table($conn) {
     if ((int) $column_row['total'] === 0) {
         $conn->query("ALTER TABLE procedures ADD COLUMN sort_order INT UNSIGNED NOT NULL DEFAULT 0 AFTER procedure_image");
         $conn->query("ALTER TABLE procedures ADD INDEX idx_procedures_sort_order (sort_order)");
+    }
+
+    $extra_columns = [
+        'procedure_price' => "ALTER TABLE procedures ADD COLUMN procedure_price VARCHAR(80) NULL AFTER recommended_sessions",
+        'processing_script' => "ALTER TABLE procedures ADD COLUMN processing_script VARCHAR(160) NULL AFTER procedure_price"
+    ];
+
+    foreach ($extra_columns as $column => $alter_sql) {
+        $check = $conn->query("
+            SELECT COUNT(*) AS total
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name = 'procedures'
+              AND column_name = '$column'
+        ");
+        $row = $check ? $check->fetch_assoc() : ['total' => 0];
+
+        if ((int) $row['total'] === 0) {
+            $conn->query($alter_sql);
+        }
     }
 
     $conn->query("UPDATE procedures SET sort_order = id WHERE sort_order = 0");
@@ -110,15 +147,22 @@ function save_uploaded_image() {
 }
 
 ensure_procedures_table($conn);
+ensure_archive_directories();
 
 $action = $_POST['action'] ?? 'fetch';
+
+if ($action === 'fetch') {
+    auth_require_admin(true);
+} elseif ($action !== 'fetch_public') {
+    auth_require_super_admin(true);
+}
 
 if ($action === 'fetch' || $action === 'fetch_public') {
     $where = $action === 'fetch_public' ? "WHERE status = 'Active'" : "";
     $result = $conn->query("
         SELECT id, procedure_name, category, short_description, full_description, benefits,
                preparation_guidelines, aftercare_instructions, session_duration,
-               recommended_sessions, status, procedure_image, sort_order, updated_at
+               recommended_sessions, procedure_price, processing_script, status, procedure_image, sort_order, updated_at
         FROM procedures
         $where
         ORDER BY sort_order ASC, id ASC
@@ -147,6 +191,8 @@ if ($action === 'save') {
     $aftercare = clean_text($_POST['aftercare_instructions'] ?? '');
     $duration = clean_text($_POST['session_duration'] ?? '');
     $sessions = clean_text($_POST['recommended_sessions'] ?? '');
+    $price = clean_text($_POST['procedure_price'] ?? '');
+    $script = clean_text($_POST['processing_script'] ?? '');
     $status = clean_text($_POST['status'] ?? 'Active');
     $image = save_uploaded_image();
 
@@ -166,19 +212,19 @@ if ($action === 'save') {
                 UPDATE procedures
                 SET procedure_name=?, category=?, short_description=?, full_description=?, benefits=?,
                     preparation_guidelines=?, aftercare_instructions=?, session_duration=?,
-                    recommended_sessions=?, status=?, procedure_image=?
+                    recommended_sessions=?, procedure_price=?, processing_script=?, status=?, procedure_image=?
                 WHERE id=?
             ");
-            $stmt->bind_param("sssssssssssi", $name, $category, $short, $full, $benefits, $preparation, $aftercare, $duration, $sessions, $status, $image, $id);
+            $stmt->bind_param("sssssssssssssi", $name, $category, $short, $full, $benefits, $preparation, $aftercare, $duration, $sessions, $price, $script, $status, $image, $id);
         } else {
             $stmt = $conn->prepare("
                 UPDATE procedures
                 SET procedure_name=?, category=?, short_description=?, full_description=?, benefits=?,
                     preparation_guidelines=?, aftercare_instructions=?, session_duration=?,
-                    recommended_sessions=?, status=?
+                    recommended_sessions=?, procedure_price=?, processing_script=?, status=?
                 WHERE id=?
             ");
-            $stmt->bind_param("ssssssssssi", $name, $category, $short, $full, $benefits, $preparation, $aftercare, $duration, $sessions, $status, $id);
+            $stmt->bind_param("ssssssssssssi", $name, $category, $short, $full, $benefits, $preparation, $aftercare, $duration, $sessions, $price, $script, $status, $id);
         }
     } else {
         $sort_result = $conn->query("SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM procedures");
@@ -188,10 +234,10 @@ if ($action === 'save') {
         $stmt = $conn->prepare("
             INSERT INTO procedures
             (procedure_name, category, short_description, full_description, benefits, preparation_guidelines,
-             aftercare_instructions, session_duration, recommended_sessions, status, procedure_image, sort_order)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             aftercare_instructions, session_duration, recommended_sessions, procedure_price, processing_script, status, procedure_image, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("sssssssssssi", $name, $category, $short, $full, $benefits, $preparation, $aftercare, $duration, $sessions, $status, $image, $sort_order);
+        $stmt->bind_param("sssssssssssssi", $name, $category, $short, $full, $benefits, $preparation, $aftercare, $duration, $sessions, $price, $script, $status, $image, $sort_order);
     }
 
     if ($stmt->execute()) {

@@ -1,8 +1,11 @@
 <?php
 
+require_once '../auth_common.php';
 include '../config.php';
 
 header('Content-Type: application/json; charset=utf-8');
+
+auth_require_admin(true);
 
 $image_tables = ['processed_images', 'uploaded_images', 'image_records', 'consultations'];
 
@@ -49,6 +52,21 @@ function count_image_records($conn, $tables) {
     return $total;
 }
 
+function role_label($role) {
+    $labels = [
+        'admin' => 'Admin',
+        'dermatologist' => 'Dermatologist',
+        'aesthetician' => 'Aesthetician',
+        'manager' => 'Manager',
+        'receptionist' => 'Receptionist',
+        'staff' => 'Staff',
+        'encoder' => 'Encoder',
+        'viewer' => 'Viewer'
+    ];
+
+    return $labels[strtolower($role)] ?? ucfirst(str_replace('_', ' ', $role));
+}
+
 function fetch_recent_appointments($conn) {
     if (!table_exists($conn, 'appointments')) {
         return [];
@@ -85,6 +103,7 @@ function fetch_recent_users($conn) {
     $result = $conn->query("
         SELECT first_name, last_name, role, status, created_at
         FROM users
+        WHERE role NOT IN ('super_admin', 'superadmin')
         ORDER BY created_at DESC, id DESC
         LIMIT 5
     ");
@@ -97,7 +116,7 @@ function fetch_recent_users($conn) {
 
             $items[] = [
                 'type' => 'Staff Account',
-                'title' => $name . ' was added as ' . ucfirst($row['role']),
+                'title' => $name . ' was added as ' . role_label($row['role']),
                 'meta' => $row['status'],
                 'created_at' => $row['created_at']
             ];
@@ -108,7 +127,13 @@ function fetch_recent_users($conn) {
 }
 
 $total_staff = count_rows($conn, 'users');
+$total_users = count_rows($conn, 'users');
 $active_staff = count_rows($conn, 'users', "status = 'Active'");
+$active_staff_accounts = count_rows($conn, 'users', "status = 'Active' AND role IN ('dermatologist', 'aesthetician', 'manager', 'receptionist', 'staff', 'encoder', 'viewer')");
+$total_patients = count_rows($conn, 'patients');
+if ($total_patients === 0) {
+    $total_patients = count_rows($conn, 'appointments');
+}
 $procedure_count = count_rows($conn, 'procedures');
 if ($procedure_count === 0) {
     $procedure_count = 7;
@@ -118,6 +143,16 @@ $pending_appointments = count_rows($conn, 'appointments', "status = 'Pending'");
 $confirmed_appointments = count_rows($conn, 'appointments', "status = 'Confirmed'");
 $completed_appointments = count_rows($conn, 'appointments', "status = 'Completed'");
 $processed_images = count_image_records($conn, $image_tables);
+$uploaded_images = count_rows($conn, 'processed_images');
+$system_alerts = 0;
+
+if ($pending_appointments > 0) {
+    $system_alerts++;
+}
+
+if ($active_staff_accounts === 0) {
+    $system_alerts++;
+}
 
 $recent_activity = array_merge(fetch_recent_appointments($conn), fetch_recent_users($conn));
 usort($recent_activity, function ($a, $b) {
@@ -130,11 +165,18 @@ echo json_encode([
     'stats' => [
         'procedures' => $procedure_count,
         'images' => $processed_images,
+        'uploaded_images' => $uploaded_images,
+        'processed_images' => $processed_images,
         'staff' => $total_staff,
+        'active_staff' => $active_staff_accounts,
+        'users' => $total_users,
+        'patients' => $total_patients,
         'appointments' => $total_appointments,
         'pending_appointments' => $pending_appointments,
         'confirmed_appointments' => $confirmed_appointments,
-        'completed_appointments' => $completed_appointments
+        'completed_appointments' => $completed_appointments,
+        'completed_consultations' => $completed_appointments,
+        'system_alerts' => $system_alerts
     ],
     'recent_activity' => $recent_activity,
     'system_status' => [

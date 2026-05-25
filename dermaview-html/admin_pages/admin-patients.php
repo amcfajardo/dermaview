@@ -1,8 +1,11 @@
 <?php
 
+require_once '../auth_common.php';
 include '../config.php';
 
 header('Content-Type: application/json; charset=utf-8');
+
+auth_require_admin(true);
 
 function table_exists($conn, $table_name) {
     $stmt = $conn->prepare("

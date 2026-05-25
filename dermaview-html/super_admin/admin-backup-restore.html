@@ -1,0 +1,51 @@
+<div class="panel-card accounts-panel admin-content-panel">
+  <div class="accounts-header">
+    <div>
+      <h3>Backup and Restore</h3>
+      <p class="section-text">Create database backup records, download a backup manifest, track backup history, and stage restore notes for Super Admin review.</p>
+    </div>
+    <div class="admin-button-row">
+      <button type="button" class="accounts-create-btn" id="createBackupRecord">Backup Database</button>
+      <button type="button" class="accounts-close" id="downloadBackupRecord">Download Backup File</button>
+    </div>
+  </div>
+
+  <form id="restoreDatabaseForm" class="accounts-form system-settings-form">
+    <div class="accounts-form-title">
+      <h4>Restore Database</h4>
+      <p class="table-muted">This page records restore requests for audit review. Run the actual SQL restore from the server environment after verifying the file.</p>
+    </div>
+    <div class="accounts-field accounts-field-wide">
+      <label for="restoreFile">Backup File</label>
+      <input id="restoreFile" type="file" accept=".sql,.zip,.gz,.json" class="accounts-input">
+    </div>
+    <div class="accounts-field accounts-field-wide">
+      <label for="restoreReason">Restore Reason</label>
+      <input id="restoreReason" class="accounts-input" placeholder="Reason for restore request">
+    </div>
+    <div class="accounts-actions">
+      <button type="submit" class="accounts-submit">Record Restore Request</button>
+    </div>
+  </form>
+
+  <div class="accounts-list-header">
+    <h4>Backup History</h4>
+    <button type="button" class="accounts-close" id="clearBackupHistory">Clear Local History</button>
+  </div>
+
+  <div class="accounts-table-wrap">
+    <table class="accounts-table admin-wide-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>File / Request</th>
+          <th>Status</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="backupHistoryBody">
+        <tr><td colspan="4" class="accounts-empty-cell">No backup history recorded.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>

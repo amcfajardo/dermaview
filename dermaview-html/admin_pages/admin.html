@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../styles/global.css" />
   <link rel="stylesheet" href="../styles/header.css?v=20260525-2" />
   <link rel="stylesheet" href="../styles/cards.css" />
-  <link rel="stylesheet" href="../styles/admin-accounts.css?v=20260525-2" />
+  <link rel="stylesheet" href="../styles/admin-accounts.css?v=20260525-15" />
   <link rel="stylesheet" href="../styles/appointments-calendar.css" />
   <link rel="stylesheet" href="../styles/hero.css" />
 
@@ -21,6 +21,7 @@
   .app {
     min-height: 100vh;
     display: flex;
+    background: #f5f7fb;
   }
 
   .sidebar {
@@ -34,6 +35,7 @@
     padding: 20px 18px;
     box-sizing: border-box;
     flex-shrink: 0;
+    z-index: 20;
   }
 
   .brand {
@@ -41,7 +43,7 @@
     min-height: 46px;
     font-weight: 800;
     color: var(--color-text);
-    margin-bottom: 26px;
+    margin-bottom: 10px;
     font-size: 0.92rem;
     line-height: 1.1;
     max-width: 100%;
@@ -53,7 +55,7 @@
     display: grid;
     place-items: center;
     overflow: hidden;
-    border-radius: 14px;
+    border-radius: 8px;
     font-size: 0.96rem;
     flex: 0 0 46px;
   }
@@ -74,40 +76,69 @@
     overflow-wrap: anywhere;
   }
 
+  .admin-access-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    width: 100%;
+    justify-content: center;
+    margin: 0 0 18px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    padding: 0 10px;
+    color: var(--color-text-muted);
+    font-size: 0.68rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
   .nav {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
 .nav li.nav-gap {
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
-.nav a {
+.nav-section-label {
+  margin: 14px 10px 4px;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+  .nav a {
   display: flex;
   align-items: center;
-  min-height: 37.5px;
+  min-height: 39px;
   padding: 0 12px;
-  border-radius: 12px;
+  border-radius: 8px;
   color: var(--color-text);
   text-decoration: none;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
   .nav a.active,
-  .nav a:hover {
+  .nav a:hover,
+  .nav a:focus-visible {
     background: linear-gradient(
       90deg,
       var(--color-primary),
       var(--color-secondary)
     );
     color: #fff;
+    outline: 0;
   }
 
   .nav .nav-logout {
@@ -119,26 +150,47 @@
   .main {
     flex: 1;
     min-width: 0;
+    width: calc(100% - var(--admin-sidebar-width));
     margin-left: var(--admin-sidebar-width);
     padding: 28px;
+    box-sizing: border-box;
   }
 
   .topbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 18px;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    background: #ffffff;
   }
 
   .page-title {
     margin: 0;
-    font-size: 2rem;
+    font-size: 1.75rem;
     color: var(--color-text);
+  }
+
+  .admin-context {
+    margin: 6px 0 0;
+    color: var(--color-text-muted);
+    font-weight: 700;
+    line-height: 1.45;
   }
 
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 18px;
+  }
+
+  #pageContent {
+    min-width: 0;
+    display: grid;
     gap: 18px;
   }
 
@@ -153,17 +205,49 @@
 
   @media (max-width: 800px) {
     .sidebar {
-      display: none;
       position: static;
+      width: 100%;
+      height: auto;
+      max-height: none;
+      border-right: 0;
+      border-bottom: 1px solid var(--color-border);
+      padding: 16px;
     }
 
     .app {
       flex-direction: column;
     }
 
-    .main {
+    .nav {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 6px;
+    }
+
+    .nav-section-label,
+    .admin-access-badge {
+      grid-column: 1 / -1;
       margin-left: 0;
-      padding: 18px;
+    }
+
+    .nav .nav-logout {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .main {
+      width: 100%;
+      margin-left: 0;
+      padding: 16px;
+    }
+
+    .page-title {
+      font-size: 1.5rem;
+    }
+
+    .topbar {
+      padding: 16px;
     }
   }
 </style>
@@ -175,29 +259,29 @@
         <span class="brand-mark">D</span>
         <span class="brand-name">DermaView</span>
       </a>
+      <span class="admin-access-badge">Limited Admin Access</span>
       <ul class="nav" id="adminNav">
         <li><a href="#" data-page="dashboard" class="active">Dashboard</a></li>
+        <li class="nav-section-label">Clinic Operations</li>
         <li class="nav-gap"><a href="#" data-page="appointments">Appointments</a></li>
         <li><a href="#" data-page="patients">Patient Records</a></li>
         <li><a href="#" data-page="records">Consultation / Image Records</a></li>
 
-        <li class="nav-gap"><a href="#" data-page="procedures">Manage Procedures</a></li>
-        <li><a href="#" data-page="reports">Reports</a></li>
-
-        <li class="nav-gap"><a href="#" data-page="staff">Staff Accounts</a></li>
-
-        <li><a href="#" data-page="processing">Image Processing Settings</a></li>
-        <li><a href="#" data-page="system">System Settings</a></li>
-        <li><a href="#" data-page="privacy">Privacy / Data Management</a></li>
-
-        <li class="nav-gap"><a href="#" data-page="activity">Activity Logs</a></li>
+        <li class="nav-section-label">Staff Operations</li>
+        <li class="nav-gap"><a href="#" data-page="reports">Reports</a></li>
+        <li><a href="#" data-page="staff">Staff / Employees</a></li>
+        <li class="nav-section-label">Audit</li>
+        <li><a href="#" data-page="activity">Activity Logs</a></li>
         <li class="nav-logout"><a href="../logout.php" class="logout-btn">Logout</a></li>
       </ul>
     </aside>
 
     <main class="main">
       <div class="topbar">
-        <h2 class="page-title" id="pageTitle">Dashboard</h2>
+        <div>
+          <h2 class="page-title" id="pageTitle">Dashboard</h2>
+          <p class="admin-context">Manage daily clinic operations, staff work, patient records, reports, and activity logs.</p>
+        </div>
       </div>
 
       <div id="pageContent">
@@ -224,16 +308,13 @@
   <script src="../system-branding.js?v=20260525-2"></script>
   <script src="../logout-confirm.js?v=20260523-1"></script>
   <script src="admin-dashboard.js?v=20260525-2"></script>
-  <script src="admin-accounts.js?v=20260525-2"></script>
-  <script src="admin-appointments.js?v=20260525-2"></script>
+  <script src="admin-accounts.js?v=20260525-4"></script>
+  <script src="admin-appointments.js?v=20260525-4"></script>
   <script src="admin-content.js?v=20260525-2"></script>
-  <script src="admin-procedures.js?v=20260525-2"></script>
-  <script src="admin-processing-settings.js?v=20260525-2"></script>
   <script src="admin-consultation-records.js?v=20260525-2"></script>
   <script src="admin-reports.js?v=20260525-2"></script>
-  <script src="admin-system-settings.js?v=20260525-3"></script>
   <script src="admin-patients.js?v=20260525-2"></script>
-  <script src="admin-activity.js?v=20260525-2"></script>
-  <script src="admin.js?v=20260525-2"></script>
+  <script src="admin-activity.js?v=20260525-3"></script>
+  <script src="admin.js?v=20260525-7"></script>
 </body>
 </html>

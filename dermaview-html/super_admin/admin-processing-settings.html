@@ -1,0 +1,127 @@
+<!-- Super Admin module: full-system control surface. -->
+<div class="panel-card accounts-panel admin-content-panel visualization-settings-panel">
+  <div class="accounts-header">
+    <div>
+      <h3>Image Processing Control Center</h3>
+      <p class="section-text">Enable or disable image processing, tune defaults, map procedures to scripts, configure folders, and maintain required disclaimers.</p>
+    </div>
+    <button type="button" class="accounts-create-btn" id="saveVisualizationSettingsTop">Save Changes</button>
+  </div>
+
+  <form id="visualizationSettingsForm" class="visualization-settings-form">
+    <section class="visualization-section">
+      <div>
+        <h4>Visualization Display</h4>
+      </div>
+      <div class="visualization-toggle-grid">
+        <label class="visualization-toggle-row">
+          <span>Enable Treatment Visualization</span>
+          <input type="checkbox" id="enableTreatmentVisualization" checked>
+        </label>
+        <label class="visualization-toggle-row">
+          <span>Enable Before-and-After Comparison</span>
+          <input type="checkbox" id="enableBeforeAfterComparison" checked>
+        </label>
+        <label class="visualization-toggle-row">
+          <span>Show Side-by-Side Comparison</span>
+          <input type="checkbox" id="showSideBySideComparison" checked>
+        </label>
+        <label class="visualization-toggle-row">
+          <span>Show Treatment Disclaimer</span>
+          <input type="checkbox" id="showTreatmentDisclaimer" checked>
+        </label>
+      </div>
+    </section>
+
+    <section class="visualization-section">
+      <div class="visualization-section-header">
+        <h4>Procedure Visualization Management</h4>
+      </div>
+      <div class="accounts-table-wrap">
+        <table class="accounts-table visualization-table">
+          <thead>
+            <tr>
+              <th>Procedure</th>
+              <th>Visualization Status</th>
+              <th>Comparison Images</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="visualizationProcedureBody">
+            <tr><td colspan="4" class="accounts-empty-cell">Loading procedures...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="visualization-section visualization-two-column">
+      <div>
+        <h4>Patient Disclaimer</h4>
+        <textarea id="visualizationDisclaimer" class="accounts-input visualization-disclaimer">These visualizations are for consultation support and treatment awareness only.
+Actual results may vary per patient.</textarea>
+      </div>
+      <div>
+        <h4>Image Upload Rules</h4>
+        <div class="visualization-rules-grid">
+          <label>
+            <span>Allowed File Types</span>
+            <input id="visualizationAllowedTypes" class="accounts-input" value="JPG, PNG">
+          </label>
+          <label>
+            <span>Maximum Upload Size</span>
+            <input id="visualizationMaxUpload" class="accounts-input" value="10 MB">
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="visualization-section visualization-two-column">
+      <div>
+        <h4>Default Image Processing Values</h4>
+        <div class="visualization-rules-grid">
+          <label>
+            <span>Default Brightness</span>
+            <input id="processingBrightness" class="accounts-input" value="1.08">
+          </label>
+          <label>
+            <span>Default Contrast</span>
+            <input id="processingContrast" class="accounts-input" value="1.15">
+          </label>
+          <label>
+            <span>Default Sharpness</span>
+            <input id="processingSharpness" class="accounts-input" value="1.08">
+          </label>
+          <label>
+            <span>Output Image Quality</span>
+            <input id="processingQuality" class="accounts-input" value="95">
+          </label>
+        </div>
+      </div>
+      <div>
+        <h4>Folders and Script Mapping</h4>
+        <div class="visualization-rules-grid">
+          <label>
+            <span>Upload Folder</span>
+            <input id="processingUploadFolder" class="accounts-input" value="uploads/">
+          </label>
+          <label>
+            <span>Processed Image Folder</span>
+            <input id="processingOutputFolder" class="accounts-input" value="uploads/">
+          </label>
+          <label>
+            <span>Procedure-Script Mapping</span>
+            <input id="processingScriptMapping" class="accounts-input" value="Managed in Procedure Management">
+          </label>
+          <label>
+            <span>Disclaimer Before Processing</span>
+            <input id="processingDisclaimerMode" class="accounts-input" value="Required">
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <div class="visualization-save-row">
+      <button type="submit" class="accounts-submit">Save Changes</button>
+    </div>
+  </form>
+</div>

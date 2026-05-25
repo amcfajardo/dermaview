@@ -7,6 +7,29 @@
     <button type="button" class="accounts-create-btn" onclick="window.print()">Print Policy</button>
   </div>
 
+  <div class="dashboard-stat-grid">
+    <div class="dashboard-stat-card panel-card">
+      <span>Image Retention Rule</span>
+      <strong>180d</strong>
+      <p>Default retention period for uploaded and processed images</p>
+    </div>
+    <div class="dashboard-stat-card panel-card">
+      <span>Consent Notes</span>
+      <strong>On</strong>
+      <p>Consent/source fields are available in image records</p>
+    </div>
+    <div class="dashboard-stat-card panel-card">
+      <span>Cleanup History</span>
+      <strong id="cleanupHistoryCount">0</strong>
+      <p>Local cleanup actions recorded for audit review</p>
+    </div>
+    <div class="dashboard-stat-card panel-card">
+      <span>Inactive Records</span>
+      <strong>Review</strong>
+      <p>Use patient records before deleting archived data</p>
+    </div>
+  </div>
+
   <div class="admin-settings-list">
     <div class="dashboard-status-item">
       <span class="dashboard-status-dot status-good"></span>
@@ -29,5 +52,32 @@
         <span>Use Consultation / Image Records to clear records older than the retention window.</span>
       </div>
     </div>
+  </div>
+
+  <div class="accounts-list-header" style="margin-top: 18px;">
+    <h4>Data Cleanup Actions</h4>
+    <p class="table-muted">Actions are logged locally for project audit-trail presentation. Review real files and database records before permanent server cleanup.</p>
+  </div>
+
+  <div class="admin-button-row">
+    <button type="button" class="accounts-create-btn" data-cleanup-action="Delete old uploaded images">Delete Old Uploaded Images</button>
+    <button type="button" class="accounts-create-btn" data-cleanup-action="Delete old processed images">Delete Old Processed Images</button>
+    <button type="button" class="accounts-create-btn" data-cleanup-action="Clear inactive patient records">Clear Inactive Patient Records</button>
+    <button type="button" class="accounts-close" id="printPrivacyPolicy">Print Privacy Policy</button>
+  </div>
+
+  <div class="accounts-table-wrap" style="margin-top: 16px;">
+    <table class="accounts-table admin-wide-table">
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Status</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="cleanupHistoryBody">
+        <tr><td colspan="3" class="accounts-empty-cell">No cleanup actions recorded.</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>

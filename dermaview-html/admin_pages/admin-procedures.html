@@ -210,6 +210,25 @@
     </div>
 
     <div class="accounts-field">
+      <label for="procedurePrice">Procedure Price</label>
+      <input id="procedurePrice" class="accounts-input" placeholder="₱0.00 or consultation-based">
+    </div>
+
+    <div class="accounts-field">
+      <label for="procedureScript">Image Processing Script</label>
+      <select id="procedureScript" class="accounts-select">
+        <option value="">No image processor</option>
+        <option value="process_general_skin_assessment.py">General Skin Assessment</option>
+        <option value="process_co2_dermapen.py">CO2 Fractional Laser + Dermapen</option>
+        <option value="process_face_slimming.py">Face Slimming</option>
+        <option value="process_diamond_peel.py">Diamond Peel with Facial</option>
+        <option value="process_undereye_lip_filler.py">Undereye and Lip Filler</option>
+        <option value="process_pico_carbon_laser.py">PICO Carbon Laser Facial</option>
+        <option value="process_lip_chin_jawtox.py">Lip / Chin / Jawtox</option>
+      </select>
+    </div>
+
+    <div class="accounts-field">
       <label for="procedureImage">Procedure Image</label>
       <input id="procedureImage" type="file" accept="image/png,image/jpeg,image/jpg" class="accounts-input">
     </div>

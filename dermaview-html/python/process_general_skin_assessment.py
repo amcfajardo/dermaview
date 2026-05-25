@@ -3,6 +3,21 @@ import numpy as np
 import sys
 
 
+def resize_for_processing(img, max_size=1400):
+    h, w = img.shape[:2]
+    longest_side = max(h, w)
+
+    if longest_side <= max_size:
+        return img
+
+    scale = max_size / longest_side
+    return cv2.resize(
+        img,
+        (int(w * scale), int(h * scale)),
+        interpolation=cv2.INTER_AREA
+    )
+
+
 def process_general_skin_assessment(input_path, output_path):
     img = cv2.imread(input_path)
 
@@ -10,6 +25,7 @@ def process_general_skin_assessment(input_path, output_path):
         print("Image not found")
         sys.exit(1)
 
+    img = resize_for_processing(img)
     original = img.copy()
 
     hsv = cv2.cvtColor(original, cv2.COLOR_BGR2HSV)
@@ -32,6 +48,22 @@ def process_general_skin_assessment(input_path, output_path):
         cv2.MORPH_CLOSE,
         np.ones((7, 7), np.uint8)
     )
+
+    skin_pixels = cv2.countNonZero(skin_mask)
+
+    if skin_pixels == 0:
+        skin_mask = np.zeros((h, w), np.uint8)
+        cv2.ellipse(
+            skin_mask,
+            (w // 2, h // 2),
+            (max(1, int(w * 0.38)), max(1, int(h * 0.42))),
+            0,
+            0,
+            360,
+            255,
+            -1
+        )
+        skin_pixels = cv2.countNonZero(skin_mask)
 
     # Redness / acne-like signals
     _, a, _ = cv2.split(lab)
@@ -68,7 +100,8 @@ def process_general_skin_assessment(input_path, output_path):
 
     # Texture / unevenness signal
     laplacian = cv2.Laplacian(gray, cv2.CV_64F)
-    texture_score = np.var(laplacian[skin_mask > 0])
+    texture_pixels = laplacian[skin_mask > 0]
+    texture_score = np.var(texture_pixels) if texture_pixels.size else 0
 
     # Draw soft overlays
     red_overlay = result.copy()
@@ -151,11 +184,15 @@ def process_general_skin_assessment(input_path, output_path):
 
         y += 28
 
-    cv2.imwrite(
+    saved = cv2.imwrite(
         output_path,
         canvas,
         [cv2.IMWRITE_JPEG_QUALITY, 95]
     )
+
+    if not saved:
+        print("Failed to save output image")
+        sys.exit(1)
 
     print("General Skin Assessment saved:", output_path)
     sys.exit(0)

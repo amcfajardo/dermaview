@@ -26,6 +26,11 @@
       </div>
 
     </div>
+    <div class="reports-export-buttons">
+      <button type="button" class="accounts-create-btn" id="exportReportsPdf">Generate PDF</button>
+      <button type="button" class="accounts-create-btn" id="exportReportsCsv">Export CSV</button>
+      <button type="button" class="accounts-close" id="printReports">Print Report</button>
+    </div>
   </div>
 
   <section class="reports-section">
@@ -41,13 +46,14 @@
   <section class="reports-section">
     <h4>Consultation Records</h4>
     <div class="accounts-table-wrap">
-      <table class="accounts-table reports-table">
+      <table class="accounts-table reports-table reports-records-table">
         <thead>
           <tr>
             <th>Date</th>
             <th>Procedure</th>
             <th>Status</th>
             <th>Processed By</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody id="recentConsultationReportBody">
@@ -60,7 +66,7 @@
   <section class="reports-section">
     <h4>Image Processing Logs</h4>
     <div class="accounts-table-wrap">
-      <table class="accounts-table reports-table">
+      <table class="accounts-table reports-table reports-logs-table">
         <thead>
           <tr>
             <th>Record ID</th>
@@ -80,7 +86,7 @@
   <section class="reports-section">
     <h4>Procedure Usage</h4>
     <div class="accounts-table-wrap">
-      <table class="accounts-table reports-table">
+      <table class="accounts-table reports-table reports-usage-table">
         <thead>
           <tr>
             <th>Procedure</th>
@@ -98,17 +104,4 @@
     <h4>Disclaimer</h4>
     <p class="reports-disclaimer">Results may vary per patient. Visual processing outputs are for consultation support and treatment awareness only, and are not intended for medical diagnosis or guaranteed outcomes.</p>
   </section>
-
-
-
-  <section class="reports-section reports-export-section">
-    <h4>Export Options</h4>
-    <div class="reports-export-buttons">
-      <button type="button" class="accounts-create-btn" id="exportReportsPdf">Generate PDF</button>
-      <button type="button" class="accounts-create-btn" id="exportReportsCsv">Export CSV</button>
-      <button type="button" class="accounts-close" id="printReports">Print Report</button>
-    </div>
-  </section>
 </div>
-
-
