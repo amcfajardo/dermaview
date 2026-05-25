@@ -12,63 +12,22 @@ function formatMonthLabel(d) {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
-function parseMonthAppointmentsFromAdminRows(html) {
-  const container = document.createElement("div");
-  container.innerHTML = html;
+function parseMonthAppointmentsFromJson(rows) {
+  return rows.map((row) => {
+    const timeParts = String(row.appointment_time || "00:00:00").split(":");
 
-  const rows = container.querySelectorAll("tr");
-  const structured = [];
-
-  rows.forEach((row) => {
-    const title = row.getAttribute("title") || "";
-    const tds = row.querySelectorAll("td");
-    if (!tds || tds.length < 6) return;
-
-    const dateStrong = tds[0]?.querySelector("strong");
-    const timeSpan = tds[0]?.querySelector(".table-muted");
-
-    const patientTd = tds[1];
-    const procedureTd = tds[3];
-
-    const statusChip = tds[4]?.querySelector(".appointment-status");
-    const statusSelect = row.querySelector("select.appointment-status-select");
-    const status = (statusChip?.textContent || statusSelect?.value || "").trim();
-
-    const sourceTd = tds[5];
-
-    const dateLabel = (dateStrong?.textContent || "").trim(); // e.g. "May 22, 2026"
-    const timeLabel = (timeSpan?.textContent || "").trim(); // e.g. "9:00 AM"
-    if (!dateLabel) return;
-
-    const dayDate = new Date(dateLabel);
-    if (Number.isNaN(dayDate.getTime())) return;
-
-    // Parse timeLabel "9:00 AM".
-    let hours = 0;
-    let minutes = 0;
-    const timeMatch = timeLabel.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-    if (timeMatch) {
-      hours = parseInt(timeMatch[1], 10);
-      minutes = parseInt(timeMatch[2], 10);
-      const ap = timeMatch[3].toUpperCase();
-      if (ap === "PM" && hours !== 12) hours += 12;
-      if (ap === "AM" && hours === 12) hours = 0;
-    }
-
-    structured.push({
-      isoDate: dayDate.toISOString().slice(0, 10),
-      hours,
-      minutes,
-      timeLabel,
-      patientName: (patientTd?.textContent || "").trim(),
-      procedureName: (procedureTd?.textContent || "").trim(),
-      status,
-      source: (sourceTd?.textContent || "").trim(),
-      notes: title,
-    });
+    return {
+      isoDate: row.appointment_date || "",
+      hours: parseInt(timeParts[0] || "0", 10),
+      minutes: parseInt(timeParts[1] || "0", 10),
+      timeLabel: row.time_label || row.appointment_time || "",
+      patientName: row.patient_name || "Booked Consultation",
+      procedureName: row.procedure_name || "",
+      status: row.status || "",
+      source: row.source || "",
+      notes: row.notes || "",
+    };
   });
-
-  return structured;
 }
 
 function escapeHtml(text) {
@@ -247,12 +206,15 @@ function initIndexCalendar() {
 
   function load() {
     const formData = new FormData();
-    formData.append("action", "fetch");
+    formData.append("action", "fetch_public_json");
 
     fetch("admin_pages/admin-appointments.php", { method: "POST", body: formData })
-      .then((r) => r.text())
-      .then((html) => {
-        appointments = parseMonthAppointmentsFromAdminRows(html);
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to load appointments.");
+        return r.json();
+      })
+      .then((data) => {
+        appointments = parseMonthAppointmentsFromJson(data.appointments || []);
         render();
       })
       .catch(() => {
@@ -278,4 +240,3 @@ function initIndexCalendar() {
 }
 
 document.addEventListener("DOMContentLoaded", initIndexCalendar);
-

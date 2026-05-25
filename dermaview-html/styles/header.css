@@ -112,3 +112,26 @@
 .logout-btn:hover {
   color: var(--color-primary-dark) !important;
 }
+
+:root[data-theme="dark"] .site-header {
+  background: rgba(13, 27, 46, 0.9);
+  border-bottom-color: rgba(148, 163, 184, 0.18);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme="dark"] .brand,
+:root[data-theme="dark"] .brand-name,
+:root[data-theme="dark"] .top-nav a,
+:root[data-theme="dark"] .logout-btn {
+  color: var(--color-text) !important;
+}
+
+:root[data-theme="dark"] .brand-mark {
+  background: linear-gradient(135deg, #14b8a6, #6366f1);
+}
+
+:root[data-theme="dark"] .top-nav a:hover,
+:root[data-theme="dark"] .top-nav a[aria-current="page"] {
+  background: rgba(94, 234, 212, 0.1);
+  color: var(--color-primary);
+}

@@ -5,23 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Super Admin Dashboard</title>
   <link rel="stylesheet" href="../styles/global.css" />
-  <link rel="stylesheet" href="../styles/header.css?v=20260525-2" />
+  <link rel="stylesheet" href="../styles/header.css?v=20260526-2" />
   <link rel="stylesheet" href="../styles/cards.css" />
-  <link rel="stylesheet" href="../styles/admin-accounts.css?v=20260525-15" />
+  <link rel="stylesheet" href="../styles/admin-accounts.css?v=20260526-4" />
   <link rel="stylesheet" href="../styles/appointments-calendar.css" />
   <link rel="stylesheet" href="../styles/hero.css" />
 
   <link rel="stylesheet" href="../styles/buttons.css" />
   <link rel="stylesheet" href="../styles/responsive.css" />
   <style>
+  /* Keep Super Admin styling aligned with the default theme (global.css) */
   :root {
-    --admin-sidebar-width: 288px;
+    --admin-sidebar-width: 250px;
   }
 
+
   .app {
+
     min-height: 100vh;
     display: flex;
-    background: #f3f6fb;
+    background: var(--color-bg);
   }
 
   .sidebar {
@@ -32,7 +35,7 @@
     overflow-y: auto;
     background: #111827;
     border-right: 0;
-    padding: 22px 18px;
+    padding: 18px 14px;
     box-sizing: border-box;
     flex-shrink: 0;
     z-index: 20;
@@ -80,16 +83,22 @@
   .super-admin-badge {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     min-height: 26px;
-    margin: 0 0 18px 58px;
-    border: 1px solid rgba(125, 211, 252, 0.34);
+    width: 100%;
+    margin: 5px 0 10px;
+
+    border: 1px solid var(--color-border);
     border-radius: 999px;
     padding: 0 10px;
-    color: #bae6fd;
-    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    font-size: 0.68rem;
     font-weight: 900;
     text-transform: uppercase;
+    white-space: nowrap;
   }
+
+
 
   .nav {
   display: flex;
@@ -116,10 +125,12 @@
   .nav a {
   display: flex;
   align-items: center;
-  min-height: 39px;
-  padding: 0 12px;
-  border-radius: 8px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 12px;
   color: #dbeafe;
+  width: calc(100% - 8px);
+  margin: 0 auto;
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 800;
@@ -130,8 +141,8 @@
   .nav a.active,
   .nav a:hover,
   .nav a:focus-visible {
-    background: #2563eb;
-    color: #fff;
+    background: var(--color-primary);
+    color: var(--color-white);
     outline: 0;
   }
 
@@ -150,11 +161,14 @@
     box-sizing: border-box;
   }
 
+
+
+
   .super-admin-topbar {
-    border: 1px solid #dbeafe;
+    border: 1px solid var(--color-border);
     border-radius: 8px;
     padding: 18px 20px;
-    background: #ffffff;
+    background: var(--color-white);
   }
 
   .super-admin-topbar .page-title {
@@ -163,7 +177,7 @@
 
   .super-admin-context {
     margin: 6px 0 0;
-    color: #475569;
+    color: var(--color-text-secondary);
     font-weight: 700;
     line-height: 1.45;
   }
@@ -310,7 +324,7 @@
         </div>
 
         <section style="margin-top: 18px">
-          <div class="panel-card" id="mainPlaceholder" style="min-height: 320px; display:flex; align-items:center; justify-content:center; color: var(--color-text-muted);">
+          <div class="panel-card" id="mainPlaceholder" style="min-height: 320px; align-items:center; color: var(--color-text-muted);">
             Select a menu item to manage content.
           </div>
         </section>
@@ -318,7 +332,7 @@
     </main>
   </div>
 
-  <script src="../system-branding.js?v=20260525-2"></script>
+  <script src="../system-branding.js?v=20260526-2"></script>
   <script src="../logout-confirm.js?v=20260523-1"></script>
   <script src="admin-dashboard.js?v=20260525-2"></script>
   <script src="admin-accounts.js?v=20260525-4"></script>
@@ -327,10 +341,10 @@
   <script src="admin-processing-settings.js?v=20260525-3"></script>
   <script src="admin-consultation-records.js?v=20260525-2"></script>
   <script src="admin-reports.js?v=20260525-2"></script>
-  <script src="admin-system-settings.js?v=20260525-3"></script>
+  <script src="admin-system-settings.js?v=20260526-1"></script>
   <script src="admin-patients.js?v=20260525-2"></script>
   <script src="admin-activity.js?v=20260525-2"></script>
   <script src="admin-super-admin.js?v=20260525-3"></script>
-  <script src="admin.js?v=20260525-5"></script>
+  <script src="admin.js?v=20260526-1"></script>
 </body>
 </html>

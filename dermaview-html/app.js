@@ -159,6 +159,12 @@ let isSavingAnalysis = false;
 let analysisSaveMessage = "";
 let lastSavedRecordId = null;
 
+function escapeHtml(value) {
+  const div = document.createElement("div");
+  div.textContent = value == null ? "" : String(value);
+  return div.innerHTML;
+}
+
 function getClinicName() {
   const settings = window.DermaViewBranding?.loadSettings?.() || {};
   return (settings.clinicName || "DermaView").trim() || "DermaView";
@@ -627,13 +633,17 @@ function bindTreatmentEvents(id) {
       renderTreatment(id);
 
       try {
+        isSavingAnalysis = true;
+        analysisSaveMessage = "Saving analyzed image record...";
+        renderTreatment(id);
+
         const saveResult = await saveAnalyzedImages(id);
         lastSavedRecordId = saveResult.id || null;
         analysisSaveMessage = lastSavedRecordId
           ? `Saved to processed images as record #${lastSavedRecordId}.`
           : "Saved to processed images.";
       } catch (error) {
-        analysisSaveMessage = "Analysis completed, but the image record could not be saved.";
+        analysisSaveMessage = `Analysis completed, but the image record could not be saved. ${error.message || ""}`.trim();
       } finally {
         isSavingAnalysis = false;
         renderTreatment(id);
@@ -980,6 +990,7 @@ async function saveAnalyzedImages(id) {
   }
 
   const beforeImageForSave = await renderImageDataUrl(uploadedImageUrl);
+  const afterImageForSave = await renderImageDataUrl(processedImageUrl);
   const formData = new FormData();
   formData.append("action", "add");
   formData.append("procedure_id", procedure.id);
@@ -989,7 +1000,7 @@ async function saveAnalyzedImages(id) {
     procedure.id === "general-skin-assessment" ? "Skin Assessment" : "Treatment Visualization"
   );
   formData.append("before_image", beforeImageForSave);
-  formData.append("after_image", processedImageUrl);
+  formData.append("after_image", afterImageForSave);
   formData.append("metrics_json", JSON.stringify(assessmentResult?.metrics || {}));
   formData.append("recommendations_json", JSON.stringify(buildSavedRecommendations()));
 
@@ -997,7 +1008,14 @@ async function saveAnalyzedImages(id) {
     method: "POST",
     body: formData
   });
-  const data = await response.json();
+  const responseText = await response.text();
+  let data = null;
+
+  try {
+    data = JSON.parse(responseText);
+  } catch (error) {
+    throw new Error(responseText || "Invalid response while saving image record.");
+  }
 
   if (!response.ok || data.status !== "ok") {
     throw new Error(data.message || "Failed to save image record.");
@@ -1047,6 +1065,24 @@ function getScheduleTimeSlots() {
 
 function isAppointmentBlocking(appointment) {
   return !["Cancelled", "No Show"].includes(appointment.status);
+}
+
+function normalizeScheduleTimeValue(value) {
+  return String(value || "").slice(0, 5);
+}
+
+function cleanScheduleErrorMessage(message) {
+  const text = String(message || "").trim();
+
+  if (!text) {
+    return "Please try again or contact the clinic directly.";
+  }
+
+  if (/fatal error|stack trace|mysqli|uncaught|xampp|config\.php/i.test(text)) {
+    return "The clinic database is currently unavailable. Please try again in a moment.";
+  }
+
+  return text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function renderSchedule(id) {
@@ -1177,7 +1213,7 @@ function renderAppointmentBookingCalendar(state) {
   const bookedTimes = new Set(
     blockingAppointments
       .filter((appointment) => appointment.appointment_date === state.selectedDateIso)
-      .map((appointment) => appointment.appointment_time)
+      .map((appointment) => normalizeScheduleTimeValue(appointment.appointment_time))
   );
   const appointmentCounts = new Map();
 
@@ -1249,7 +1285,7 @@ function renderAppointmentBookingCalendar(state) {
 
   timeGrid.querySelectorAll(".schedule-time-slot").forEach((label) => {
     const input = label.querySelector("input");
-    const isBooked = input && bookedTimes.has(input.value);
+    const isBooked = input && bookedTimes.has(normalizeScheduleTimeValue(input.value));
 
     label.classList.toggle("is-booked", Boolean(isBooked));
 
@@ -1271,7 +1307,7 @@ function renderAppointmentBookingCalendar(state) {
 
 function loadAppointmentBookings(state) {
   const formData = new FormData();
-  formData.append("action", "fetch_json");
+  formData.append("action", "fetch_public_json");
 
   return fetch(getScheduleEndpoint(), {
     method: "POST",
@@ -1375,12 +1411,18 @@ function bindScheduleEvents() {
         method: "POST",
         body: formData
       })
-        .then((response) => response.text())
-        .then((message) => {
+        .then((response) => response.text().then((message) => ({ response, message })))
+        .then(({ response, message }) => {
+          const cleanMessage = cleanScheduleErrorMessage(message);
+
+          if (!response.ok || cleanMessage !== "Appointment scheduled successfully.") {
+            throw new Error(cleanMessage || "Unable to save appointment.");
+          }
+
           alert("Appointment has been scheduled");
           confirmation.hidden = false;
           confirmation.innerHTML = `
-            <strong>${message}</strong>
+            <strong>${cleanMessage}</strong>
             <p>${formData.get("patient_name")}, your appointment for ${procedure ? procedure.name : "this procedure"} has been scheduled.</p>
             <p>A confirmation email has been sent to your email address.</p>
           `;
@@ -1390,11 +1432,11 @@ function bindScheduleEvents() {
           }
           loadAppointmentBookings(state);
         })
-        .catch(() => {
+        .catch((error) => {
           confirmation.hidden = false;
           confirmation.innerHTML = `
             <strong>Unable to save request</strong>
-            <p>Please try again or contact the clinic directly.</p>
+            <p>${escapeHtml(cleanScheduleErrorMessage(error.message))}</p>
           `;
         });
     });
@@ -1435,6 +1477,7 @@ function renderCurrentPage() {
 
 window.addEventListener("hashchange", renderCurrentPage);
 window.addEventListener("load", async () => {
+  renderCurrentPage();
   await loadProceduresFromDatabase();
   renderCurrentPage();
 });

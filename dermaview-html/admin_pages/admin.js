@@ -116,21 +116,25 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function guardAdminSession() {
-    fetch('../get-session.php', { cache: 'no-store' })
+    return fetch('../get-session.php', { cache: 'no-store' })
       .then(response => response.json())
       .then(session => {
         const role = String(session.role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
         if (session.status !== 'ok' || (role !== 'admin' && role !== 'superadmin')) {
           window.location.replace('../login.html');
-          return;
+          return false;
         }
 
         if (role === 'superadmin') {
           window.location.replace(`../super_admin/super-admin.html${location.hash || ''}`);
+          return false;
         }
+
+        return true;
       })
       .catch(() => {
         window.location.replace('../login.html');
+        return false;
       });
   }
 
@@ -195,6 +199,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   window.addEventListener('hashchange', handleHash);
-  guardAdminSession();
-  handleHash();
+  guardAdminSession().then(isAllowed => {
+    if (isAllowed) handleHash();
+  });
 });

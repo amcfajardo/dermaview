@@ -5,6 +5,132 @@
   gap: 18px;
 }
 
+:root[data-theme="dark"] .dashboard-activity-item,
+:root[data-theme="dark"] .dashboard-stat-card,
+:root[data-theme="dark"] .appointment-summary-grid div,
+:root[data-theme="dark"] .processed-image-card,
+:root[data-theme="dark"] .accounts-modal,
+:root[data-theme="dark"] .accounts-delete-modal,
+:root[data-theme="dark"] .accounts-table,
+:root[data-theme="dark"] .accounts-table th,
+:root[data-theme="dark"] .settings-card,
+:root[data-theme="dark"] .procedure-admin-card,
+:root[data-theme="dark"] .reports-card,
+:root[data-theme="dark"] .report-panel,
+:root[data-theme="dark"] .patient-card,
+:root[data-theme="dark"] .activity-card {
+  border-color: var(--color-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    var(--color-white);
+  color: var(--color-text);
+}
+
+:root[data-theme="dark"] .dashboard-status-item,
+:root[data-theme="dark"] .dashboard-appointment-summary div,
+:root[data-theme="dark"] .dashboard-stat-card,
+:root[data-theme="dark"] .admin-inline-note,
+:root[data-theme="dark"] .accounts-table th {
+  background: var(--color-bg-light);
+}
+
+:root[data-theme="dark"] .accounts-table tr,
+:root[data-theme="dark"] .accounts-table td {
+  border-color: var(--color-border);
+}
+
+:root[data-theme="dark"] .accounts-delete-backdrop,
+:root[data-theme="dark"] .accounts-modal-backdrop {
+  background: rgba(2, 6, 23, 0.76);
+}
+
+:root[data-theme="dark"] .accounts-search,
+:root[data-theme="dark"] .accounts-filter-row,
+:root[data-theme="dark"] .accounts-detail-card,
+:root[data-theme="dark"] .accounts-summary-card,
+:root[data-theme="dark"] .processed-image-preview,
+:root[data-theme="dark"] .procedure-editor-card,
+:root[data-theme="dark"] .procedure-script-card,
+:root[data-theme="dark"] .procedure-upload-card,
+:root[data-theme="dark"] .reports-small-card,
+:root[data-theme="dark"] .reports-chart-card,
+:root[data-theme="dark"] .report-metric-card,
+:root[data-theme="dark"] .privacy-settings-card,
+:root[data-theme="dark"] .processing-settings-card,
+:root[data-theme="dark"] .super-admin-tool-card,
+:root[data-theme="dark"] .staff-card,
+:root[data-theme="dark"] .admin-content-panel {
+  border-color: rgba(148, 163, 184, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.012)),
+    var(--color-white);
+  color: var(--color-text);
+}
+
+:root[data-theme="dark"] .accounts-table tbody tr:hover,
+:root[data-theme="dark"] .procedure-admin-card:hover,
+:root[data-theme="dark"] .patient-card:hover,
+:root[data-theme="dark"] .activity-card:hover,
+:root[data-theme="dark"] .reports-small-card:hover {
+  background: rgba(94, 234, 212, 0.06);
+}
+
+:root[data-theme="dark"] .accounts-chip,
+:root[data-theme="dark"] .procedure-tag,
+:root[data-theme="dark"] .table-muted,
+:root[data-theme="dark"] .admin-muted-pill,
+:root[data-theme="dark"] .module-pill {
+  border-color: rgba(148, 163, 184, 0.2);
+  background: var(--color-bg-light);
+  color: var(--color-text-secondary);
+}
+
+:root[data-theme="dark"] .admin-action-button,
+:root[data-theme="dark"] .accounts-action-btn,
+:root[data-theme="dark"] .procedure-action-secondary,
+:root[data-theme="dark"] .image-action-button {
+  border-color: var(--color-border);
+  background: var(--color-bg-light);
+  color: var(--color-text);
+}
+
+:root[data-theme="dark"] .admin-action-button:hover,
+:root[data-theme="dark"] .accounts-action-btn:hover,
+:root[data-theme="dark"] .procedure-action-secondary:hover,
+:root[data-theme="dark"] .image-action-button:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+:root[data-theme="dark"] .account-status-active,
+:root[data-theme="dark"] .account-status-completed,
+:root[data-theme="dark"] .appointment-status-confirmed,
+:root[data-theme="dark"] .appointment-status-completed {
+  background: rgba(6, 78, 59, 0.38);
+  color: #bbf7d0;
+}
+
+:root[data-theme="dark"] .appointment-status-pending,
+:root[data-theme="dark"] .account-status-pending {
+  background: rgba(20, 184, 166, 0.14);
+  color: #99f6e4;
+}
+
+:root[data-theme="dark"] .account-status-inactive,
+:root[data-theme="dark"] .account-status-failed,
+:root[data-theme="dark"] .account-status-deleted,
+:root[data-theme="dark"] .appointment-status-cancelled,
+:root[data-theme="dark"] .appointment-status-no-show {
+  background: rgba(127, 29, 29, 0.38);
+  color: #fecaca;
+}
+
+:root[data-theme="dark"] .appointment-status-select {
+  border-color: var(--color-border);
+  background-color: var(--color-bg-light);
+  color: var(--color-text);
+}
+
 .dashboard-shell .panel-card {
   position: static;
   top: auto;
@@ -537,7 +663,7 @@ body.accounts-modal-open::before {
 .accounts-select {
   width: 100%;
   min-height: 42px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   background: #ffffff;
   color: var(--color-text);
@@ -546,6 +672,50 @@ body.accounts-modal-open::before {
   padding: 9px 11px;
   outline: none;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.accounts-select {
+  appearance: none;
+  padding-right: 42px;
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  background-color: color-mix(in srgb, var(--color-primary) 5%, #ffffff);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-text) 50%),
+    linear-gradient(135deg, var(--color-text) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 12px) 50%;
+  background-repeat: no-repeat;
+  background-size: 6px 6px, 6px 6px;
+  cursor: pointer;
+}
+
+.accounts-select:hover {
+  border-color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--color-primary) 8%, #ffffff);
+}
+
+:root[data-theme="dark"] .accounts-input,
+:root[data-theme="dark"] .accounts-select {
+  border-color: var(--color-border);
+  background-color: #0d1b2e;
+  color: var(--color-text);
+}
+
+:root[data-theme="dark"] .accounts-select {
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-text) 50%),
+    linear-gradient(135deg, var(--color-text) 50%, transparent 50%);
+}
+
+:root[data-theme="dark"] .accounts-select:hover {
+  border-color: rgba(94, 234, 212, 0.64);
+  background-color: #132238;
+}
+
+:root[data-theme="dark"] .accounts-input::placeholder,
+:root[data-theme="dark"] textarea.accounts-input::placeholder {
+  color: var(--color-text-muted);
 }
 
 textarea.accounts-input {
@@ -557,7 +727,7 @@ textarea.accounts-input {
 .accounts-input:focus,
 .accounts-select:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
 }
 
 .accounts-actions {

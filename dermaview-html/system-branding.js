@@ -42,13 +42,22 @@
     }
   }
 
+  function applyThemeFromSettings(settings = loadSettings()) {
+    const allowedThemes = new Set(['light', 'clinical', 'dark', 'contrast']);
+    const theme = allowedThemes.has(settings.defaultTheme) ? settings.defaultTheme : 'light';
+    document.documentElement.dataset.theme = theme;
+    return theme;
+  }
+
   window.DermaViewBranding = {
     defaultClinicName,
     storageKey,
     loadSettings,
     clinicInitials,
-    applyBranding
+    applyBranding,
+    applyThemeFromSettings
   };
 
+  applyThemeFromSettings();
   applyBranding();
 })();

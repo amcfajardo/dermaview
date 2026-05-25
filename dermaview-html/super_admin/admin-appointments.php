@@ -121,20 +121,7 @@ function current_user_id() {
 }
 
 function can_manage_appointment($row, $conn) {
-    $user_id = current_user_id();
-
-    if ($user_id <= 0) {
-        return false;
-    }
-
-    if (isset($row['recorded_by']) && (int) $row['recorded_by'] > 0) {
-        return (int) $row['recorded_by'] === $user_id;
-    }
-
-    $staff_name = current_staff_name($conn);
-    $assigned_staff = trim((string) ($row['assigned_staff'] ?? ''));
-
-    return $staff_name !== '' && $assigned_staff !== '' && strcasecmp($staff_name, $assigned_staff) === 0;
+    return current_user_id() > 0;
 }
 
 function ensure_appointment_columns($conn) {

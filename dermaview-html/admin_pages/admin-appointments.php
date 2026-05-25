@@ -53,6 +53,7 @@ $procedure_names = [
     'general-skin-assessment' => 'General Skin Assessment',
     'co2-fractional-laser-dermapen' => 'CO2 Fractional Laser + Dermapen',
     'face-slimming' => 'Face Slimming',
+    'face_slimming' => 'Face Slimming',
     'diamond-peel-facial' => 'Diamond Peel With Facial',
     'undereye-lip-filler' => 'Undereye and Lip Filler Procedure',
     'pico-carbon-laser' => 'PICO Carbon Laser Facial Procedure',
@@ -176,7 +177,9 @@ ensure_appointment_columns($conn);
 
 $action = $_POST['action'] ?? '';
 
-if ($action !== 'add') {
+$public_actions = ['add', 'fetch_public_json'];
+
+if (!in_array($action, $public_actions, true)) {
     auth_require_admin(false);
 }
 
@@ -189,10 +192,10 @@ if ($action === 'add') {
     $appointment_date = clean_text($_POST['appointment_date'] ?? '');
     $appointment_time = clean_text($_POST['appointment_time'] ?? '');
     $notes = clean_text($_POST['notes'] ?? '');
-    $status = clean_text($_POST['status'] ?? 'Confirmed');
+    $status = clean_text($_POST['status'] ?? 'Pending');
     $assigned_staff = current_staff_name($conn);
     $source = clean_text($_POST['source'] ?? 'online');
-    $recorded_by = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
+    $recorded_by = current_user_id() > 0 ? current_user_id() : null;
 
     if ($procedure_id === '' || $procedure_name === '' || $patient_name === '' || $phone === '' || $appointment_date === '' || $appointment_time === '') {
         echo "Please complete the required appointment fields.";
@@ -201,12 +204,32 @@ if ($action === 'add') {
 
     $allowed_statuses = ['Pending', 'Confirmed', 'Completed', 'Cancelled', 'No Show'];
     if (!in_array($status, $allowed_statuses, true)) {
-        $status = 'Confirmed';
+        $status = 'Pending';
     }
 
     $allowed_sources = ['online', 'staff'];
     if (!in_array($source, $allowed_sources, true)) {
         $source = 'online';
+    }
+
+    $conflictStmt = $conn->prepare("
+        SELECT id
+        FROM appointments
+        WHERE appointment_date = ?
+          AND appointment_time = ?
+          AND status NOT IN ('Cancelled', 'No Show')
+        LIMIT 1
+    ");
+
+    if ($conflictStmt) {
+        $conflictStmt->bind_param("ss", $appointment_date, $appointment_time);
+        $conflictStmt->execute();
+        $conflictResult = $conflictStmt->get_result();
+
+        if ($conflictResult && $conflictResult->num_rows > 0) {
+            echo "That appointment time is already booked. Please choose another time.";
+            exit();
+        }
     }
 
     $stmt = $conn->prepare("
@@ -284,6 +307,37 @@ if ($action === 'add') {
     echo "Failed to save appointment.";
 }
 
+    exit();
+}
+
+if ($action === 'fetch_public_json') {
+    header('Content-Type: application/json; charset=utf-8');
+
+    $result = $conn->query("
+        SELECT procedure_name, appointment_date, appointment_time, status
+        FROM appointments
+        ORDER BY appointment_date ASC, appointment_time ASC, id ASC
+    ");
+
+    $appointments = [];
+
+    if ($result && $result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $appointments[] = [
+                'procedure_name' => $row['procedure_name'],
+                'patient_name' => 'Booked Consultation',
+                'appointment_date' => $row['appointment_date'],
+                'appointment_time' => $row['appointment_time'],
+                'time_label' => format_time_label($row['appointment_time']),
+                'status' => $row['status']
+            ];
+        }
+    }
+
+    echo json_encode([
+        'status' => 'ok',
+        'appointments' => $appointments
+    ]);
     exit();
 }
 

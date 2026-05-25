@@ -72,6 +72,7 @@
     }
 
     document.title = `${clinicName} Admin Dashboard`;
+    window.DermaViewBranding?.applyThemeFromSettings(settings);
   }
 
   window.applySystemSettings = applySystemSettings;
@@ -146,6 +147,7 @@
 
       renderLogoPreview(logo);
       applySystemSettings(nextSettings);
+      window.DermaViewBranding?.applyBranding(nextSettings, { titleSuffix: 'Admin Dashboard' });
       alert('System settings saved.');
     }
 

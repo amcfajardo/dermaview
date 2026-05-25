@@ -318,10 +318,13 @@ function initStaffCalendar() {
 
   function load() {
     const fd = new FormData();
-    fd.append('action', 'fetch_json');
+    fd.append('action', 'fetch_public_json');
 
     fetch(staffCalEndpoint(), { method: 'POST', body: fd })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error('Failed to load appointments.');
+        return r.json();
+      })
       .then(data => {
         appointments = staffCalFromJsonRows(data.appointments || []);
         render();
