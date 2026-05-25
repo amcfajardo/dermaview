@@ -2358,12 +2358,14 @@ textarea.accounts-input {
 }
 
 .activity-logs-table-wrap {
-  overflow-x: auto;
+  max-height: 430px;
   max-width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .activity-logs-table {
-  min-width: 860px;
+  min-width: 100%;
 }
 
 .activity-logs-table th,

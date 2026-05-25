@@ -37,10 +37,6 @@ function audit_ensure_tables($conn) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
 
-function audit_now_iso() {
-    return gmdate('c');
-}
-
 function audit_current_actor() {
     $actor_user_id = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
     $actor_role = isset($_SESSION['role']) ? (string)$_SESSION['role'] : null;
