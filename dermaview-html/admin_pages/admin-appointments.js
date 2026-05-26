@@ -119,6 +119,65 @@
       if (assignedStaffCount) assignedStaffCount.textContent = String(assigned);
     }
 
+    function closeCalendarModal() {
+      document.querySelector('.accounts-calendar-modal')?.remove();
+      document.body.classList.remove('calendar-modal-open');
+    }
+
+    function openCalendarDayModal(date, events) {
+      closeCalendarModal();
+
+      const title = date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      });
+
+      const modal = document.createElement('div');
+      modal.className = 'accounts-calendar-modal';
+      modal.innerHTML = `
+        <div class="accounts-calendar-dialog" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)} appointments">
+          <div class="accounts-calendar-dialog-header">
+            <div>
+              <span class="section-kicker">Schedule</span>
+              <h3>${escapeHtml(title)}</h3>
+            </div>
+            <button type="button" class="accounts-calendar-dialog-close" aria-label="Close">&times;</button>
+          </div>
+          <div class="accounts-calendar-dialog-list">
+            ${events.length ? events.map(event => `
+              <article class="accounts-calendar-dialog-event">
+                <div class="accounts-calendar-dialog-time">${escapeHtml(event.timeLabel || 'No time')}</div>
+                <div class="accounts-calendar-dialog-main">
+                  <strong>${escapeHtml(event.patientName || 'Appointment')}</strong>
+                  <span>${escapeHtml(event.procedureName || 'No procedure')}</span>
+                  <small>${escapeHtml(event.assignedStaff || 'Unassigned')} &middot; ${escapeHtml(event.phoneOrEmail || 'No contact')}</small>
+                </div>
+                <span class="accounts-calendar-dialog-status">${escapeHtml(event.status || 'Pending')}</span>
+              </article>
+            `).join('') : '<p class="accounts-calendar-empty">No appointments for this date.</p>'}
+          </div>
+        </div>
+      `;
+
+      modal.addEventListener('click', event => {
+        if (event.target === modal || event.target.closest('.accounts-calendar-dialog-close')) {
+          closeCalendarModal();
+        }
+      });
+
+      document.addEventListener('keydown', function handleEscape(event) {
+        if (event.key === 'Escape') {
+          closeCalendarModal();
+          document.removeEventListener('keydown', handleEscape);
+        }
+      });
+
+      document.body.appendChild(modal);
+      document.body.classList.add('calendar-modal-open');
+    }
+
     function renderCalendar({ monthDate }) {
       if (!calendarGrid) return;
 
@@ -196,12 +255,32 @@
         const eventsWrap = document.createElement('div');
         eventsWrap.className = 'accounts-calendar-events';
 
-        events.slice(0, 3).forEach(event => {
+        events.slice(0, 1).forEach(event => {
           const eventEl = document.createElement('div');
           eventEl.className = 'accounts-calendar-event';
           eventEl.innerHTML = `<strong>${escapeHtml(event.patientName || 'Appointment')}</strong><span>${escapeHtml(event.timeLabel || '')} - ${escapeHtml(event.status || '')}</span>`;
           eventsWrap.appendChild(eventEl);
         });
+
+        if (events.length > 1) {
+          const moreEl = document.createElement('div');
+          moreEl.className = 'accounts-calendar-more';
+          moreEl.textContent = `View all ${events.length}`;
+          eventsWrap.appendChild(moreEl);
+        }
+
+        if (events.length) {
+          cell.tabIndex = 0;
+          cell.setAttribute('role', 'button');
+          cell.setAttribute('aria-label', `View ${events.length} appointments on ${iso}`);
+          cell.addEventListener('click', () => openCalendarDayModal(date, events));
+          cell.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openCalendarDayModal(date, events);
+            }
+          });
+        }
 
         cell.appendChild(top);
         cell.appendChild(eventsWrap);
