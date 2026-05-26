@@ -969,6 +969,31 @@ function getProcessedImagesEndpoint() {
     : "admin_pages/admin-processed-images.php";
 }
 
+function getSessionEndpoint() {
+  return window.location.pathname.includes("/pages/")
+    ? "../get-session.php"
+    : "get-session.php";
+}
+
+async function requireStaffSessionForSave() {
+  const response = await fetch(getSessionEndpoint(), {
+    cache: "no-store",
+    credentials: "same-origin"
+  });
+  const session = await response.json().catch(() => null);
+  const role = String(session?.role || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+
+  if (!session || session.status !== "ok") {
+    throw new Error("Staff login required. Please log in again.");
+  }
+
+  if (role !== "staff") {
+    throw new Error(`Staff account required. Current session role: ${session.role || "unknown"}.`);
+  }
+
+  return session;
+}
+
 function buildSavedRecommendations() {
   if (!assessmentResult || !assessmentResult.recommendations) {
     return [];
@@ -989,6 +1014,8 @@ async function saveAnalyzedImages(id) {
     throw new Error("Missing analysis record details.");
   }
 
+  await requireStaffSessionForSave();
+
   const beforeImageForSave = await renderImageDataUrl(uploadedImageUrl);
   const afterImageForSave = await renderImageDataUrl(processedImageUrl);
   const formData = new FormData();
@@ -1006,6 +1033,7 @@ async function saveAnalyzedImages(id) {
 
   const response = await fetch(getProcessedImagesEndpoint(), {
     method: "POST",
+    credentials: "same-origin",
     body: formData
   });
   const responseText = await response.text();

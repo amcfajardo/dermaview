@@ -7,25 +7,13 @@ auth_require_admin(false);
 
 $action = $_POST['action'] ?? '';
 
-$allowed_roles = [
-    'dermatologist',
-    'aesthetician',
-    'receptionist',
-    'staff',
-    'encoder',
-    'viewer'
-];
+$allowed_roles = ['staff'];
 
-$staff_role_sql = "'dermatologist', 'aesthetician', 'receptionist', 'staff', 'encoder', 'viewer'";
+$staff_role_sql = "'staff'";
 
 function role_label($role) {
     $labels = [
-        'dermatologist' => 'Dermatologist',
-        'aesthetician' => 'Aesthetician',
-        'receptionist' => 'Receptionist',
-        'staff' => 'Staff',
-        'encoder' => 'Encoder',
-        'viewer' => 'Viewer'
+        'staff' => 'Staff'
     ];
 
     return $labels[strtolower($role)] ?? ucfirst(str_replace('_', ' ', $role));

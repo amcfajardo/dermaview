@@ -55,13 +55,7 @@ function count_image_records($conn, $tables) {
 function role_label($role) {
     $labels = [
         'admin' => 'Admin',
-        'dermatologist' => 'Dermatologist',
-        'aesthetician' => 'Aesthetician',
-        'manager' => 'Manager',
-        'receptionist' => 'Receptionist',
-        'staff' => 'Staff',
-        'encoder' => 'Encoder',
-        'viewer' => 'Viewer'
+        'staff' => 'Staff'
     ];
 
     return $labels[strtolower($role)] ?? ucfirst(str_replace('_', ' ', $role));
@@ -129,7 +123,7 @@ function fetch_recent_users($conn) {
 $total_staff = count_rows($conn, 'users');
 $total_users = count_rows($conn, 'users');
 $active_staff = count_rows($conn, 'users', "status = 'Active'");
-$active_staff_accounts = count_rows($conn, 'users', "status = 'Active' AND role IN ('dermatologist', 'aesthetician', 'manager', 'receptionist', 'staff', 'encoder', 'viewer')");
+$active_staff_accounts = count_rows($conn, 'users', "status = 'Active' AND role = 'staff'");
 $total_patients = count_rows($conn, 'patients');
 if ($total_patients === 0) {
     $total_patients = count_rows($conn, 'appointments');

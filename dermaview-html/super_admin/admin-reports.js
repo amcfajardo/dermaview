@@ -47,6 +47,11 @@
     return div.innerHTML;
   }
 
+  function processedByLabel(value) {
+    const label = String(value || '').trim();
+    return label && label.toLowerCase() !== 'system' ? label : 'Not recorded';
+  }
+
   function load(key, fallback) {
     try {
       const raw = localStorage.getItem(key);
@@ -365,7 +370,7 @@
           <td>${escapeHtml(reportDate(item.date_processed))}</td>
           <td>${escapeHtml(item.procedure_name)}</td>
           <td>${statusBadge(item.processing_status)}</td>
-          <td>${escapeHtml(item.handled_by || 'System')}</td>
+          <td>${escapeHtml(processedByLabel(item.handled_by))}</td>
           <td><button type="button" class="reports-link-button" data-report-record="${escapeHtml(item.id)}">View</button></td>
         </tr>
       `).join('') : '<tr><td colspan="5" class="accounts-empty-cell">No consultation records found.</td></tr>';
@@ -453,7 +458,7 @@
       if (!item) return;
       alert(`${item.procedure_name}
 Status: ${item.processing_status}
-Processed by: ${item.handled_by || 'System'}
+Processed by: ${processedByLabel(item.handled_by)}
 Date: ${reportDate(item.date_processed)}
 
 ${item.notes || ''}`);
@@ -471,7 +476,7 @@ ${item.notes || ''}`);
           item.date_processed ? item.date_processed.slice(0, 10) : '',
           item.procedure_name,
           item.processing_status,
-          item.handled_by || 'System',
+          processedByLabel(item.handled_by),
           item.notes || ''
         ]);
       });

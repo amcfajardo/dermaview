@@ -46,6 +46,11 @@
     return div.innerHTML;
   }
 
+  function processedByLabel(value) {
+    const label = String(value || '').trim();
+    return label && label.toLowerCase() !== 'system' ? label : 'Not recorded';
+  }
+
   function load(key, fallback) {
     try {
       const raw = localStorage.getItem(key);
@@ -364,7 +369,7 @@
           <td>${escapeHtml(reportDate(item.date_processed))}</td>
           <td>${escapeHtml(item.procedure_name)}</td>
           <td>${statusBadge(item.processing_status)}</td>
-          <td>${escapeHtml(item.handled_by || 'System')}</td>
+          <td>${escapeHtml(processedByLabel(item.handled_by))}</td>
           <td><button type="button" class="reports-link-button" data-report-record="${escapeHtml(item.id)}">View</button></td>
         </tr>
       `).join('') : '<tr><td colspan="5" class="accounts-empty-cell">No consultation records found.</td></tr>';
@@ -450,7 +455,7 @@
       if (!button) return;
       const item = reportRecords.find(record => String(record.id) === String(button.dataset.reportRecord));
       if (!item) return;
-      alert(`${item.procedure_name}\nStatus: ${item.processing_status}\nProcessed by: ${item.handled_by || 'System'}\nDate: ${reportDate(item.date_processed)}\n\n${item.notes || ''}`);
+      alert(`${item.procedure_name}\nStatus: ${item.processing_status}\nProcessed by: ${processedByLabel(item.handled_by)}\nDate: ${reportDate(item.date_processed)}\n\n${item.notes || ''}`);
     });
 
     function downloadAllReportsCsv() {
@@ -465,7 +470,7 @@
           item.date_processed ? item.date_processed.slice(0, 10) : '',
           item.procedure_name,
           item.processing_status,
-          item.handled_by || 'System',
+          processedByLabel(item.handled_by),
           item.notes || ''
         ]);
       });

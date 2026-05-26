@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const descriptions = {
     dashboard: 'Full system summary across users, appointments, patients, images, staff, alerts, and system health.',
     adminAccounts: 'Create, edit, deactivate, reset, and review administrator access.',
-    staff: 'Manage dermatologists, aestheticians, receptionists, clinic staff, encoders, and viewers.',
+    staff: 'Manage staff accounts.',
     roles: 'Control access rules for every user type.',
     appointments: 'View and control clinic appointments across all staff and patient schedules.',
     patients: 'Review patient profiles, histories, images, and exportable records.',

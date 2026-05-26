@@ -41,6 +41,58 @@ function ensure_consultation_records_table($conn) {
     ");
 }
 
+function ensure_table_column($conn, $table_name, $column_name, $alter_sql) {
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) AS total
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = ?
+          AND column_name = ?
+    ");
+
+    if (!$stmt) {
+        return;
+    }
+
+    $stmt->bind_param("ss", $table_name, $column_name);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result ? $result->fetch_assoc() : null;
+
+    if (!$row || (int) $row['total'] === 0) {
+        $conn->query($alter_sql);
+    }
+}
+
+function staff_display_name_from_row($row) {
+    $role = strtolower(str_replace([' ', '-'], '_', trim((string) ($row['staff_role'] ?? ''))));
+    $is_staff = $role === 'staff';
+
+    if (!$is_staff) {
+        return 'Not recorded';
+    }
+
+    $name = trim((string) (($row['staff_first_name'] ?? '') . ' ' . ($row['staff_last_name'] ?? '')));
+
+    if ($name !== '') {
+        return $name;
+    }
+
+    $fallback = trim((string) ($row['staff_email'] ?? $row['staff_employee_number'] ?? ''));
+
+    if ($fallback !== '') {
+        return $fallback;
+    }
+
+    $handled_by = trim((string) ($row['handled_by'] ?? ''));
+
+    if ($handled_by !== '' && strcasecmp($handled_by, 'System') !== 0) {
+        return $handled_by;
+    }
+
+    return 'Not recorded';
+}
+
 ensure_consultation_records_table($conn);
 
 $action = $_POST['action'] ?? 'fetch';
@@ -89,11 +141,18 @@ if ($result) {
 }
 
 if (table_exists($conn, 'processed_images')) {
+    ensure_table_column($conn, 'processed_images', 'handled_by', "ALTER TABLE processed_images ADD COLUMN handled_by VARCHAR(160) NULL AFTER recommendations_json");
+    ensure_table_column($conn, 'processed_images', 'handled_by_user_id', "ALTER TABLE processed_images ADD COLUMN handled_by_user_id INT NULL AFTER handled_by");
+
     $result = $conn->query("
-        SELECT id, procedure_id, procedure_name, before_image_path, after_image_path,
-               analysis_type, created_at
-        FROM processed_images
-        ORDER BY created_at DESC, id DESC
+        SELECT pi.id, pi.procedure_id, pi.procedure_name, pi.before_image_path, pi.after_image_path,
+               pi.analysis_type, pi.handled_by, pi.handled_by_user_id, pi.created_at,
+               u.first_name AS staff_first_name, u.last_name AS staff_last_name,
+               u.email AS staff_email, u.employee_number AS staff_employee_number,
+               u.role AS staff_role
+        FROM processed_images pi
+        LEFT JOIN users u ON u.id = pi.handled_by_user_id
+        ORDER BY pi.created_at DESC, pi.id DESC
         LIMIT 200
     ");
 
@@ -106,7 +165,7 @@ if (table_exists($conn, 'processed_images')) {
                 'original_image_path' => $row['before_image_path'],
                 'processed_image_path' => $row['after_image_path'],
                 'processing_status' => 'Completed',
-                'handled_by' => 'System',
+                'handled_by' => staff_display_name_from_row($row),
                 'notes' => $row['analysis_type'],
                 'date_processed' => $row['created_at'],
                 'source' => 'processed_images'

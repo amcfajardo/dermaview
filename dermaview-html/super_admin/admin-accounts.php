@@ -11,13 +11,7 @@ $allowed_roles = [
     'super_admin',
     'superadmin',
     'admin',
-    'dermatologist',
-    'aesthetician',
-    'manager',
-    'receptionist',
-    'staff',
-    'encoder',
-    'viewer'
+    'staff'
 ];
 
 function role_label($role) {
@@ -25,13 +19,7 @@ function role_label($role) {
         'super_admin' => 'Super Admin',
         'superadmin' => 'Super Admin',
         'admin' => 'Admin',
-        'dermatologist' => 'Dermatologist',
-        'aesthetician' => 'Aesthetician',
-        'manager' => 'Manager',
-        'receptionist' => 'Receptionist',
-        'staff' => 'Staff',
-        'encoder' => 'Encoder',
-        'viewer' => 'Viewer'
+        'staff' => 'Staff'
     ];
 
     return $labels[strtolower($role)] ?? ucfirst(str_replace('_', ' ', $role));
@@ -193,9 +181,9 @@ if ($action === 'fetch') {
     $role_filter = '';
 
     if ($scope === 'admin') {
-        $role_filter = "WHERE role IN ('super_admin', 'superadmin', 'admin', 'manager')";
+        $role_filter = "WHERE role IN ('super_admin', 'superadmin', 'admin')";
     } elseif ($scope === 'staff') {
-        $role_filter = "WHERE role IN ('dermatologist', 'aesthetician', 'receptionist', 'staff', 'encoder', 'viewer')";
+        $role_filter = "WHERE role = 'staff'";
     }
 
     $result = $conn->query("

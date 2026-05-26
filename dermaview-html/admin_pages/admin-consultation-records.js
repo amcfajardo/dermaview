@@ -5,6 +5,11 @@
     return div.innerHTML;
   }
 
+  function processedByLabel(value) {
+    const label = String(value || '').trim();
+    return label && label.toLowerCase() !== 'system' ? label : 'Not recorded';
+  }
+
   function formatDate(value) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '';
@@ -142,7 +147,7 @@
         <div class="grid">
           <div class="field"><span>Procedure Used</span><strong>${escapeHtml(item.procedure_name || 'N/A')}</strong></div>
           <div class="field"><span>Processing Status</span><strong>${escapeHtml(item.processing_status || 'N/A')}</strong></div>
-          <div class="field"><span>Staff Who Processed It</span><strong>${escapeHtml(item.handled_by || 'System')}</strong></div>
+          <div class="field"><span>Staff Who Processed It</span><strong>${escapeHtml(processedByLabel(item.handled_by))}</strong></div>
           <div class="field"><span>Timestamp</span><strong>${escapeHtml(item.date_processed || 'N/A')}</strong></div>
         </div>
         <div class="images">
@@ -194,7 +199,7 @@
       <dl class="admin-details-list">
         <div><dt>Record ID</dt><dd>${escapeHtml(recordDisplayId(item))}</dd></div>
         <div><dt>Procedure Used</dt><dd>${escapeHtml(item.procedure_name || 'N/A')}</dd></div>
-        <div><dt>Staff Processed By</dt><dd>${escapeHtml(item.handled_by || 'System')}</dd></div>
+        <div><dt>Staff Processed By</dt><dd>${escapeHtml(processedByLabel(item.handled_by))}</dd></div>
         <div><dt>Timestamp</dt><dd>${escapeHtml(item.date_processed || 'N/A')}</dd></div>
         <div><dt>Status</dt><dd>${statusBadge(item.processing_status || 'N/A')}</dd></div>
         <div><dt>Notes</dt><dd>${escapeHtml(item.notes || 'No notes recorded.')}</dd></div>
@@ -248,7 +253,7 @@
           <td>${imageCell(item.original_image_path, 'Original image')}</td>
           <td>${imageCell(item.processed_image_path, 'Processed image')}</td>
           <td>${statusBadge(item.processing_status)}</td>
-          <td>${escapeHtml(item.handled_by || 'System')}</td>
+          <td>${escapeHtml(processedByLabel(item.handled_by))}</td>
           <td>${escapeHtml(item.notes || '')}</td>
           <td>
             <div class="account-row-actions">
@@ -317,7 +322,7 @@
       exportBtn.addEventListener('click', () => {
         downloadCsv('consultation-image-records.csv', [
           ['Record ID', 'Date Processed', 'Procedure', 'Status', 'Handled By', 'Notes'],
-          ...filteredRecords().map(item => [item.id, item.date_processed, item.procedure_name, item.processing_status, item.handled_by || 'System', item.notes || ''])
+          ...filteredRecords().map(item => [item.id, item.date_processed, item.procedure_name, item.processing_status, processedByLabel(item.handled_by), item.notes || ''])
         ]);
       });
     }
