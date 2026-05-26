@@ -54,16 +54,108 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Change Password</title>
-  <link rel="stylesheet" href="styles/global.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DermaView | Change Password</title>
+  <link rel="stylesheet" href="styles/global.css" />
+  <link rel="stylesheet" href="styles/header.css" />
+  <style>
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      background: linear-gradient(180deg, var(--color-bg-light) 0%, var(--color-bg-lighter) 100%);
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 450px;
+      background: var(--color-white);
+      border: 1px solid var(--color-border);
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .auth-title {
+      margin: 0 0 12px;
+      color: var(--color-text);
+      font-size: 2rem;
+      font-weight: 800;
+      text-align: center;
+      line-height: 1.15;
+    }
+
+    .auth-subtitle {
+      margin: 0 0 28px;
+      color: var(--color-text-secondary);
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    .auth-form {
+      display: grid;
+      gap: 18px;
+    }
+
+    .auth-input {
+      width: 100%;
+      min-height: 56px;
+      padding: 0 16px;
+      border: 1px solid #d1d5db;
+      border-radius: 14px;
+      background: var(--color-white);
+      color: var(--color-text);
+      font: inherit;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .auth-input:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+    }
+
+    .auth-button {
+      min-height: 56px;
+      border: 0;
+      border-radius: 14px;
+      padding: 0 18px;
+      background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+      color: #ffffff;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .auth-button:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    @media (max-width: 560px) {
+      .auth-page {
+        padding: 20px;
+      }
+
+      .auth-card {
+        padding: 28px 22px;
+      }
+    }
+  </style>
 </head>
 <body>
 
 <div class="auth-page">
   <div class="auth-card">
-    <h1>Change Password</h1>
+    <h1 class="auth-title">Change Password</h1>
+    <p class="auth-subtitle">Create a new password before continuing to your account.</p>
 
     <form method="POST" class="auth-form">
       <input
