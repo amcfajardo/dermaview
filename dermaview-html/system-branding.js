@@ -16,6 +16,38 @@
     }
   }
 
+  function saveCachedSettings(settings) {
+    localStorage.setItem(storageKey, JSON.stringify(settings || {}));
+  }
+
+  function settingsEndpoint() {
+    const path = window.location.pathname;
+    return path.includes('/pages/') || path.includes('/admin_pages/') || path.includes('/super_admin/')
+      ? '../system-settings.php'
+      : 'system-settings.php';
+  }
+
+  async function refreshSettings(options = {}) {
+    try {
+      const cachedSettings = loadSettings();
+      const response = await fetch(settingsEndpoint(), { cache: 'no-store' });
+      const payload = await response.json();
+      if (payload.status === 'ok' && payload.settings) {
+        const hasCachedSettings = Object.keys(cachedSettings).length > 0;
+        const settings = payload.exists === false && hasCachedSettings
+          ? cachedSettings
+          : payload.settings;
+
+        saveCachedSettings(settings);
+        applyThemeFromSettings(settings);
+        applyBranding(settings, options);
+        return settings;
+      }
+    } catch (error) {}
+
+    return loadSettings();
+  }
+
   function clinicInitials(name) {
     const words = String(name || defaultClinicName).trim().split(/\s+/).filter(Boolean);
     if (!words.length) return 'D';
@@ -53,6 +85,8 @@
     defaultClinicName,
     storageKey,
     loadSettings,
+    saveCachedSettings,
+    refreshSettings,
     clinicInitials,
     applyBranding,
     applyThemeFromSettings
@@ -60,4 +94,5 @@
 
   applyThemeFromSettings();
   applyBranding();
+  refreshSettings({ updateTitle: false });
 })();

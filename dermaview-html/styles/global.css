@@ -232,6 +232,37 @@ p {
   color: var(--color-text);
 }
 
+:root[data-theme="dark"] select option,
+:root[data-theme="dark"] .auth-input option,
+:root[data-theme="dark"] .accounts-select option,
+:root[data-theme="dark"] .appointment-status-select option,
+:root[data-theme="dark"] .apt-status-select option {
+  background: #0d1b2e;
+  color: var(--color-text);
+}
+
+:root[data-theme="dark"] select option:checked,
+:root[data-theme="dark"] .accounts-select option:checked,
+:root[data-theme="dark"] .appointment-status-select option:checked,
+:root[data-theme="dark"] .apt-status-select option:checked {
+  background: #123153;
+  color: #f8fafc;
+}
+
+:root[data-theme="dark"] select option:disabled,
+:root[data-theme="dark"] .accounts-select option:disabled,
+:root[data-theme="dark"] .appointment-status-select option:disabled,
+:root[data-theme="dark"] .apt-status-select option:disabled {
+  background: #0d1b2e;
+  color: #64748b;
+}
+
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
 :root[data-theme="dark"] .button-secondary:hover {
   border-color: rgba(94, 234, 212, 0.62);
   color: var(--color-primary);
@@ -360,6 +391,10 @@ p {
 :root[data-theme="dark"] .section-kicker,
 :root[data-theme="dark"] .procedure-category,
 :root[data-theme="dark"] .dashboard-kicker {
+  width: fit-content;
+  align-self: start;
+  padding: 4px 8px;
+  border-radius: 8px;
   background: rgba(94, 234, 212, 0.1);
   color: var(--color-primary);
 }
@@ -462,5 +497,59 @@ p {
 :root[data-theme="dark"] ::selection {
   background: rgba(94, 234, 212, 0.28);
   color: var(--color-text);
+}
+
+:root[data-theme="dark"] .auth-page {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(94, 234, 212, 0.08), transparent 34%),
+    linear-gradient(180deg, #0a1626 0%, #07111f 100%) !important;
+}
+
+:root[data-theme="dark"] .auth-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
+    #111c2f !important;
+  border-color: rgba(148, 163, 184, 0.24) !important;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.38) !important;
+}
+
+:root[data-theme="dark"] .auth-title {
+  color: var(--color-text) !important;
+}
+
+:root[data-theme="dark"] .auth-subtitle,
+:root[data-theme="dark"] .auth-footer {
+  color: var(--color-text-secondary) !important;
+}
+
+:root[data-theme="dark"] .auth-footer a,
+:root[data-theme="dark"] .auth-card a:not(.close-btn) {
+  color: var(--color-primary) !important;
+}
+
+:root[data-theme="dark"] .auth-input {
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  background: #0d1b2e !important;
+  color: var(--color-text) !important;
+}
+
+:root[data-theme="dark"] .auth-input:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 4px rgba(94, 234, 212, 0.16) !important;
+}
+
+:root[data-theme="dark"] .auth-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+:root[data-theme="dark"] .close-btn {
+  background: #0d1b2e !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: var(--color-text) !important;
+}
+
+:root[data-theme="dark"] #resendWrap,
+:root[data-theme="dark"] #resendTimer {
+  color: var(--color-text-secondary) !important;
 }
 

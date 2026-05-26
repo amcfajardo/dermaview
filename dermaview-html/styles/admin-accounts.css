@@ -126,9 +126,20 @@
 }
 
 :root[data-theme="dark"] .appointment-status-select {
-  border-color: var(--color-border);
-  background-color: var(--color-bg-light);
-  color: var(--color-text);
+  border-color: rgba(94, 234, 212, 0.42);
+  background-color: rgba(20, 184, 166, 0.14);
+  color: #99f6e4;
+}
+
+:root[data-theme="dark"] .appointment-status-select option,
+:root[data-theme="dark"] .appointment-status-select option:checked {
+  background: #0d1b2e;
+  color: #f8fafc;
+}
+
+:root[data-theme="dark"] .appointment-status-select option:disabled {
+  background: #0d1b2e;
+  color: #64748b;
 }
 
 .dashboard-shell .panel-card {

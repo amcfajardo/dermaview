@@ -59,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DermaView | Change Password</title>
-  <link rel="stylesheet" href="styles/global.css" />
+  <link rel="stylesheet" href="styles/global.css?v=20260526-6" />
   <link rel="stylesheet" href="styles/header.css" />
   <style>
     .auth-page {
@@ -181,5 +181,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   </div>
 </div>
 
+<script src="system-branding.js?v=20260526-4"></script>
 </body>
 </html>

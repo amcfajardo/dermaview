@@ -16,7 +16,24 @@
       }
 
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result || '');
+      reader.onload = () => {
+        const image = new Image();
+        image.onload = () => {
+          const maxSize = 320;
+          const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+          const width = Math.max(1, Math.round(image.width * scale));
+          const height = Math.max(1, Math.round(image.height * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext('2d');
+          context.clearRect(0, 0, width, height);
+          context.drawImage(image, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/webp', 0.82));
+        };
+        image.onerror = () => resolve(reader.result || '');
+        image.src = reader.result || '';
+      };
       reader.onerror = () => resolve('');
       reader.readAsDataURL(file);
     });
@@ -32,6 +49,49 @@
 
   function saveSettings(data) {
     localStorage.setItem(storageKey, JSON.stringify(data));
+  }
+
+  function settingsEndpoint() {
+    return '../system-settings.php';
+  }
+
+  async function fetchSavedSettings() {
+    try {
+      const cachedSettings = loadSettings();
+      const response = await fetch(settingsEndpoint(), { cache: 'no-store' });
+      const payload = await response.json();
+      if (payload.status === 'ok' && payload.settings) {
+        const hasCachedSettings = Object.keys(cachedSettings).length > 0;
+        const settings = payload.exists === false && hasCachedSettings
+          ? cachedSettings
+          : payload.settings;
+
+        saveSettings(settings);
+        return settings;
+      }
+    } catch (error) {}
+
+    return loadSettings();
+  }
+
+  async function persistSettings(settings) {
+    const response = await fetch(settingsEndpoint(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    });
+    const text = await response.text();
+    let payload = null;
+    try {
+      payload = JSON.parse(text);
+    } catch (error) {
+      throw new Error('Unable to save system settings. Please try a smaller logo image.');
+    }
+    if (!response.ok || payload.status !== 'ok') {
+      throw new Error(payload.message || 'Unable to save system settings.');
+    }
+    saveSettings(payload.settings || settings);
+    return payload.settings || settings;
   }
 
   function clinicInitials(name) {
@@ -78,13 +138,13 @@
   window.applySystemSettings = applySystemSettings;
   applySystemSettings();
 
-  window.initSystemSettings = function () {
+  window.initSystemSettings = async function () {
     const form = document.getElementById('systemSettingsForm');
     const logoInput = document.getElementById('clinicLogo');
 
     if (!form) return;
 
-    const settings = loadSettings();
+    const settings = await fetchSavedSettings();
     setValue('clinicName', settings.clinicName || 'DermaView');
     setValue('contactInfo', settings.contactInfo || '');
     setValue('clinicEmail', settings.clinicEmail || '');
@@ -118,37 +178,41 @@
 
     async function handleSave(event) {
       if (event) event.preventDefault();
-      const current = loadSettings();
-      const logo = logoInput && logoInput.files[0]
-        ? await fileToDataUrl(logoInput.files[0])
-        : current.logo || '';
+      try {
+        const current = loadSettings();
+        const logo = logoInput && logoInput.files[0]
+          ? await fileToDataUrl(logoInput.files[0])
+          : current.logo || '';
 
-      const nextSettings = {
-        clinicName: document.getElementById('clinicName').value.trim() || defaultClinicName,
-        contactInfo: document.getElementById('contactInfo').value.trim(),
-        clinicEmail: document.getElementById('clinicEmail').value.trim(),
-        clinicContactNumber: document.getElementById('clinicContactNumber').value.trim(),
-        businessHours: document.getElementById('businessHours').value.trim(),
-        appointmentSlots: document.getElementById('appointmentSlots').value.trim(),
-        sessionTimeout: document.getElementById('sessionTimeout').value,
-        defaultTheme: document.getElementById('defaultTheme').value,
-        maintenanceMode: document.getElementById('maintenanceMode').value,
-        emailSender: document.getElementById('emailSender').value.trim(),
-        emailReplyTo: document.getElementById('emailReplyTo').value.trim(),
-        reportFooter: document.getElementById('reportFooter').value.trim(),
-        uploadSizeLimit: document.getElementById('uploadSizeLimit').value.trim(),
-        allowedImageTypes: document.getElementById('allowedImageTypes').value.trim(),
-        imageRetentionPeriod: document.getElementById('imageRetentionPeriod').value.trim(),
-        emailNotifications: document.getElementById('emailNotifications').value,
-        logo
-      };
+        const nextSettings = {
+          clinicName: document.getElementById('clinicName').value.trim() || defaultClinicName,
+          contactInfo: document.getElementById('contactInfo').value.trim(),
+          clinicEmail: document.getElementById('clinicEmail').value.trim(),
+          clinicContactNumber: document.getElementById('clinicContactNumber').value.trim(),
+          businessHours: document.getElementById('businessHours').value.trim(),
+          appointmentSlots: document.getElementById('appointmentSlots').value.trim(),
+          sessionTimeout: document.getElementById('sessionTimeout').value,
+          defaultTheme: document.getElementById('defaultTheme').value,
+          maintenanceMode: document.getElementById('maintenanceMode').value,
+          emailSender: document.getElementById('emailSender').value.trim(),
+          emailReplyTo: document.getElementById('emailReplyTo').value.trim(),
+          reportFooter: document.getElementById('reportFooter').value.trim(),
+          uploadSizeLimit: document.getElementById('uploadSizeLimit').value.trim(),
+          allowedImageTypes: document.getElementById('allowedImageTypes').value.trim(),
+          imageRetentionPeriod: document.getElementById('imageRetentionPeriod').value.trim(),
+          emailNotifications: document.getElementById('emailNotifications').value,
+          logo
+        };
 
-      saveSettings(nextSettings);
+        const savedSettings = await persistSettings(nextSettings);
 
-      renderLogoPreview(logo);
-      applySystemSettings(nextSettings);
-      window.DermaViewBranding?.applyBranding(nextSettings, { titleSuffix: 'Super Admin Dashboard' });
-      alert('System settings saved.');
+        renderLogoPreview(savedSettings.logo || logo);
+        applySystemSettings(savedSettings);
+        window.DermaViewBranding?.applyBranding(savedSettings, { titleSuffix: 'Super Admin Dashboard' });
+        alert('System settings saved.');
+      } catch (error) {
+        alert(error.message || 'Unable to save system settings.');
+      }
     }
 
     form.addEventListener('submit', handleSave);
