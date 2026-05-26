@@ -2,7 +2,7 @@
 
 $host = "localhost";
 $user = "root";
-$password = "admin123";
+$password = "";
 $database = "dermaview";
 
 mysqli_report(MYSQLI_REPORT_OFF);
