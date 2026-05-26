@@ -145,19 +145,19 @@ document.addEventListener('DOMContentLoaded', function () {
       .then(session => {
         const role = String(session.role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
         if (session.status !== 'ok') {
-          window.location.replace('../login.html');
+          window.location.replace('../index.html');
           return false;
         }
 
         if (role !== 'superadmin') {
-          window.location.replace(role === 'admin' ? '../admin.html' : '../index.html');
+          window.location.replace(role === 'admin' ? '../admin.html' : '../landing.html');
           return false;
         }
 
         return true;
       })
       .catch(() => {
-        window.location.replace('../login.html');
+        window.location.replace('../index.html');
         return false;
       });
   }

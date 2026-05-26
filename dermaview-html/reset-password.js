@@ -48,7 +48,7 @@ document
       );
 
       window.location.href =
-        "login.html";
+        "index.html";
 
     }
 

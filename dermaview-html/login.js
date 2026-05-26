@@ -32,7 +32,7 @@ document
         } else if (role === 'admin') {
           window.location.href = 'admin.html';
         } else {
-          window.location.href = 'login.html';
+          window.location.href = 'index.html';
         }
         return;
       }
@@ -55,7 +55,7 @@ document
           console.warn('get-session failed', e);
         }
         // default redirect
-        window.location.href = 'index.html';
+        window.location.href = 'landing.html';
         return;
       }
 

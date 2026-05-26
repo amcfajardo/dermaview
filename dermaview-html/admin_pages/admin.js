@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', function () {
       .then(session => {
         const role = String(session.role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
         if (session.status !== 'ok' || (role !== 'admin' && role !== 'superadmin')) {
-          window.location.replace('../login.html');
+          window.location.replace('../index.html');
           return false;
         }
 
@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return true;
       })
       .catch(() => {
-        window.location.replace('../login.html');
+        window.location.replace('../index.html');
         return false;
       });
   }

@@ -121,7 +121,7 @@ Key CSS variables defined in `global.css`:
 
 ## Import Order
 
-The CSS files are imported in `index.html` in the following order:
+The CSS files are imported in `landing.html` in the following order:
 
 1. **global.css** - Must be first (defines variables)
 2. **header.css** - Layout foundation

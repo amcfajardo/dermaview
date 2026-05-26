@@ -20,7 +20,7 @@ document
       alert(result);
 
       if (result === "Registration successful") {
-        window.location.href = "login.html";
+        window.location.href = "index.html";
       }
 
     } catch (error) {
