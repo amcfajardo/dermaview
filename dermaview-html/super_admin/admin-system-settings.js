@@ -73,6 +73,14 @@
 
     document.title = `${clinicName} Super Admin Dashboard`;
     window.DermaViewBranding?.applyThemeFromSettings(settings);
+    const theme = settings.defaultTheme || 'light';
+document.documentElement.setAttribute('data-theme', theme);
+document.body.setAttribute('data-theme', theme);
+    requestAnimationFrame(() => {
+  document.body.classList.remove('theme-transition-fix');
+  void document.body.offsetWidth;
+  document.body.classList.add('theme-transition-fix');
+});
   }
 
   window.applySystemSettings = applySystemSettings;

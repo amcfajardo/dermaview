@@ -28,25 +28,25 @@
   }
 
   .sidebar {
-    position: fixed;
-    inset: 0 auto 0 0;
-    width: var(--admin-sidebar-width);
-    height: 100vh;
-    overflow-y: auto;
-    background: #111827;
-    border-right: 0;
-    padding: 18px 14px;
-    box-sizing: border-box;
-    flex-shrink: 0;
-    z-index: 20;
-    color: #e5eefb;
-  }
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--admin-sidebar-width);
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--color-surface, var(--color-white));
+  border-right: 1px solid var(--color-border);
+  padding: 18px 14px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  z-index: 20;
+  color: var(--color-text);
+}
 
   .brand {
     width: 100%;
     min-height: 46px;
     font-weight: 800;
-    color: #ffffff;
+    color: var(--color-text);
     margin-bottom: 10px;
     font-size: 0.92rem;
     line-height: 1.1;
@@ -115,7 +115,7 @@
 
 .nav-section-label {
   margin: 14px 10px 5px;
-  color: #94a3b8;
+  color: var(--color-text-muted);
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0;
@@ -128,7 +128,7 @@
   min-height: 34px;
   padding: 0 10px;
   border-radius: 12px;
-  color: #dbeafe;
+  color: var(--color-text);
   width: calc(100% - 8px);
   margin: 0 auto;
   text-decoration: none;
@@ -168,7 +168,7 @@
     border: 1px solid var(--color-border);
     border-radius: 8px;
     padding: 18px 20px;
-    background: var(--color-white);
+     background: var(--color-surface, var(--color-white));
   }
 
   .super-admin-topbar .page-title {
@@ -265,6 +265,119 @@
       padding: 16px;
     }
   }
+
+  body.theme-dark,
+html.theme-dark {
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+body.theme-dark .sidebar {
+  background: #111827;
+  color: #e2e8f0;
+  border-right: 1px solid #1e293b;
+}
+
+body.theme-dark .nav a {
+  color: #cbd5e1;
+}
+
+body.theme-dark .super-admin-topbar,
+body.theme-dark .panel-card,
+body.theme-dark .accounts-panel {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+body.theme-dark input,
+body.theme-dark textarea,
+body.theme-dark select {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+body.theme-dark table {
+  color: #e2e8f0;
+}
+
+body[data-theme="dark"] {
+  --color-bg: #06101f;
+  --color-bg-lighter: #0b1728;
+  --color-surface: #111c2e;
+  --color-white: #111c2e;
+  --color-text: #f8fafc;
+  --color-text-secondary: #dbeafe;
+  --color-text-muted: #94a3b8;
+  --color-border: #26364f;
+  --color-primary: #2563eb;
+}
+
+body[data-theme="dark"] .app,
+body[data-theme="dark"] .main,
+body[data-theme="dark"] #pageContent {
+  background: #06101f !important;
+  color: #f8fafc !important;
+}
+
+body[data-theme="dark"] .sidebar {
+  background: #0b1728 !important;
+  color: #f8fafc !important;
+  border-right: 1px solid #26364f !important;
+}
+
+body[data-theme="dark"] .brand,
+body[data-theme="dark"] .brand-name,
+body[data-theme="dark"] .nav a {
+  color: #f8fafc !important;
+}
+
+body[data-theme="dark"] .nav-section-label,
+body[data-theme="dark"] .super-admin-badge {
+  color: #94a3b8 !important;
+  border-color: #26364f !important;
+}
+
+body[data-theme="dark"] .nav a.active,
+body[data-theme="dark"] .nav a:hover {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+body[data-theme="dark"] .panel-card,
+body[data-theme="dark"] .accounts-panel,
+body[data-theme="dark"] .admin-content-panel,
+body[data-theme="dark"] .super-admin-topbar {
+  background: #111c2e !important;
+  color: #f8fafc !important;
+  border-color: #26364f !important;
+}
+
+body[data-theme="dark"] input,
+body[data-theme="dark"] textarea,
+body[data-theme="dark"] select,
+body[data-theme="dark"] .accounts-input,
+body[data-theme="dark"] .accounts-select {
+  background: #0b1728 !important;
+  color: #f8fafc !important;
+  border-color: #26364f !important;
+}
+
+body[data-theme="dark"] input::placeholder,
+body[data-theme="dark"] textarea::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+body[data-theme="dark"] label,
+body[data-theme="dark"] h3,
+body[data-theme="dark"] h4,
+body[data-theme="dark"] p,
+body[data-theme="dark"] span,
+body[data-theme="dark"] .section-text,
+body[data-theme="dark"] .table-muted {
+  color: #f8fafc !important;
+}
 </style>
 </head>
 <body>
@@ -341,7 +454,7 @@
   <script src="admin-processing-settings.js?v=20260525-3"></script>
   <script src="admin-consultation-records.js?v=20260525-2"></script>
   <script src="admin-reports.js?v=20260525-2"></script>
-  <script src="admin-system-settings.js?v=20260526-1"></script>
+  <script src="admin-system-settings.js?v=20260526-999"></script>
   <script src="admin-patients.js?v=20260525-2"></script>
   <script src="admin-activity.js?v=20260525-2"></script>
   <script src="admin-super-admin.js?v=20260525-3"></script>
