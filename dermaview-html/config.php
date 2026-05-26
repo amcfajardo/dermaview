@@ -1,7 +1,7 @@
 <?php
 
 $host = "localhost";
-$user = "root";
+$user = "dermaviewuser";
 $password = "admin123";
 $database = "dermaview";
 
