@@ -32,7 +32,7 @@ document
         } else if (role === 'admin') {
           window.location.href = 'admin.html';
         } else {
-          window.location.href = 'index.html';
+          window.location.href = 'login.html';
         }
         return;
       }
