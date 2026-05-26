@@ -111,7 +111,12 @@ function staffCalStatusOptions(currentStatus) {
     ['No Show', 'No Show']
   ];
 
-  return statuses
+  const hasCurrentStatus = statuses.some(([value]) => value === currentStatus);
+  const options = hasCurrentStatus || !currentStatus
+    ? statuses
+    : [[currentStatus, currentStatus], ...statuses];
+
+  return options
     .map(([value, label]) => `<option value="${value}" ${value === currentStatus ? 'selected' : ''}>${label}</option>`)
     .join('');
 }

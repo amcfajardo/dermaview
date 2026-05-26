@@ -118,10 +118,14 @@ function current_user_id() {
     return isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : 0;
 }
 
+function current_user_role_key() {
+    return strtolower(str_replace([' ', '_', '-'], '', (string) ($_SESSION['role'] ?? '')));
+}
+
 function can_manage_appointment($row, $conn) {
     $user_id = current_user_id();
 
-    if ($user_id <= 0) {
+    if ($user_id <= 0 || current_user_role_key() !== 'staff') {
         return false;
     }
 
@@ -133,6 +137,29 @@ function can_manage_appointment($row, $conn) {
     $assigned_staff = trim((string) ($row['assigned_staff'] ?? ''));
 
     return $staff_name !== '' && $assigned_staff !== '' && strcasecmp($staff_name, $assigned_staff) === 0;
+}
+
+function ensure_appointment_column($conn, $column, $definition) {
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) AS total
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'appointments'
+          AND column_name = ?
+    ");
+
+    if (!$stmt) {
+        return;
+    }
+
+    $stmt->bind_param("s", $column);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result ? $result->fetch_assoc() : null;
+
+    if (!$row || (int) $row['total'] === 0) {
+        $conn->query("ALTER TABLE appointments ADD COLUMN $definition");
+    }
 }
 
 function ensure_appointment_columns($conn) {
@@ -159,25 +186,16 @@ function ensure_appointment_columns($conn) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
 
-    $result = $conn->query("
-        SELECT COUNT(*) AS total
-        FROM information_schema.columns
-        WHERE table_schema = DATABASE()
-          AND table_name = 'appointments'
-          AND column_name = 'assigned_staff'
-    ");
-    $row = $result ? $result->fetch_assoc() : null;
-
-    if (!$row || (int) $row['total'] === 0) {
-        $conn->query("ALTER TABLE appointments ADD COLUMN assigned_staff VARCHAR(160) NULL AFTER status");
-    }
+    ensure_appointment_column($conn, 'assigned_staff', 'assigned_staff VARCHAR(160) NULL AFTER status');
+    ensure_appointment_column($conn, 'source', "source ENUM('online','staff') NOT NULL DEFAULT 'online' AFTER assigned_staff");
+    ensure_appointment_column($conn, 'recorded_by', 'recorded_by INT NULL AFTER source');
 }
 
 ensure_appointment_columns($conn);
 
 $action = $_POST['action'] ?? '';
 
-$public_actions = ['add', 'fetch_public_json'];
+$public_actions = ['add', 'fetch_public_json', 'update_status'];
 
 if (!in_array($action, $public_actions, true)) {
     auth_require_admin(false);
@@ -314,7 +332,7 @@ if ($action === 'fetch_public_json') {
     header('Content-Type: application/json; charset=utf-8');
 
     $result = $conn->query("
-        SELECT procedure_name, appointment_date, appointment_time, status
+        SELECT id, procedure_name, patient_name, email, phone, appointment_date, appointment_time, notes, status, assigned_staff, source, recorded_by
         FROM appointments
         ORDER BY appointment_date ASC, appointment_time ASC, id ASC
     ");
@@ -323,13 +341,21 @@ if ($action === 'fetch_public_json') {
 
     if ($result && $result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
+            $can_manage = can_manage_appointment($row, $conn);
+
             $appointments[] = [
+                'id' => (int) $row['id'],
                 'procedure_name' => $row['procedure_name'],
-                'patient_name' => 'Booked Consultation',
+                'patient_name' => $can_manage ? $row['patient_name'] : 'Booked Consultation',
+                'email' => $can_manage ? $row['email'] : '',
+                'phone' => $can_manage ? $row['phone'] : '',
                 'appointment_date' => $row['appointment_date'],
                 'appointment_time' => $row['appointment_time'],
                 'time_label' => format_time_label($row['appointment_time']),
-                'status' => $row['status']
+                'status' => $row['status'],
+                'source' => $row['source'],
+                'notes' => $can_manage ? $row['notes'] : '',
+                'can_manage' => $can_manage
             ];
         }
     }
