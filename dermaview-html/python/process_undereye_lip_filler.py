@@ -4,34 +4,29 @@ import numpy as np
 import sys
 from pathlib import Path
 
-DISCLAIMER = "Educational visualization only; not a medical diagnosis or guaranteed treatment result."
+DISCLAIMER = "Educational visualization only. Not a medical diagnosis or guaranteed treatment result."
 
 COLORS = {
-    "red": (35, 55, 220),
-    "orange": (0, 145, 255),
-    "green": (70, 165, 70),
-    "blue": (210, 130, 35),
-    "purple": (185, 85, 175),
-    "cyan": (190, 150, 35),
-    "navy": (78, 48, 25),
-    "text": (45, 45, 45),
-    "muted": (100, 100, 100),
-    "panel": (255, 255, 255),
-    "line": (220, 224, 230),
+    "red": (45, 45, 220),
+    "orange": (0, 135, 255),
+    "green": (70, 160, 60),
+    "purple": (180, 70, 155),
+    "blue": (215, 120, 30),
+    "teal": (165, 150, 20),
+    "navy": (55, 30, 10),
+    "gray": (95, 95, 95),
+    "light": (248, 248, 248),
 }
-
 
 def fail(message, code=1):
     print(message)
     sys.exit(code)
-
 
 def read_image(input_path):
     img = cv2.imread(str(input_path), cv2.IMREAD_COLOR)
     if img is None:
         fail("Image not found or unsupported image format")
     return img
-
 
 def save_image(output_path, img):
     output_path = Path(output_path)
@@ -40,8 +35,7 @@ def save_image(output_path, img):
     if not ok:
         fail("Failed to save output image")
 
-
-def resize_for_processing(img, max_size=1200):
+def resize_for_processing(img, max_size=1300):
     h, w = img.shape[:2]
     longest = max(h, w)
     if longest <= max_size:
@@ -49,99 +43,77 @@ def resize_for_processing(img, max_size=1200):
     scale = max_size / float(longest)
     return cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
-
 def clamp_intensity(value, default=1.0):
     try:
         value = float(value)
     except Exception:
         value = default
-    return float(np.clip(value, 0.35, 1.50))
-
+    return float(np.clip(value, 0.30, 1.60))
 
 def detect_face_bbox(img):
     h, w = img.shape[:2]
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    try:
-        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        cascade = cv2.CascadeClassifier(cascade_path)
-        faces = cascade.detectMultiScale(gray, scaleFactor=1.08, minNeighbors=4, minSize=(max(50, w//8), max(50, h//8)))
-    except Exception:
-        faces = []
+    cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    cascade = cv2.CascadeClassifier(cascade_path)
+    faces = cascade.detectMultiScale(gray, scaleFactor=1.08, minNeighbors=4, minSize=(max(40, w//8), max(40, h//8)))
     if len(faces) > 0:
-        x, y, fw, fh = max(faces, key=lambda r: r[2] * r[3])
-        pad_x, pad_y = int(fw * 0.22), int(fh * 0.34)
+        faces = sorted(faces, key=lambda r: r[2] * r[3], reverse=True)
+        x, y, fw, fh = [int(v) for v in faces[0]]
+        pad_x, pad_y = int(fw * 0.08), int(fh * 0.16)
         x = max(0, x - pad_x)
         y = max(0, y - pad_y)
-        fw = min(w - x, fw + pad_x * 2)
-        fh = min(h - y, fh + int(pad_y * 1.65))
-        return (x, y, fw, fh)
-    # fallback centered head/face estimate
-    return (int(w * 0.23), int(h * 0.10), int(w * 0.54), int(h * 0.68))
+        fw = min(w - x, fw + 2 * pad_x)
+        fh = min(h - y, fh + int(pad_y * 1.6))
+        return x, y, fw, fh
+    # Fallback: center face estimate. This keeps the script usable for different image sizes even when detection fails.
+    fw = int(w * 0.56)
+    fh = int(h * 0.70)
+    x = (w - fw) // 2
+    y = int(h * 0.12)
+    return x, y, fw, fh
 
-
-def skin_mask_bgr(img, bbox=None):
+def skin_mask_bgr(img):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     ycrcb = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
     mask_hsv = cv2.inRange(hsv, np.array([0, 14, 32]), np.array([35, 235, 255]))
-    mask_ycrcb = cv2.inRange(ycrcb, np.array([0, 126, 68]), np.array([255, 188, 154]))
+    mask_ycrcb = cv2.inRange(ycrcb, np.array([0, 126, 68]), np.array([255, 188, 155]))
     mask = cv2.bitwise_and(mask_hsv, mask_ycrcb)
-    if bbox is not None:
-        face = face_oval_mask(np.zeros(img.shape[:2], np.uint8), bbox, blur=0)
-        mask = cv2.bitwise_and(mask, face)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
-    if cv2.countNonZero(mask) < img.shape[0] * img.shape[1] * 0.015:
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    if cv2.countNonZero(mask) < img.shape[0] * img.shape[1] * 0.025:
         h, w = img.shape[:2]
-        if bbox is None:
-            bbox = detect_face_bbox(img)
-        mask = face_oval_mask(np.zeros((h, w), np.uint8), bbox, blur=0)
-    return cv2.GaussianBlur(mask, (35, 35), 0)
-
-
-def face_oval_mask(mask, bbox, blur=21):
-    x, y, w, h = bbox
-    center = (int(x + w * 0.50), int(y + h * 0.52))
-    axes = (max(1, int(w * 0.43)), max(1, int(h * 0.50)))
-    cv2.ellipse(mask, center, axes, 0, 0, 360, 255, -1)
-    if blur:
-        k = blur if blur % 2 else blur + 1
-        mask = cv2.GaussianBlur(mask, (k, k), 0)
+        mask = np.zeros((h, w), np.uint8)
+        x, y, fw, fh = detect_face_bbox(img)
+        cv2.ellipse(mask, (x + fw//2, y + int(fh*0.53)), (int(fw*0.46), int(fh*0.50)), 0, 0, 360, 255, -1)
+    mask = cv2.GaussianBlur(mask, (31, 31), 0)
     return mask
 
-
-def ellipse_mask(shape, center, axes, blur=0):
-    h, w = shape[:2]
-    mask = np.zeros((h, w), np.uint8)
-    cv2.ellipse(mask, (int(center[0]), int(center[1])), (max(1, int(axes[0])), max(1, int(axes[1]))), 0, 0, 360, 255, -1)
-    if blur:
-        k = blur if blur % 2 else blur + 1
-        mask = cv2.GaussianBlur(mask, (k, k), 0)
-    return mask
-
+def mask3(mask, strength=1.0):
+    f = mask.astype(np.float32) / 255.0
+    f = np.clip(f * strength, 0, 1)
+    return cv2.merge([f, f, f])
 
 def blend(original, processed, mask, strength=1.0):
-    f = np.clip((mask.astype(np.float32) / 255.0) * strength, 0, 1)
-    f3 = cv2.merge([f, f, f])
-    return np.clip(processed.astype(np.float32) * f3 + original.astype(np.float32) * (1 - f3), 0, 255).astype(np.uint8)
-
+    alpha = mask3(mask, strength)
+    out = processed.astype(np.float32) * alpha + original.astype(np.float32) * (1 - alpha)
+    return np.clip(out, 0, 255).astype(np.uint8)
 
 def protect_features_mask(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    edges = cv2.Canny(gray, 45, 110)
+    edges = cv2.Canny(gray, 45, 115)
     dark = cv2.inRange(gray, 0, 70)
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    lip1 = cv2.inRange(hsv, np.array([0, 25, 35]), np.array([18, 195, 245]))
-    lip2 = cv2.inRange(hsv, np.array([155, 25, 35]), np.array([180, 195, 245]))
+    lip1 = cv2.inRange(hsv, np.array([0, 25, 35]), np.array([18, 200, 245]))
+    lip2 = cv2.inRange(hsv, np.array([155, 25, 35]), np.array([180, 200, 245]))
     mask = cv2.bitwise_or(edges, dark)
     mask = cv2.bitwise_or(mask, cv2.bitwise_or(lip1, lip2))
     mask = cv2.dilate(mask, np.ones((5, 5), np.uint8), iterations=1)
-    return cv2.GaussianBlur(mask, (21, 21), 0)
-
+    mask = cv2.GaussianBlur(mask, (21, 21), 0)
+    return mask
 
 def gentle_sharpen(img, amount=0.06):
     blur = cv2.GaussianBlur(img, (0, 0), 1)
     return cv2.addWeighted(img, 1 + amount, blur, -amount, 0)
-
 
 def enhance_lab(img, l_alpha=1.04, l_beta=4, a_smooth=0.06):
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
@@ -150,132 +122,123 @@ def enhance_lab(img, l_alpha=1.04, l_beta=4, a_smooth=0.06):
     a = cv2.addWeighted(a, 1 - a_smooth, cv2.GaussianBlur(a, (0, 0), 3), a_smooth, 0)
     return cv2.cvtColor(cv2.merge((l, a, b)), cv2.COLOR_LAB2BGR)
 
+def elliptical_mask(shape, center, axes, blur=31):
+    h, w = shape[:2]
+    mask = np.zeros((h, w), np.uint8)
+    cv2.ellipse(mask, center, axes, 0, 0, 360, 255, -1)
+    if blur:
+        blur = blur if blur % 2 == 1 else blur + 1
+        mask = cv2.GaussianBlur(mask, (blur, blur), 0)
+    return mask
 
-def put_text(img, text, pos, scale=0.5, color=(45,45,45), thick=1):
-    cv2.putText(img, str(text), pos, cv2.FONT_HERSHEY_SIMPLEX, scale, color, thick, cv2.LINE_AA)
+def rounded_rect(img, p1, p2, color, radius=16, thickness=-1):
+    x1, y1 = p1; x2, y2 = p2
+    if thickness < 0:
+        cv2.rectangle(img, (x1+radius, y1), (x2-radius, y2), color, -1)
+        cv2.rectangle(img, (x1, y1+radius), (x2, y2-radius), color, -1)
+        cv2.circle(img, (x1+radius, y1+radius), radius, color, -1)
+        cv2.circle(img, (x2-radius, y1+radius), radius, color, -1)
+        cv2.circle(img, (x1+radius, y2-radius), radius, color, -1)
+        cv2.circle(img, (x2-radius, y2-radius), radius, color, -1)
+    else:
+        cv2.rectangle(img, p1, p2, color, thickness)
 
-
-def wrap_lines(text, max_chars=45):
+def draw_text(img, text, org, scale=0.55, color=(20,20,20), thickness=1, max_width=None, line_gap=22):
+    x, y = org
+    if max_width is None:
+        cv2.putText(img, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thickness, cv2.LINE_AA)
+        return y + line_gap
     words = str(text).split()
-    lines, cur = [], ''
+    line = ""
     for word in words:
-        if len(cur) + len(word) + 1 <= max_chars:
-            cur = (cur + ' ' + word).strip()
+        test = (line + " " + word).strip()
+        tw = cv2.getTextSize(test, cv2.FONT_HERSHEY_SIMPLEX, scale, thickness)[0][0]
+        if tw > max_width and line:
+            cv2.putText(img, line, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thickness, cv2.LINE_AA)
+            y += line_gap
+            line = word
         else:
-            if cur: lines.append(cur)
-            cur = word
-    if cur: lines.append(cur)
-    return lines
-
-
-def put_wrapped(img, text, x, y, max_chars=45, scale=0.42, color=(45,45,45), line_h=18, max_lines=3):
-    for line in wrap_lines(text, max_chars)[:max_lines]:
-        put_text(img, line, (x, y), scale, color, 1)
-        y += line_h
+            line = test
+    if line:
+        cv2.putText(img, line, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thickness, cv2.LINE_AA)
+        y += line_gap
     return y
 
-
-def rounded_rect(img, pt1, pt2, color, border=None, radius=14, thickness=-1):
-    # Simple rectangle fallback with antialiased borders; OpenCV lacks native rounded rect.
-    cv2.rectangle(img, pt1, pt2, color, thickness, cv2.LINE_AA)
-    if border is not None:
-        cv2.rectangle(img, pt1, pt2, border, 1, cv2.LINE_AA)
-
-
-def draw_dashed_ellipse(img, center, axes, color, thickness=1, dash_deg=5, gap_deg=8):
-    start = 0
-    while start < 360:
-        end = min(start + dash_deg, 360)
-        cv2.ellipse(img, (int(center[0]), int(center[1])), (max(1, int(axes[0])), max(1, int(axes[1]))), 0, start, end, color, thickness, cv2.LINE_AA)
-        start += dash_deg + gap_deg
-
-
-def draw_soft_area(img, mask, color, alpha=0.045):
-    overlay = img.copy()
+def color_tint(original, mask, color, alpha=0.15):
+    overlay = original.copy()
     overlay[mask > 0] = color
-    return cv2.addWeighted(overlay, alpha, img, 1-alpha, 0)
+    return cv2.addWeighted(overlay, alpha, original, 1-alpha, 0)
 
+def make_face_region_masks(img):
+    h, w = img.shape[:2]
+    x, y, fw, fh = detect_face_bbox(img)
+    # Conservative segmented regions to avoid covering the whole face.
+    regions = {}
+    regions["forehead"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.24)), (int(fw*0.24), int(fh*0.060)), blur=0)
+    regions["left_cheek"] = elliptical_mask(img.shape, (x + int(fw*0.31), y + int(fh*0.55)), (int(fw*0.105), int(fh*0.150)), blur=0)
+    regions["right_cheek"] = elliptical_mask(img.shape, (x + int(fw*0.69), y + int(fh*0.55)), (int(fw*0.105), int(fh*0.150)), blur=0)
+    under = np.zeros((h, w), np.uint8)
+    cv2.ellipse(under, (x + int(fw*0.36), y + int(fh*0.405)), (int(fw*0.105), int(fh*0.035)), 0, 0, 360, 255, -1)
+    cv2.ellipse(under, (x + int(fw*0.64), y + int(fh*0.405)), (int(fw*0.105), int(fh*0.035)), 0, 0, 360, 255, -1)
+    regions["undereye"] = under
+    regions["nose"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.51)), (int(fw*0.080), int(fh*0.150)), blur=0)
+    regions["chin"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.78)), (int(fw*0.150), int(fh*0.075)), blur=0)
+    return regions, (x, y, fw, fh)
 
-def draw_badge(img, center, text, color, r=13):
-    x, y = int(center[0]), int(center[1])
-    cv2.circle(img, (x, y), r, color, -1, cv2.LINE_AA)
-    cv2.circle(img, (x, y), r, (255,255,255), 2, cv2.LINE_AA)
-    tw = cv2.getTextSize(str(text), cv2.FONT_HERSHEY_SIMPLEX, 0.45, 2)[0][0]
-    put_text(img, text, (x - tw//2, y + 5), 0.45, (255,255,255), 2)
+def score_region(issue_mask, region_mask):
+    denom = max(1, cv2.countNonZero(region_mask))
+    return min(100.0, (cv2.countNonZero(cv2.bitwise_and(issue_mask, region_mask)) / denom) * 100.0)
 
-
-def severity_label(score):
-    if score < 18: return 'Low'
-    if score < 40: return 'Mild'
-    if score < 65: return 'Moderate'
-    return 'High'
-
-
-def create_before_after_report(original, processed, title, findings, recommendations=None):
-    original = resize_for_processing(original, 900)
-    processed = cv2.resize(processed, (original.shape[1], original.shape[0]), interpolation=cv2.INTER_AREA)
-    h, w = original.shape[:2]
-    panel_h = 250
-    gap = 18
-    top_h = 58
-    out_w = w*2 + gap + 48
-    out_h = top_h + h + panel_h + 38
-    canvas = np.full((out_h, out_w, 3), 248, dtype=np.uint8)
-    cv2.rectangle(canvas, (0,0), (out_w, top_h), COLORS['navy'], -1)
-    tw = cv2.getTextSize(title, cv2.FONT_HERSHEY_SIMPLEX, 0.85, 2)[0][0]
-    put_text(canvas, title, ((out_w-tw)//2, 38), 0.85, (255,255,255), 2)
-    x1, y1 = 24, top_h + 16
-    x2 = x1 + w + gap
-    canvas[y1:y1+h, x1:x1+w] = original
-    canvas[y1:y1+h, x2:x2+w] = processed
-    cv2.rectangle(canvas, (x1,y1), (x1+w,y1+h), (225,225,225), 1)
-    cv2.rectangle(canvas, (x2,y1), (x2+w,y1+h), (225,225,225), 1)
-    # labels below image, not blocking face
-    for label, xx in [('BEFORE', x1), ('AFTER', x2)]:
-        cv2.rectangle(canvas, (xx+14, y1+h-42), (xx+120, y1+h-12), (20,20,20), -1, cv2.LINE_AA)
-        put_text(canvas, label, (xx+31, y1+h-20), 0.55, (255,255,255), 2)
-    py = y1 + h + 24
-    rounded_rect(canvas, (24, py), (out_w-24, out_h-20), (255,255,255), (220,225,232))
-    put_text(canvas, 'EDUCATIONAL VISUALIZATION FINDINGS', (48, py+32), 0.58, COLORS['navy'], 2)
-    col_w = (out_w-96)//2
-    fx = 48
-    fy = py + 64
-    for i, line in enumerate(findings[:4]):
-        yy = fy + i*36
-        cv2.circle(canvas, (fx+8, yy-2), 8, COLORS['green'], -1, cv2.LINE_AA)
-        put_text(canvas, '✓', (fx+3, yy+3), 0.35, (255,255,255), 1)
-        put_wrapped(canvas, line, fx+24, yy+3, 58, 0.42, COLORS['text'], 16, 2)
-    rx = 48 + col_w + 28
-    put_text(canvas, 'RECOMMENDED USE', (rx, py+32), 0.58, (40,100,45), 2)
-    if recommendations is None:
-        recommendations = ['Use as visual guide only', 'Consult a licensed professional for actual evaluation', 'Compare before and after output with original image']
-    for i, line in enumerate(recommendations[:4]):
-        yy = fy + i*36
-        cv2.circle(canvas, (rx+8, yy-2), 8, COLORS['orange'], -1, cv2.LINE_AA)
-        put_wrapped(canvas, line, rx+24, yy+3, 48, 0.42, COLORS['text'], 16, 2)
-    put_text(canvas, 'Disclaimer: ' + DISCLAIMER, (48, out_h-34), 0.38, COLORS['muted'], 1)
-    return canvas
+def severity_from_score(score):
+    if score < 8:
+        return "Low"
+    if score < 18:
+        return "Mild"
+    if score < 35:
+        return "Moderate"
+    return "High"
 
 def process_undereye_lip_filler(input_path, output_path, intensity=1.0):
-    intensity=clamp_intensity(intensity)
-    original=resize_for_processing(read_image(input_path),1000); h,w=original.shape[:2]; bbox=detect_face_bbox(original); yy,xx=np.indices((h,w),dtype=np.float32); result=original.copy()
-    left=ellipse_mask(original.shape,(bbox[0]+bbox[2]*0.34,bbox[1]+bbox[3]*0.36),(bbox[2]*0.14,bbox[3]*0.055),blur=41)
-    right=ellipse_mask(original.shape,(bbox[0]+bbox[2]*0.66,bbox[1]+bbox[3]*0.36),(bbox[2]*0.14,bbox[3]*0.055),blur=41)
-    eye=cv2.bitwise_or(left,right); smooth_eye=cv2.bilateralFilter(result,15,55,55); smooth_eye=enhance_lab(smooth_eye,1.075,6,0.06); result=blend(result,smooth_eye,eye,0.50*intensity)
-    lip=(bbox[0]+bbox[2]*0.50,bbox[1]+bbox[3]*0.72); dx=(xx-lip[0])/max(bbox[2]*0.13,1); dy=(yy-lip[1])/max(bbox[3]*0.065,1); dist=np.sqrt(dx*dx+dy*dy); factor=np.clip(1-dist,0,1)
-    result=cv2.remap(result,np.clip(xx-(xx-lip[0])*factor*0.035*intensity,0,w-1).astype(np.float32),np.clip(yy-(yy-lip[1])*factor*0.060*intensity,0,h-1).astype(np.float32),cv2.INTER_LINEAR)
-    hsv=cv2.cvtColor(result,cv2.COLOR_BGR2HSV).astype(np.float32); u8=hsv.astype(np.uint8)
-    lipmask=cv2.morphologyEx(cv2.bitwise_or(cv2.inRange(u8,np.array([0,25,35]),np.array([18,195,255])),cv2.inRange(u8,np.array([155,25,35]),np.array([180,195,255]))),cv2.MORPH_CLOSE,np.ones((7,7),np.uint8))
-    lipmask=cv2.GaussianBlur(lipmask,(31,31),0).astype(np.float32)/255.0; lipmask=np.clip(lipmask*0.28*intensity,0,0.40); hsv[:,:,1]+=lipmask*28; hsv[:,:,2]+=lipmask*10
-    result=cv2.cvtColor(np.clip(hsv,0,255).astype(np.uint8),cv2.COLOR_HSV2BGR); result=gentle_sharpen(result,0.05)
-    report=create_before_after_report(original,result,'UNDEREYE + LIP FILLER VISUALIZATION',[ 
-        'Undereye zones are brightened using localized masks based on the detected face area.',
-        'Dark-circle/shadowing-like appearance is reduced while preserving eye detail.',
-        'Lip area is subtly enhanced for a hydrated and fuller visualization.',
-        'The result uses mild blending so the output remains suitable for educational display.'
-    ], ['For dark-circle and lip hydration visualization', 'For consultation awareness only', 'Not an injectable result guarantee'])
-    save_image(output_path,report); print('Undereye + Lip Filler professional report saved:',output_path); print(DISCLAIMER); sys.exit(0)
+    intensity = clamp_intensity(intensity)
+    original = resize_for_processing(read_image(input_path), 1000)
+    h, w = original.shape[:2]
+    x, y, fw, fh = detect_face_bbox(original)
+    result = original.copy()
+    yy, xx = np.indices((h, w), dtype=np.float32)
 
-if __name__ == '__main__':
-    if len(sys.argv)<3: fail('Usage: python process_undereye_lip_filler.py input output [intensity]')
-    process_undereye_lip_filler(sys.argv[1],sys.argv[2],sys.argv[3] if len(sys.argv)>3 else 1.0)
+    left_eye = elliptical_mask(original.shape, (x + int(fw * 0.36), y + int(fh * 0.405)), (int(fw * 0.11), int(fh * 0.045)), blur=41)
+    right_eye = elliptical_mask(original.shape, (x + int(fw * 0.64), y + int(fh * 0.405)), (int(fw * 0.11), int(fh * 0.045)), blur=41)
+    eye_mask = cv2.bitwise_or(left_eye, right_eye)
+    smooth_eye = cv2.bilateralFilter(result, d=15, sigmaColor=55, sigmaSpace=55)
+    smooth_eye = enhance_lab(smooth_eye, l_alpha=1.075, l_beta=6, a_smooth=0.06)
+    result = blend(result, smooth_eye, eye_mask, 0.50 * intensity)
+
+    lip_center = (x + int(fw * 0.50), y + int(fh * 0.70))
+    dx = (xx - lip_center[0]) / max(fw * 0.13, 1)
+    dy = (yy - lip_center[1]) / max(fh * 0.065, 1)
+    dist = np.sqrt(dx * dx + dy * dy)
+    factor = np.clip(1 - dist, 0, 1)
+    map_x = xx - (xx - lip_center[0]) * factor * 0.035 * intensity
+    map_y = yy - (yy - lip_center[1]) * factor * 0.058 * intensity
+    result = cv2.remap(result, np.clip(map_x, 0, w - 1).astype(np.float32), np.clip(map_y, 0, h - 1).astype(np.float32), cv2.INTER_LINEAR)
+
+    hsv = cv2.cvtColor(result, cv2.COLOR_BGR2HSV).astype(np.float32)
+    hsv_u8 = hsv.astype(np.uint8)
+    lip1 = cv2.inRange(hsv_u8, np.array([0, 25, 35]), np.array([18, 195, 255]))
+    lip2 = cv2.inRange(hsv_u8, np.array([155, 25, 35]), np.array([180, 195, 255]))
+    lip_mask = cv2.morphologyEx(cv2.bitwise_or(lip1, lip2), cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
+    lip_mask = cv2.GaussianBlur(lip_mask, (31, 31), 0).astype(np.float32) / 255.0
+    lip_mask = np.clip(lip_mask * 0.28 * intensity, 0, 0.40)
+    hsv[:, :, 1] += lip_mask * 28
+    hsv[:, :, 2] += lip_mask * 10
+    result = cv2.cvtColor(np.clip(hsv, 0, 255).astype(np.uint8), cv2.COLOR_HSV2BGR)
+    result = gentle_sharpen(result, 0.05)
+    save_image(output_path, result)
+    print("Undereye and Lip Filler educational visualization saved:", output_path)
+    print(DISCLAIMER)
+    sys.exit(0)
+
+if __name__ == "__main__":
+    if len(sys.argv) < 3:
+        fail("Usage: python process_undereye_lip_filler.py input output [intensity]")
+    process_undereye_lip_filler(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else 1.0)
