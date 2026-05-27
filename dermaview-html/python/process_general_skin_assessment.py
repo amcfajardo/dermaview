@@ -1,206 +1,187 @@
 import cv2
 import numpy as np
 import sys
+from pathlib import Path
 
 
-def resize_for_processing(img, max_size=1400):
+DISCLAIMER = "Educational visualization only; not a medical diagnosis or guaranteed treatment result."
+
+
+def fail(message, code=1):
+    print(message)
+    sys.exit(code)
+
+
+def read_image(input_path):
+    img = cv2.imread(str(input_path), cv2.IMREAD_COLOR)
+    if img is None:
+        fail("Image not found or unsupported image format")
+    return img
+
+
+def save_image(output_path, img):
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    ok = cv2.imwrite(str(output_path), img, [cv2.IMWRITE_JPEG_QUALITY, 95])
+    if not ok:
+        fail("Failed to save output image")
+
+
+def resize_for_processing(img, max_size=1200):
     h, w = img.shape[:2]
-    longest_side = max(h, w)
-
-    if longest_side <= max_size:
+    longest = max(h, w)
+    if longest <= max_size:
         return img
+    scale = max_size / float(longest)
+    return cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
-    scale = max_size / longest_side
-    return cv2.resize(
-        img,
-        (int(w * scale), int(h * scale)),
-        interpolation=cv2.INTER_AREA
-    )
+
+def clamp_intensity(value, default=1.0):
+    try:
+        value = float(value)
+    except Exception:
+        value = default
+    return float(np.clip(value, 0.35, 1.50))
+
+
+def skin_mask_bgr(img):
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    ycrcb = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+    mask_hsv = cv2.inRange(hsv, np.array([0, 16, 35]), np.array([35, 230, 255]))
+    mask_ycrcb = cv2.inRange(ycrcb, np.array([0, 128, 70]), np.array([255, 185, 150]))
+    mask = cv2.bitwise_and(mask_hsv, mask_ycrcb)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+    if cv2.countNonZero(mask) < img.shape[0] * img.shape[1] * 0.03:
+        # fallback centered oval, useful when lighting/color balance breaks thresholding
+        h, w = img.shape[:2]
+        mask = np.zeros((h, w), np.uint8)
+        cv2.ellipse(mask, (w // 2, int(h * 0.52)), (int(w * 0.36), int(h * 0.42)), 0, 0, 360, 255, -1)
+    mask = cv2.GaussianBlur(mask, (35, 35), 0)
+    return mask
+
+
+def mask3(mask, strength=1.0):
+    f = mask.astype(np.float32) / 255.0
+    f = np.clip(f * strength, 0, 1)
+    return cv2.merge([f, f, f])
+
+
+def blend(original, processed, mask, strength=1.0):
+    alpha = mask3(mask, strength)
+    out = processed.astype(np.float32) * alpha + original.astype(np.float32) * (1 - alpha)
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
+def protect_features_mask(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray, 45, 110)
+    dark = cv2.inRange(gray, 0, 70)
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    lip1 = cv2.inRange(hsv, np.array([0, 25, 35]), np.array([16, 190, 245]))
+    lip2 = cv2.inRange(hsv, np.array([155, 25, 35]), np.array([180, 190, 245]))
+    mask = cv2.bitwise_or(edges, dark)
+    mask = cv2.bitwise_or(mask, cv2.bitwise_or(lip1, lip2))
+    mask = cv2.dilate(mask, np.ones((5, 5), np.uint8), iterations=1)
+    mask = cv2.GaussianBlur(mask, (21, 21), 0)
+    return mask
+
+
+def gentle_sharpen(img, amount=0.07):
+    blur = cv2.GaussianBlur(img, (0, 0), 1)
+    return cv2.addWeighted(img, 1 + amount, blur, -amount, 0)
+
+
+def enhance_lab(img, l_alpha=1.04, l_beta=4, a_smooth=0.06):
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    l = cv2.convertScaleAbs(l, alpha=l_alpha, beta=l_beta)
+    a = cv2.addWeighted(a, 1 - a_smooth, cv2.GaussianBlur(a, (0, 0), 3), a_smooth, 0)
+    return cv2.cvtColor(cv2.merge((l, a, b)), cv2.COLOR_LAB2BGR)
+
+
+def add_panel(img, title, lines):
+    h, w = img.shape[:2]
+    panel_h = max(120, min(210, int(h * 0.20)))
+    canvas = np.full((h + panel_h, w, 3), 255, dtype=np.uint8)
+    canvas[:h, :] = img
+    y = h + 30
+    cv2.putText(canvas, title, (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.72, (25, 25, 25), 2, cv2.LINE_AA)
+    y += 32
+    for line in lines[:5]:
+        cv2.putText(canvas, "- " + line[:95], (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (60, 60, 60), 1, cv2.LINE_AA)
+        y += 24
+    return canvas
+
+
+def elliptical_mask(shape, center, axes, blur=31):
+    h, w = shape[:2]
+    mask = np.zeros((h, w), np.uint8)
+    cv2.ellipse(mask, center, axes, 0, 0, 360, 255, -1)
+    if blur:
+        blur = blur if blur % 2 == 1 else blur + 1
+        mask = cv2.GaussianBlur(mask, (blur, blur), 0)
+    return mask
+
 
 
 def process_general_skin_assessment(input_path, output_path):
-    img = cv2.imread(input_path)
-
-    if img is None:
-        print("Image not found")
-        sys.exit(1)
-
-    img = resize_for_processing(img)
-    original = img.copy()
-
+    original = resize_for_processing(read_image(input_path), 1300)
+    h, w = original.shape[:2]
     hsv = cv2.cvtColor(original, cv2.COLOR_BGR2HSV)
     lab = cv2.cvtColor(original, cv2.COLOR_BGR2LAB)
     gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
+    skin = skin_mask_bgr(original)
+    skin_binary = (skin > 30).astype(np.uint8) * 255
+    skin_pixels = max(1, cv2.countNonZero(skin_binary))
 
-    h, w = img.shape[:2]
+    _, a, _ = cv2.split(lab)
+    red1 = cv2.inRange(hsv, np.array([0, 35, 40]), np.array([20, 255, 255]))
+    red2 = cv2.inRange(hsv, np.array([155, 35, 40]), np.array([180, 255, 255]))
+    redness = cv2.bitwise_and(cv2.bitwise_or(red1, red2), skin_binary)
+    redness = cv2.morphologyEx(redness, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+
+    skin_mean = cv2.mean(gray, mask=skin_binary)[0]
+    dark_spots = cv2.inRange(gray, 0, int(max(40, skin_mean - 25)))
+    dark_spots = cv2.bitwise_and(dark_spots, skin_binary)
+    dark_spots = cv2.morphologyEx(dark_spots, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+
+    lap = cv2.Laplacian(gray, cv2.CV_64F)
+    texture_values = lap[skin_binary > 0]
+    texture_score = float(np.var(texture_values)) if texture_values.size else 0.0
+
+    redness_pct = (cv2.countNonZero(redness) / skin_pixels) * 100.0
+    dark_pct = (cv2.countNonZero(dark_spots) / skin_pixels) * 100.0
 
     result = original.copy()
+    red_overlay = result.copy(); red_overlay[redness > 0] = [75, 75, 255]
+    result = cv2.addWeighted(red_overlay, 0.18, result, 0.82, 0)
+    dark_overlay = result.copy(); dark_overlay[dark_spots > 0] = [255, 180, 80]
+    result = cv2.addWeighted(dark_overlay, 0.16, result, 0.84, 0)
 
-    # Skin mask
-    skin_mask = cv2.inRange(
-        hsv,
-        np.array([0, 18, 45]),
-        np.array([35, 220, 255])
-    )
+    lines = []
+    if redness_pct >= 1.25:
+        lines.append(f"Redness/acne-like visible signals: {redness_pct:.1f}% of skin area")
+        lines.append("Educational suggestion: CO2 Laser + Dermapen or PICO Carbon Laser")
+    if dark_pct >= 1.00:
+        lines.append(f"Dark spot/pigmentation-like signals: {dark_pct:.1f}% of skin area")
+        lines.append("Educational suggestion: PICO Carbon Laser or Diamond Peel Facial")
+    if texture_score >= 85:
+        lines.append(f"Uneven texture signal level: {texture_score:.1f}")
+        lines.append("Educational suggestion: Diamond Peel or skin rejuvenation consultation")
+    if not lines:
+        lines.append("No strong visible issue detected from the uploaded image")
+        lines.append("Educational suggestion: general consultation for confirmation")
+    lines.append("For educational visualization only; not a medical diagnosis.")
 
-    skin_mask = cv2.morphologyEx(
-        skin_mask,
-        cv2.MORPH_CLOSE,
-        np.ones((7, 7), np.uint8)
-    )
-
-    skin_pixels = cv2.countNonZero(skin_mask)
-
-    if skin_pixels == 0:
-        skin_mask = np.zeros((h, w), np.uint8)
-        cv2.ellipse(
-            skin_mask,
-            (w // 2, h // 2),
-            (max(1, int(w * 0.38)), max(1, int(h * 0.42))),
-            0,
-            0,
-            360,
-            255,
-            -1
-        )
-        skin_pixels = cv2.countNonZero(skin_mask)
-
-    # Redness / acne-like signals
-    _, a, _ = cv2.split(lab)
-
-    red1 = cv2.inRange(
-        hsv,
-        np.array([0, 35, 40]),
-        np.array([20, 255, 255])
-    )
-
-    red2 = cv2.inRange(
-        hsv,
-        np.array([155, 35, 40]),
-        np.array([180, 255, 255])
-    )
-
-    redness = cv2.bitwise_or(red1, red2)
-    redness = cv2.bitwise_and(redness, skin_mask)
-
-    redness_score = cv2.countNonZero(redness)
-
-    # Dark spots / pigmentation-like signals
-    skin_mean = cv2.mean(gray, mask=skin_mask)[0]
-
-    dark_spots = cv2.inRange(
-        gray,
-        0,
-        max(0, int(skin_mean - 25))
-    )
-
-    dark_spots = cv2.bitwise_and(dark_spots, skin_mask)
-
-    dark_score = cv2.countNonZero(dark_spots)
-
-    # Texture / unevenness signal
-    laplacian = cv2.Laplacian(gray, cv2.CV_64F)
-    texture_pixels = laplacian[skin_mask > 0]
-    texture_score = np.var(texture_pixels) if texture_pixels.size else 0
-
-    # Draw soft overlays
-    red_overlay = result.copy()
-    red_overlay[redness > 0] = [80, 80, 255]
-
-    result = cv2.addWeighted(
-        red_overlay,
-        0.18,
-        result,
-        0.82,
-        0
-    )
-
-    dark_overlay = result.copy()
-    dark_overlay[dark_spots > 0] = [255, 180, 80]
-
-    result = cv2.addWeighted(
-        dark_overlay,
-        0.16,
-        result,
-        0.84,
-        0
-    )
-
-    # Add educational label panel
-    panel_height = int(h * 0.22)
-
-    canvas = np.full(
-        (h + panel_height, w, 3),
-        255,
-        dtype=np.uint8
-    )
-
-    canvas[:h, :] = result
-
-    suggestions = []
-
-    if redness_score > 500:
-        suggestions.append("Visible redness/acne-like areas detected")
-        suggestions.append("Suggested: CO2 Laser + Dermapen or PICO Carbon Laser")
-
-    if dark_score > 500:
-        suggestions.append("Visible dark spots/pigmentation-like areas detected")
-        suggestions.append("Suggested: PICO Carbon Laser or Diamond Peel Facial")
-
-    if texture_score > 80:
-        suggestions.append("Uneven texture signals detected")
-        suggestions.append("Suggested: Diamond Peel or Skin Rejuvenation")
-
-    if not suggestions:
-        suggestions.append("No strong visible issue detected")
-        suggestions.append("Suggested: General consultation for confirmation")
-
-    y = h + 28
-
-    cv2.putText(
-        canvas,
-        "General Skin Assessment",
-        (20, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.75,
-        (30, 30, 30),
-        2,
-        cv2.LINE_AA
-    )
-
-    y += 35
-
-    for text in suggestions[:4]:
-        cv2.putText(
-            canvas,
-            "- " + text,
-            (20, y),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.55,
-            (60, 60, 60),
-            1,
-            cv2.LINE_AA
-        )
-
-        y += 28
-
-    saved = cv2.imwrite(
-        output_path,
-        canvas,
-        [cv2.IMWRITE_JPEG_QUALITY, 95]
-    )
-
-    if not saved:
-        print("Failed to save output image")
-        sys.exit(1)
-
-    print("General Skin Assessment saved:", output_path)
+    canvas = add_panel(result, "General Skin Assessment", lines)
+    save_image(output_path, canvas)
+    print("General Skin Assessment educational visualization saved:", output_path)
+    print(DISCLAIMER)
     sys.exit(0)
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python process_general_skin_assessment.py input output")
-        sys.exit(1)
-
+        fail("Usage: python process_general_skin_assessment_final.py input output")
     process_general_skin_assessment(sys.argv[1], sys.argv[2])

@@ -1,64 +1,157 @@
 import cv2
 import numpy as np
 import sys
+from pathlib import Path
 
 
-def resize_for_processing(img, max_size=900):
-    h, w = img.shape[:2]
-    longest_side = max(h, w)
-
-    if longest_side <= max_size:
-        return img
-
-    scale = max_size / longest_side
-    return cv2.resize(
-        img,
-        (int(w * scale), int(h * scale)),
-        interpolation=cv2.INTER_AREA
-    )
+DISCLAIMER = "Educational visualization only; not a medical diagnosis or guaranteed treatment result."
 
 
-def process_face_slimming(input_path, output_path):
-    img = cv2.imread(input_path)
+def fail(message, code=1):
+    print(message)
+    sys.exit(code)
 
+
+def read_image(input_path):
+    img = cv2.imread(str(input_path), cv2.IMREAD_COLOR)
     if img is None:
-        print("Image not found.")
-        sys.exit(1)
+        fail("Image not found or unsupported image format")
+    return img
 
-    img = resize_for_processing(img)
+
+def save_image(output_path, img):
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    ok = cv2.imwrite(str(output_path), img, [cv2.IMWRITE_JPEG_QUALITY, 95])
+    if not ok:
+        fail("Failed to save output image")
+
+
+def resize_for_processing(img, max_size=1200):
     h, w = img.shape[:2]
+    longest = max(h, w)
+    if longest <= max_size:
+        return img
+    scale = max_size / float(longest)
+    return cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
+
+def clamp_intensity(value, default=1.0):
+    try:
+        value = float(value)
+    except Exception:
+        value = default
+    return float(np.clip(value, 0.35, 1.50))
+
+
+def skin_mask_bgr(img):
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    ycrcb = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+    mask_hsv = cv2.inRange(hsv, np.array([0, 16, 35]), np.array([35, 230, 255]))
+    mask_ycrcb = cv2.inRange(ycrcb, np.array([0, 128, 70]), np.array([255, 185, 150]))
+    mask = cv2.bitwise_and(mask_hsv, mask_ycrcb)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+    if cv2.countNonZero(mask) < img.shape[0] * img.shape[1] * 0.03:
+        # fallback centered oval, useful when lighting/color balance breaks thresholding
+        h, w = img.shape[:2]
+        mask = np.zeros((h, w), np.uint8)
+        cv2.ellipse(mask, (w // 2, int(h * 0.52)), (int(w * 0.36), int(h * 0.42)), 0, 0, 360, 255, -1)
+    mask = cv2.GaussianBlur(mask, (35, 35), 0)
+    return mask
+
+
+def mask3(mask, strength=1.0):
+    f = mask.astype(np.float32) / 255.0
+    f = np.clip(f * strength, 0, 1)
+    return cv2.merge([f, f, f])
+
+
+def blend(original, processed, mask, strength=1.0):
+    alpha = mask3(mask, strength)
+    out = processed.astype(np.float32) * alpha + original.astype(np.float32) * (1 - alpha)
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
+def protect_features_mask(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray, 45, 110)
+    dark = cv2.inRange(gray, 0, 70)
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    lip1 = cv2.inRange(hsv, np.array([0, 25, 35]), np.array([16, 190, 245]))
+    lip2 = cv2.inRange(hsv, np.array([155, 25, 35]), np.array([180, 190, 245]))
+    mask = cv2.bitwise_or(edges, dark)
+    mask = cv2.bitwise_or(mask, cv2.bitwise_or(lip1, lip2))
+    mask = cv2.dilate(mask, np.ones((5, 5), np.uint8), iterations=1)
+    mask = cv2.GaussianBlur(mask, (21, 21), 0)
+    return mask
+
+
+def gentle_sharpen(img, amount=0.07):
+    blur = cv2.GaussianBlur(img, (0, 0), 1)
+    return cv2.addWeighted(img, 1 + amount, blur, -amount, 0)
+
+
+def enhance_lab(img, l_alpha=1.04, l_beta=4, a_smooth=0.06):
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    l = cv2.convertScaleAbs(l, alpha=l_alpha, beta=l_beta)
+    a = cv2.addWeighted(a, 1 - a_smooth, cv2.GaussianBlur(a, (0, 0), 3), a_smooth, 0)
+    return cv2.cvtColor(cv2.merge((l, a, b)), cv2.COLOR_LAB2BGR)
+
+
+def add_panel(img, title, lines):
+    h, w = img.shape[:2]
+    panel_h = max(120, min(210, int(h * 0.20)))
+    canvas = np.full((h + panel_h, w, 3), 255, dtype=np.uint8)
+    canvas[:h, :] = img
+    y = h + 30
+    cv2.putText(canvas, title, (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.72, (25, 25, 25), 2, cv2.LINE_AA)
+    y += 32
+    for line in lines[:5]:
+        cv2.putText(canvas, "- " + line[:95], (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (60, 60, 60), 1, cv2.LINE_AA)
+        y += 24
+    return canvas
+
+
+def elliptical_mask(shape, center, axes, blur=31):
+    h, w = shape[:2]
+    mask = np.zeros((h, w), np.uint8)
+    cv2.ellipse(mask, center, axes, 0, 0, 360, 255, -1)
+    if blur:
+        blur = blur if blur % 2 == 1 else blur + 1
+        mask = cv2.GaussianBlur(mask, (blur, blur), 0)
+    return mask
+
+
+
+def process_face_slimming(input_path, output_path, intensity=1.0):
+    intensity = clamp_intensity(intensity)
+    img = resize_for_processing(read_image(input_path), 1000)
+    h, w = img.shape[:2]
     yy, xx = np.indices((h, w), dtype=np.float32)
-    center_x = w / 2
+    center_x = w / 2.0
+
+    # Elliptical lower-face mask reduces background distortion versus full-image warping.
+    lower_face_mask = elliptical_mask(img.shape, (int(center_x), int(h * 0.62)), (int(w * 0.34), int(h * 0.27)), blur=41)
+    lower = lower_face_mask.astype(np.float32) / 255.0
     distance = np.abs(xx - center_x)
-    strength = 0.075 * np.exp(-(distance ** 2) / (2 * (w * 0.23) ** 2))
-    face_area = (yy > h * 0.38) & (yy < h * 0.82)
-    direction = np.where(xx < center_x, -1, 1)
-
-    map_x = np.where(face_area, xx + direction * strength * distance, xx)
-    map_x = np.clip(map_x, 0, w - 1).astype(np.float32)
-    map_y = yy.astype(np.float32)
-
-    slimmed = cv2.remap(img, map_x, map_y, cv2.INTER_LINEAR)
-
-    # Slight smoothing
-    slimmed = cv2.bilateralFilter(slimmed, 7, 35, 35)
-
-    # Slight brightness enhancement
-    slimmed = cv2.convertScaleAbs(slimmed, alpha=1.02, beta=3)
-
-    saved = cv2.imwrite(output_path, slimmed)
-
-    if not saved:
-        print("Failed to save output image")
-        sys.exit(1)
-
-    print("Face slimming visualization saved:", output_path)
+    falloff = np.exp(-(distance ** 2) / (2 * (w * 0.24) ** 2))
+    direction = np.where(xx < center_x, -1.0, 1.0)
+    strength = 0.065 * intensity
+    map_x = xx + direction * strength * distance * falloff * lower
+    map_y = yy
+    slimmed = cv2.remap(img, np.clip(map_x, 0, w - 1).astype(np.float32), map_y.astype(np.float32), cv2.INTER_LINEAR)
+    slimmed = cv2.bilateralFilter(slimmed, 5, 28, 28)
+    slimmed = cv2.convertScaleAbs(slimmed, alpha=1.015, beta=2)
+    slimmed = gentle_sharpen(slimmed, 0.035)
+    save_image(output_path, slimmed)
+    print("Face Slimming educational visualization saved:", output_path)
+    print(DISCLAIMER)
     sys.exit(0)
 
+
 if __name__ == "__main__":
-    if len(sys.argv) == 3:
-        process_face_slimming(sys.argv[1], sys.argv[2])
-    else:
-        print("Usage: python process_face_slimming.py input output")
-        sys.exit(1)
+    if len(sys.argv) < 3:
+        fail("Usage: python process_face_slimming_final.py input output [intensity]")
+    process_face_slimming(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else 1.0)
