@@ -3,6 +3,7 @@
 session_start();
 
 include 'config.php';
+require_once __DIR__ . '/maintenance_common.php';
 
 $identifier = trim($_POST['employee_number'] ?? '');
 $password = $_POST['password'] ?? '';
@@ -37,13 +38,22 @@ if (($account['status'] ?? '') === 'Inactive') {
     exit;
 }
 
+$account_role = $account['role'];
+
 if (password_verify($password, $account['password'])) {
-    $account_role = $account['role'];
+    if (maintenance_requires_logout($conn, $account_role)) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Maintenance mode is active. Only Super Admin can log in.'
+        ]);
+        exit;
+    }
 
     $_SESSION['user_id'] = $account['id'];
     $_SESSION['employee_number'] = $account['employee_number'] ?? null;
     $_SESSION['role'] = $account_role;
     $_SESSION['user_name'] = trim(($account['first_name'] ?? '') . ' ' . ($account['last_name'] ?? ''));
+    $_SESSION['login_at'] = time();
 
     // Presence: touch immediately on successful login
     try {

@@ -915,8 +915,8 @@ textarea.accounts-input {
 }
 
 .system-logo-preview {
-  width: 72px;
-  height: 72px;
+  width: 92px;
+  height: 92px;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -925,13 +925,16 @@ textarea.accounts-input {
   color: #ffffff;
   font-size: 1.4rem;
   font-weight: 900;
-  flex: 0 0 72px;
+  flex: 0 0 92px;
 }
 
 .system-logo-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: 112%;
+  height: 112%;
+  display: block;
+  object-fit: contain;
+  transform: scale(1.08);
+  transform-origin: center;
 }
 
 .accounts-permissions-panel .accounts-list-header {

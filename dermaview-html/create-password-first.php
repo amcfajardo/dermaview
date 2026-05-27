@@ -181,6 +181,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   </div>
 </div>
 
-<script src="system-branding.js?v=20260526-4"></script>
+<script src="system-branding.js?v=20260527-1"></script>
 </body>
 </html>

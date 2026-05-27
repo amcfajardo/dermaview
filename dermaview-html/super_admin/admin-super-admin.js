@@ -36,6 +36,28 @@
 
     if (!body) return;
 
+    const allowedRoleIndexes = [0, 1, 4];
+    const allowedRoleHeaders = ['Super Admin', 'Admin', 'Staff'];
+    const table = body.closest('table');
+
+    if (table) {
+      const headerRow = table.querySelector('thead tr');
+      if (headerRow) {
+        headerRow.innerHTML = `<th>Feature</th>${allowedRoleHeaders.map(role => `<th>${role}</th>`).join('')}`;
+      }
+
+      body.querySelectorAll('tr').forEach(row => {
+        const cells = Array.from(row.children);
+        if (cells.length <= 4) return;
+
+        const featureCell = cells[0];
+        const roleCells = allowedRoleIndexes
+          .map(index => cells[index + 1])
+          .filter(Boolean);
+        row.replaceChildren(featureCell, ...roleCells);
+      });
+    }
+
     const saved = JSON.parse(localStorage.getItem(key) || '{}');
     body.querySelectorAll('tr').forEach(row => {
       const inputs = Array.from(row.querySelectorAll('input[type="checkbox"]'));
@@ -48,7 +70,10 @@
         return;
       }
 
-      const values = saved[row.dataset.feature];
+      const savedValues = saved[row.dataset.feature];
+      const values = Array.isArray(savedValues) && savedValues.length === 5
+        ? [savedValues[0], savedValues[1], savedValues[4]]
+        : savedValues;
       if (!Array.isArray(values)) return;
 
       inputs.forEach((input, inputIndex) => {

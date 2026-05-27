@@ -27,6 +27,20 @@
       : 'system-settings.php';
   }
 
+  function sessionEndpoint() {
+    const path = window.location.pathname;
+    return path.includes('/pages/') || path.includes('/admin_pages/') || path.includes('/super_admin/')
+      ? '../get-session.php'
+      : 'get-session.php';
+  }
+
+  function logoutEndpoint() {
+    const path = window.location.pathname;
+    return path.includes('/pages/') || path.includes('/admin_pages/') || path.includes('/super_admin/')
+      ? '../logout.php'
+      : 'logout.php';
+  }
+
   async function refreshSettings(options = {}) {
     try {
       const cachedSettings = loadSettings();
@@ -41,6 +55,7 @@
         saveCachedSettings(settings);
         applyThemeFromSettings(settings);
         applyBranding(settings, options);
+        enforceMaintenanceAccess(settings);
         return settings;
       }
     } catch (error) {}
@@ -65,7 +80,7 @@
 
     document.querySelectorAll('.brand-mark').forEach(brandMark => {
       brandMark.innerHTML = logo
-        ? `<img class="brand-logo" src="${escapeHtml(logo)}" alt="${escapeHtml(clinicName)} logo" style="width:100%;height:100%;max-width:100%;max-height:100%;display:block;object-fit:contain;">`
+        ? `<img class="brand-logo" src="${escapeHtml(logo)}" alt="${escapeHtml(clinicName)} logo">`
         : clinicInitials(clinicName);
     });
 
@@ -81,6 +96,28 @@
     return theme;
   }
 
+  async function enforceMaintenanceAccess(settings = loadSettings()) {
+    if ((settings.maintenanceMode || 'off') !== 'on') return;
+
+    try {
+      const response = await fetch(sessionEndpoint(), { cache: 'no-store' });
+      const session = await response.json();
+      if (session.status === 'ok' && session.is_super_admin === true) return;
+      if (session.status === 'error') return;
+    } catch (error) {
+      return;
+    }
+
+    window.location.replace(logoutEndpoint());
+  }
+
+  function startMaintenanceWatcher() {
+    if (window.__dermaViewMaintenanceWatcher) return;
+    window.__dermaViewMaintenanceWatcher = window.setInterval(() => {
+      refreshSettings({ updateTitle: false });
+    }, 15000);
+  }
+
   window.DermaViewBranding = {
     defaultClinicName,
     storageKey,
@@ -89,10 +126,12 @@
     refreshSettings,
     clinicInitials,
     applyBranding,
+    enforceMaintenanceAccess,
     applyThemeFromSettings
   };
 
   applyThemeFromSettings();
   applyBranding();
   refreshSettings({ updateTitle: false });
+  startMaintenanceWatcher();
 })();

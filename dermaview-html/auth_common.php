@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/maintenance_common.php';
+
 function auth_start_session() {
     if (session_status() !== PHP_SESSION_ACTIVE) {
         session_start();
@@ -23,6 +25,23 @@ function auth_is_admin_role($role) {
 
 function auth_require_admin($json = false) {
     auth_start_session();
+
+    global $conn;
+    if (
+        isset($_SESSION['user_id'], $_SESSION['role']) &&
+        isset($conn) &&
+        maintenance_requires_logout($conn, $_SESSION['role'])
+    ) {
+        maintenance_destroy_current_session();
+        http_response_code(503);
+        if ($json) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['status' => 'maintenance', 'message' => 'Maintenance mode is active. Only Super Admin can access the system.']);
+        } else {
+            echo 'Maintenance mode is active. Only Super Admin can access the system.';
+        }
+        exit();
+    }
 
     if (isset($_SESSION['user_id']) && auth_is_admin_role(auth_normalized_role())) {
         return;

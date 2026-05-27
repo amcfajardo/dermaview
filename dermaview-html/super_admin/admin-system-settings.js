@@ -127,7 +127,7 @@
 
     if (brandMark) {
       brandMark.innerHTML = logo
-        ? `<img class="brand-logo" src="${escapeHtml(logo)}" alt="${escapeHtml(clinicName)} logo" style="width:100%;height:100%;max-width:100%;max-height:100%;display:block;object-fit:contain;">`
+        ? `<img class="brand-logo" src="${escapeHtml(logo)}" alt="${escapeHtml(clinicName)} logo">`
         : clinicInitials(clinicName);
     }
 
