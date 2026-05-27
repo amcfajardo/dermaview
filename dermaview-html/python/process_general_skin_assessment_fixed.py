@@ -172,17 +172,27 @@ def color_tint(original, mask, color, alpha=0.15):
 def make_face_region_masks(img):
     h, w = img.shape[:2]
     x, y, fw, fh = detect_face_bbox(img)
-    # Conservative segmented regions to avoid covering the whole face.
+
+    # Region positions are relative to the detected face box so the script still works
+    # for different face sizes. The under-eye zone is intentionally BELOW the eye line,
+    # not on top of the eyes.
     regions = {}
-    regions["forehead"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.24)), (int(fw*0.24), int(fh*0.060)), blur=0)
-    regions["left_cheek"] = elliptical_mask(img.shape, (x + int(fw*0.31), y + int(fh*0.55)), (int(fw*0.105), int(fh*0.150)), blur=0)
-    regions["right_cheek"] = elliptical_mask(img.shape, (x + int(fw*0.69), y + int(fh*0.55)), (int(fw*0.105), int(fh*0.150)), blur=0)
+    regions["forehead"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.235)), (int(fw*0.24), int(fh*0.055)), blur=0)
+    regions["left_cheek"] = elliptical_mask(img.shape, (x + int(fw*0.31), y + int(fh*0.565)), (int(fw*0.105), int(fh*0.145)), blur=0)
+    regions["right_cheek"] = elliptical_mask(img.shape, (x + int(fw*0.69), y + int(fh*0.565)), (int(fw*0.105), int(fh*0.145)), blur=0)
+
+    # Fixed: old value was fh*0.405, which places the purple mask over the eyes
+    # on many front-facing portraits. Use a lower, flatter ellipse for the actual
+    # lower eyelid / under-eye shadow area.
     under = np.zeros((h, w), np.uint8)
-    cv2.ellipse(under, (x + int(fw*0.36), y + int(fh*0.405)), (int(fw*0.105), int(fh*0.035)), 0, 0, 360, 255, -1)
-    cv2.ellipse(under, (x + int(fw*0.64), y + int(fh*0.405)), (int(fw*0.105), int(fh*0.035)), 0, 0, 360, 255, -1)
+    under_y = y + int(fh * 0.465)
+    under_axes = (max(8, int(fw * 0.095)), max(3, int(fh * 0.020)))
+    cv2.ellipse(under, (x + int(fw*0.365), under_y), under_axes, 0, 0, 360, 255, -1)
+    cv2.ellipse(under, (x + int(fw*0.635), under_y), under_axes, 0, 0, 360, 255, -1)
     regions["undereye"] = under
-    regions["nose"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.51)), (int(fw*0.080), int(fh*0.150)), blur=0)
-    regions["chin"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.78)), (int(fw*0.150), int(fh*0.075)), blur=0)
+
+    regions["nose"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.525)), (int(fw*0.075), int(fh*0.145)), blur=0)
+    regions["chin"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.790)), (int(fw*0.150), int(fh*0.070)), blur=0)
     return regions, (x, y, fw, fh)
 
 def score_region(issue_mask, region_mask):
@@ -257,17 +267,18 @@ def draw_segment_overlay(face_img, regions, issue_scores, offset=(0,0)):
     face_img[:] = cv2.addWeighted(overlay, 0.55, face_img, 0.45, 0)
 
 def draw_callouts(canvas, img_area, regions, x0, y0, scale_x, scale_y):
-    # Number badges outside the face with thin connector lines.
+    # Fixed label lanes: prevents label text from overlapping on the right side
+    # and keeps the under-eye label aligned with the actual under-eye area.
     labels = [
-        ("forehead", "1", "FOREHEAD AREA", "red", "right"),
-        ("left_cheek", "2", "LEFT CHEEK AREA", "orange", "left"),
-        ("right_cheek", "3", "RIGHT CHEEK AREA", "green", "right"),
-        ("undereye", "4", "UNDEREYE AREA", "purple", "left"),
-        ("nose", "5", "NOSE AREA", "blue", "right"),
-        ("chin", "6", "CHIN AREA", "teal", "right"),
+        ("forehead", "1", "FOREHEAD AREA", "red", "right", 0.00),
+        ("left_cheek", "2", "LEFT CHEEK AREA", "orange", "left", 0.00),
+        ("right_cheek", "3", "RIGHT CHEEK AREA", "green", "right", -18),
+        ("undereye", "4", "UNDEREYE AREA", "purple", "left", -10),
+        ("nose", "5", "NOSE AREA", "blue", "right", 18),
+        ("chin", "6", "CHIN AREA", "teal", "right", 0.00),
     ]
     H, W = canvas.shape[:2]
-    for key, num, name, cname, side in labels:
+    for key, num, name, cname, side, lane_offset in labels:
         mask = regions[key]
         ys, xs = np.where(mask > 0)
         if len(xs) == 0:
@@ -279,11 +290,10 @@ def draw_callouts(canvas, img_area, regions, x0, y0, scale_x, scale_y):
             bx = max(30, x0 - 70)
         else:
             bx = min(W - 40, x0 + img_area[2] + 48)
-        by = cy
+        by = int(np.clip(cy + lane_offset, y0 + 16, y0 + img_area[3] - 16))
         cv2.line(canvas, (cx, cy), (bx, by), color, 1, cv2.LINE_AA)
         cv2.circle(canvas, (bx, by), 14, color, -1, cv2.LINE_AA)
         cv2.putText(canvas, num, (bx-5, by+5), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255,255,255), 2, cv2.LINE_AA)
-        # concise labels outside, not over face
         tx = bx + 20 if side == "right" else bx - 165
         tx = max(12, min(W-190, tx))
         cv2.putText(canvas, name, (tx, by+5), cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1, cv2.LINE_AA)
