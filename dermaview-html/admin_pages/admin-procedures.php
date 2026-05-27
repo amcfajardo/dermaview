@@ -120,16 +120,30 @@ function save_uploaded_image() {
         return null;
     }
 
+    // Hard block non-image uploads (e.g., PDFs). We validate by MIME type and allowed extensions.
+    // Note: mime_content_type() is based on file content (not just filename).
     $allowed = [
         'image/jpeg' => 'jpg',
         'image/png' => 'png',
         'image/webp' => 'webp'
     ];
+
     $mime = mime_content_type($_FILES['procedure_image']['tmp_name']);
 
     if (!isset($allowed[$mime])) {
         return null;
     }
+
+    $origName = (string) ($_FILES['procedure_image']['name'] ?? '');
+    $origExt = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+    $expectedExt = $allowed[$mime];
+
+    // If the original extension doesn't match the detected MIME extension, reject.
+    // This helps prevent disguised uploads.
+    if ($origExt !== '' && $origExt !== $expectedExt) {
+        return null;
+    }
+
 
     $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'procedures';
     if (!is_dir($dir)) {
