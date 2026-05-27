@@ -66,6 +66,7 @@ def detect_face_bbox(img):
         fh = min(h - y, fh + int(pad_y * 1.6))
         return x, y, fw, fh
     # Fallback: center face estimate. This keeps the script usable for different image sizes even when detection fails.
+
     fw = int(w * 0.56)
     fh = int(h * 0.70)
     x = (w - fw) // 2
@@ -198,9 +199,90 @@ def severity_from_score(score):
         return "Moderate"
     return "High"
 
+def get_face_mesh_landmarks(img):
+    try:
+        import mediapipe as mp
+    except Exception:
+        return None
+
+    if mp is None:
+        return None
+
+    h, w = img.shape[:2]
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    with mp.solutions.face_mesh.FaceMesh(
+        static_image_mode=True,
+        max_num_faces=1,
+        refine_landmarks=True,
+        min_detection_confidence=0.50,
+    ) as face_mesh:
+        result = face_mesh.process(rgb)
+        if not result.multi_face_landmarks:
+            return None
+        lm = result.multi_face_landmarks[0].landmark
+        return [(int(p.x * w), int(p.y * h)) for p in lm]
+
+
 def process_face_slimming(input_path, output_path, intensity=1.0):
     intensity = clamp_intensity(intensity)
     img = resize_for_processing(read_image(input_path), 1000)
+    h, w = img.shape[:2]
+
+    lm = get_face_mesh_landmarks(img)
+
+    if lm is not None and len(lm) >= 468:
+        # MediaPipe landmark-based jawline slimming (more localized than old box/ellipse warp)
+        jaw_left_ids = [93, 234, 127, 162, 21, 54, 103, 67, 109, 10]      # around left jaw/cheek
+        jaw_right_ids = [172, 58, 132, 93, 234, 127]                      # around right jaw/cheek (will be used with symmetry)
+
+        def pts(ids):
+            try:
+                return [lm[i] for i in ids]
+            except Exception:
+                return []
+
+        left_jaw = pts(jaw_left_ids)
+        # Use symmetry around the face centerline using landmark 10/152 region approx.
+        center_x = int((lm[234][0] + lm[93][0]) / 2) if len(lm) > 234 else w // 2
+
+        # Create a polygon-ish jaw mask using jaw contour + a lower-face ellipse.
+        x0 = center_x
+        y0 = int(lm[152][1]) if len(lm) > 152 else int(h * 0.55)
+        fh = h
+        lower_face_mask = elliptical_mask(
+            img.shape,
+            (x0, y0 + int(h * 0.12)),
+            (int(w * 0.38), int(h * 0.24)),
+            blur=61,
+        ).astype(np.float32) / 255.0
+
+        yy, xx = np.indices((h, w), dtype=np.float32)
+        distance = np.abs(xx - float(center_x))
+        falloff = np.exp(-(distance ** 2) / (2 * (w * 0.18) ** 2))
+
+        # Pull side pixels towards center more in the lower half.
+        strength = (0.075 * intensity)
+        direction = np.where(xx < center_x, 1.0, -1.0)  # move both sides inward
+        map_x = xx + direction * strength * distance * falloff * lower_face_mask
+
+        slimmed = cv2.remap(
+            img,
+            np.clip(map_x, 0, w - 1).astype(np.float32),
+            yy.astype(np.float32),
+            cv2.INTER_LINEAR,
+        )
+
+        # Gentle post-processing.
+        slimmed = cv2.bilateralFilter(slimmed, 7, 30, 30)
+        slimmed = cv2.convertScaleAbs(slimmed, alpha=1.01, beta=2)
+        slimmed = gentle_sharpen(slimmed, 0.03)
+        save_image(output_path, slimmed)
+        print("Face Slimming (FaceMesh jawline warp) educational visualization saved:", output_path)
+        print(DISCLAIMER)
+        sys.exit(0)
+
+    # Fallback to the existing ellipse-only slimming if FaceMesh isn't available.
     h, w = img.shape[:2]
     x, y, fw, fh = detect_face_bbox(img)
     yy, xx = np.indices((h, w), dtype=np.float32)
@@ -221,6 +303,7 @@ def process_face_slimming(input_path, output_path, intensity=1.0):
     print("Face Slimming educational visualization saved:", output_path)
     print(DISCLAIMER)
     sys.exit(0)
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:

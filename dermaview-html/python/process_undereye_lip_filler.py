@@ -66,6 +66,7 @@ def detect_face_bbox(img):
         fh = min(h - y, fh + int(pad_y * 1.6))
         return x, y, fw, fh
     # Fallback: center face estimate. This keeps the script usable for different image sizes even when detection fails.
+
     fw = int(w * 0.56)
     fh = int(h * 0.70)
     x = (w - fw) // 2
@@ -198,6 +199,37 @@ def severity_from_score(score):
         return "Moderate"
     return "High"
 
+def get_face_mesh_landmarks(img):
+    try:
+        import mediapipe as mp
+    except Exception:
+        return None
+    if mp is None:
+        return None
+    h, w = img.shape[:2]
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    with mp.solutions.face_mesh.FaceMesh(
+        static_image_mode=True,
+        max_num_faces=1,
+        refine_landmarks=True,
+        min_detection_confidence=0.50,
+    ) as face_mesh:
+        result = face_mesh.process(rgb)
+        if not result.multi_face_landmarks:
+            return None
+        lm = result.multi_face_landmarks[0].landmark
+        return [(int(p.x * w), int(p.y * h)) for p in lm]
+
+
+def polygon_mask(shape, points):
+    mask = np.zeros(shape[:2], np.uint8)
+    if not points or len(points) < 3:
+        return mask
+    pts = np.array(points, np.int32)
+    cv2.fillPoly(mask, [pts], 255)
+    return mask
+
+
 def process_undereye_lip_filler(input_path, output_path, intensity=1.0):
     intensity = clamp_intensity(intensity)
     original = resize_for_processing(read_image(input_path), 1000)
@@ -206,12 +238,52 @@ def process_undereye_lip_filler(input_path, output_path, intensity=1.0):
     result = original.copy()
     yy, xx = np.indices((h, w), dtype=np.float32)
 
-    left_eye = elliptical_mask(original.shape, (x + int(fw * 0.36), y + int(fh * 0.405)), (int(fw * 0.11), int(fh * 0.045)), blur=41)
-    right_eye = elliptical_mask(original.shape, (x + int(fw * 0.64), y + int(fh * 0.405)), (int(fw * 0.11), int(fh * 0.045)), blur=41)
-    eye_mask = cv2.bitwise_or(left_eye, right_eye)
+    # -------- UNDEREYE: FaceMesh-driven polygons when available --------
+    lm = get_face_mesh_landmarks(original)
+    if lm is not None and len(lm) >= 468:
+        def P(i):
+            return lm[i]
+
+        def ids_to_pts(ids):
+            return [P(i) for i in ids if 0 <= i < len(lm)]
+
+        # lower eyelid / under-eye area approximations from FaceMesh.
+        left_under_ids = [33, 7, 163, 144, 145, 153, 154, 155, 133]
+        right_under_ids = [362, 382, 381, 380, 374, 373, 390, 249, 263]
+
+        drop = max(6, int(fh * 0.035))
+        left_under = ids_to_pts(left_under_ids)
+        right_under = ids_to_pts(right_under_ids)
+
+        # Extend polygons downward to capture under-eye shadow/volume.
+        left_under_ext = left_under + [(px, py + drop) for px, py in reversed(left_under)]
+        right_under_ext = right_under + [(px, py + drop) for px, py in reversed(right_under)]
+
+        under_left_mask = polygon_mask(original.shape, left_under_ext)
+        under_right_mask = polygon_mask(original.shape, right_under_ext)
+        eye_mask = cv2.bitwise_or(under_left_mask, under_right_mask)
+
+        # Protect against lips overlay by subtracting lower-lip landmark-ish region using HSV lip detection.
+        hsv_u8 = cv2.cvtColor(result, cv2.COLOR_BGR2HSV).astype(np.uint8)
+        lip1 = cv2.inRange(hsv_u8, np.array([0, 25, 35]), np.array([18, 195, 255]))
+        lip2 = cv2.inRange(hsv_u8, np.array([155, 25, 35]), np.array([180, 195, 255]))
+        lip_mask = cv2.morphologyEx(cv2.bitwise_or(lip1, lip2), cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
+        lip_mask = cv2.GaussianBlur(lip_mask, (31, 31), 0)
+        eye_mask = cv2.bitwise_and(eye_mask, cv2.bitwise_not(lip_mask))
+
+    else:
+        # -------- Fallback undereye: existing elliptical eye masks --------
+        left_eye = elliptical_mask(original.shape, (x + int(fw * 0.36), y + int(fh * 0.405)), (int(fw * 0.11), int(fh * 0.045)), blur=41)
+        right_eye = elliptical_mask(original.shape, (x + int(fw * 0.64), y + int(fh * 0.405)), (int(fw * 0.11), int(fh * 0.045)), blur=41)
+        eye_mask = cv2.bitwise_or(left_eye, right_eye)
+
+    # -------- Apply localized volume/brightening look --------
     smooth_eye = cv2.bilateralFilter(result, d=15, sigmaColor=55, sigmaSpace=55)
     smooth_eye = enhance_lab(smooth_eye, l_alpha=1.075, l_beta=6, a_smooth=0.06)
-    result = blend(result, smooth_eye, eye_mask, 0.50 * intensity)
+    # Also gently lift luminance to mimic brightening.
+    bright_eye = cv2.addWeighted(smooth_eye, 1.0, cv2.GaussianBlur(smooth_eye, (0, 0), 2.0), 0.0, 0)
+    result = blend(result, bright_eye, eye_mask, 0.55 * intensity)
+
 
     lip_center = (x + int(fw * 0.50), y + int(fh * 0.70))
     dx = (xx - lip_center[0]) / max(fw * 0.13, 1)

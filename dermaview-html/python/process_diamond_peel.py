@@ -4,6 +4,12 @@ import numpy as np
 import sys
 from pathlib import Path
 
+try:
+    import mediapipe as mp
+except Exception:
+    mp = None
+
+
 DISCLAIMER = "Educational visualization only. Not a medical diagnosis or guaranteed treatment result."
 
 COLORS = {
@@ -66,6 +72,7 @@ def detect_face_bbox(img):
         fh = min(h - y, fh + int(pad_y * 1.6))
         return x, y, fw, fh
     # Fallback: center face estimate. This keeps the script usable for different image sizes even when detection fails.
+
     fw = int(w * 0.56)
     fh = int(h * 0.70)
     x = (w - fw) // 2
@@ -169,10 +176,141 @@ def color_tint(original, mask, color, alpha=0.15):
     overlay[mask > 0] = color
     return cv2.addWeighted(overlay, alpha, original, 1-alpha, 0)
 
+def get_face_landmarks(img):
+    if mp is None:
+        return None
+    h, w = img.shape[:2]
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    with mp.solutions.face_mesh.FaceMesh(
+        static_image_mode=True,
+        max_num_faces=1,
+        refine_landmarks=True,
+        min_detection_confidence=0.50,
+    ) as face_mesh:
+        result = face_mesh.process(rgb)
+        if not result.multi_face_landmarks:
+            return None
+        return [(int(p.x * w), int(p.y * h)) for p in result.multi_face_landmarks[0].landmark]
+
+def polygon_mask(shape, points):
+    mask = np.zeros(shape[:2], np.uint8)
+    if points is None or len(points) < 3:
+        return mask
+    pts = np.array(points, np.int32)
+    cv2.fillPoly(mask, [pts], 255)
+    return mask
+
+def safe_points(lm, ids):
+    try:
+        return [lm[i] for i in ids]
+    except Exception:
+        return []
+
 def make_face_region_masks(img):
+    """Diamond Peel uses FaceMesh zones to restrict enhancements.
+
+    MediaPipe Image Segmenter isn't integrated in this repo, so we approximate
+    a localized exfoliation area using FaceMesh landmark polygons.
+
+    Falls back to conservative ellipses if landmarks aren't available.
+    """
+
     h, w = img.shape[:2]
     x, y, fw, fh = detect_face_bbox(img)
-    # Conservative segmented regions to avoid covering the whole face.
+
+    lm = get_face_landmarks(img)
+    # Landmark-based localized exfoliation area.
+    # NOTE: This repo does not include a MediaPipe Image Segmenter model, so we
+    # implement the “localization” requirement using FaceMesh polygons.
+    if lm is not None and len(lm) >= 468:
+        def pts(ids):
+            return safe_points(lm, ids)
+
+        left_eye_ids  = [33, 246, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163, 7]
+        right_eye_ids = [263, 466, 388, 387, 386, 385, 384, 398, 362, 382, 381, 380, 374, 373, 390, 249]
+
+        left_eye = pts(left_eye_ids)
+        right_eye = pts(right_eye_ids)
+        lcx = int(np.mean([p[0] for p in left_eye])) if left_eye else int(x + fw * 0.4)
+        rcx = int(np.mean([p[0] for p in right_eye])) if right_eye else int(x + fw * 0.6)
+        mid_x = int((lcx + rcx) / 2)
+
+        brow_y = int(np.mean([p[1] for p in pts([70, 63, 105, 66, 107, 336, 296, 334, 293, 300])]))
+        face_top_y = min(p[1] for p in pts([10, 67, 109, 338, 297]))
+
+        face_oval_ids = [
+            10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,
+            152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109
+        ]
+        face_mask = polygon_mask(img.shape, pts(face_oval_ids))
+
+        # Forehead polygon
+        top_half = int(max(10, rcx - lcx) * 0.48)
+        forehead_pts = [
+            (mid_x - top_half, int(face_top_y + (brow_y - face_top_y) * 0.12)),
+            (mid_x, face_top_y),
+            (mid_x + top_half, int(face_top_y + (brow_y - face_top_y) * 0.12)),
+            (mid_x + int(top_half * 0.75), brow_y),
+            (mid_x - int(top_half * 0.75), brow_y),
+        ]
+        forehead = polygon_mask(img.shape, forehead_pts)
+
+        # Cheeks
+        eye_gap = max(1, rcx - lcx)
+        eye_y = int(np.mean([p[1] for p in left_eye + right_eye]) / 2) if (left_eye and right_eye) else int(y + fh * 0.40)
+        mouth_bottom_y = int(y + fh * 0.70)
+        cheek_top_y = int(eye_y + fh * 0.065)
+        cheek_mid_y = int(eye_y + (mouth_bottom_y - eye_y) * 0.50)
+        cheek_low_y = int(mouth_bottom_y + (fh * 0.78 - mouth_bottom_y) * 0.18)
+
+        left_cheek_pts = [
+            (mid_x - eye_gap * 0.22, cheek_top_y),
+            (mid_x - eye_gap * 0.05, cheek_top_y + int(fh * 0.02)),
+            (mid_x - eye_gap * 0.10, cheek_mid_y),
+            (mid_x - eye_gap * 0.20, cheek_low_y),
+        ]
+        right_cheek_pts = [
+            (mid_x + eye_gap * 0.22, cheek_top_y),
+            (mid_x + eye_gap * 0.05, cheek_top_y + int(fh * 0.02)),
+            (mid_x + eye_gap * 0.10, cheek_mid_y),
+            (mid_x + eye_gap * 0.20, cheek_low_y),
+        ]
+
+        left_cheek = polygon_mask(img.shape, left_cheek_pts)
+        right_cheek = polygon_mask(img.shape, right_cheek_pts)
+
+        # Undereye
+        drop = max(5, int(fh * 0.030))
+        left_lower = pts([33, 7, 163, 144, 145, 153, 154, 155, 133])
+        right_lower = pts([362, 382, 381, 380, 374, 373, 390, 249, 263])
+        left_under = left_lower + [(px, py + drop) for px, py in reversed(left_lower)]
+        right_under = right_lower + [(px, py + drop) for px, py in reversed(right_lower)]
+        undereye = cv2.bitwise_or(polygon_mask(img.shape, left_under), polygon_mask(img.shape, right_under))
+
+        # Nose + Chin approximations
+        nose_pts = [(mid_x - int(eye_gap*0.10), brow_y), (mid_x + int(eye_gap*0.10), brow_y), (mid_x, int(brow_y + fh*0.20))]
+        nose = polygon_mask(img.shape, nose_pts)
+        chin = polygon_mask(img.shape, [(mid_x - int(eye_gap*0.25), int(y+fh*0.80)), (mid_x + int(eye_gap*0.25), int(y+fh*0.80)), (mid_x, int(y+fh*0.93))])
+
+        # Clip to face oval
+        forehead = cv2.bitwise_and(forehead, face_mask)
+        left_cheek = cv2.bitwise_and(left_cheek, face_mask)
+        right_cheek = cv2.bitwise_and(right_cheek, face_mask)
+        undereye = cv2.bitwise_and(undereye, face_mask)
+        nose = cv2.bitwise_and(nose, face_mask)
+        chin = cv2.bitwise_and(chin, face_mask)
+
+        regions = {
+            "forehead": forehead,
+            "left_cheek": left_cheek,
+            "right_cheek": right_cheek,
+            "undereye": undereye,
+            "nose": nose,
+            "chin": chin,
+        }
+        return regions, (x, y, fw, fh)
+
+    # Fallback: Conservative segmented regions to avoid covering the whole face.
     regions = {}
     regions["forehead"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.24)), (int(fw*0.24), int(fh*0.060)), blur=0)
     regions["left_cheek"] = elliptical_mask(img.shape, (x + int(fw*0.31), y + int(fh*0.55)), (int(fw*0.105), int(fh*0.150)), blur=0)
@@ -184,6 +322,7 @@ def make_face_region_masks(img):
     regions["nose"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.51)), (int(fw*0.080), int(fh*0.150)), blur=0)
     regions["chin"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.78)), (int(fw*0.150), int(fh*0.075)), blur=0)
     return regions, (x, y, fw, fh)
+
 
 def score_region(issue_mask, region_mask):
     denom = max(1, cv2.countNonZero(region_mask))

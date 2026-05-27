@@ -66,6 +66,7 @@ def detect_face_bbox(img):
         fh = min(h - y, fh + int(pad_y * 1.6))
         return x, y, fw, fh
     # Fallback: center face estimate. This keeps the script usable for different image sizes even when detection fails.
+
     fw = int(w * 0.56)
     fh = int(h * 0.70)
     x = (w - fw) // 2
@@ -198,20 +199,163 @@ def severity_from_score(score):
         return "Moderate"
     return "High"
 
+def get_face_mesh_landmarks(img):
+    try:
+        import mediapipe as mp
+    except Exception:
+        return None
+
+    if mp is None:
+        return None
+
+    h, w = img.shape[:2]
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    with mp.solutions.face_mesh.FaceMesh(
+        static_image_mode=True,
+        max_num_faces=1,
+        refine_landmarks=True,
+        min_detection_confidence=0.50,
+    ) as face_mesh:
+        result = face_mesh.process(rgb)
+        if not result.multi_face_landmarks:
+            return None
+        lm = result.multi_face_landmarks[0].landmark
+        return [(int(p.x * w), int(p.y * h)) for p in lm]
+
+
+def poly_mask(shape, points):
+    mask = np.zeros(shape[:2], np.uint8)
+    if not points or len(points) < 3:
+        return mask
+    pts = np.array(points, np.int32)
+    cv2.fillPoly(mask, [pts], 255)
+    return mask
+
+
 def process_lip_chin_jawtox(input_path, output_path, intensity=1.0):
     intensity = clamp_intensity(intensity)
     img = resize_for_processing(read_image(input_path), 1000)
     h, w = img.shape[:2]
     x, y, fw, fh = detect_face_bbox(img)
     yy, xx = np.indices((h, w), dtype=np.float32)
-    result = img.copy()
 
+    lm = get_face_mesh_landmarks(img)
+
+    # --- If FaceMesh landmarks exist: do separate local warps for each area ---
+    if lm is not None and len(lm) >= 468:
+        center_x = int((lm[234][0] + lm[93][0]) / 2) if len(lm) > 234 else int(x + fw / 2.0)
+
+        def P(i):
+            return lm[i]
+
+        def ids_to_pts(ids):
+            return [P(i) for i in ids if 0 <= i < len(lm)]
+
+        # Jawtox (lateral jaw): sides only, avoid mixing with chin/lip.
+        # MediaPipe jaw/cheek anchors (approximation using stable IDs).
+        jaw_left_ids = [234, 93, 132, 58, 212, 199, 187, 176, 149, 152, 10]
+        jaw_right_ids = [454, 323, 361, 288, 427, 416, 401, 377, 400, 400, 152]
+        jaw_y_top = min(P(152)[1], P(10)[1]) if len(lm) > 152 else int(y + fh * 0.55)
+        jaw_y_bottom = max(P(152)[1], P(10)[1]) if len(lm) > 152 else int(y + fh * 0.88)
+
+        # Build masks and clip them into left/right and lower-face ranges.
+        jaw_left_poly = ids_to_pts([234, 93, 132, 58, 205, 187, 152, 176])
+        jaw_right_poly = ids_to_pts([323, 361, 288, 306, 401, 377, 152, 172])
+        jaw_left_mask = poly_mask(img.shape, jaw_left_poly)
+        jaw_right_mask = poly_mask(img.shape, jaw_right_poly)
+
+        # Only apply jaw warp in the side regions.
+        left_side = (xx < float(center_x)).astype(np.float32) * 255.0
+        right_side = (xx >= float(center_x)).astype(np.float32) * 255.0
+        side_clip = left_side.astype(np.uint8)
+        jaw_left_mask = cv2.bitwise_and(jaw_left_mask, side_clip)
+        jaw_right_mask = cv2.bitwise_and(jaw_right_mask, right_side.astype(np.uint8))
+
+        jaw_mask = cv2.bitwise_or(jaw_left_mask, jaw_right_mask).astype(np.float32) / 255.0
+
+        distance_x = np.abs(xx - float(center_x))
+        falloff = np.exp(-(distance_x ** 2) / (2 * (fw * 0.22) ** 2))
+        direction = np.where(xx < center_x, 1.0, -1.0)  # pull towards center
+        strength_jaw = 0.045 * intensity
+        map_x_jaw = xx + direction * strength_jaw * distance_x * falloff * jaw_mask
+
+        result = img.copy()
+        result = cv2.remap(result,
+                            np.clip(map_x_jaw, 0, w - 1).astype(np.float32),
+                            yy.astype(np.float32),
+                            cv2.INTER_LINEAR)
+
+        # Chin filler: centered lower area warp (mostly vertical).
+        chin_poly = ids_to_pts([152, 148, 176, 4, 54, 227, 137, 287])
+        chin_mask = poly_mask(img.shape, chin_poly).astype(np.float32) / 255.0
+        # Ensure chin is below mouth region
+        mouth_y = int((P(13)[1] + P(14)[1]) / 2) if len(lm) > 14 else int(y + fh * 0.65)
+        chin_mask = np.where(yy < float(mouth_y), 0.0, chin_mask).astype(np.float32)
+
+        chin_cx = center_x
+        chin_cy = int(P(152)[1]) if len(lm) > 152 else int(y + fh * 0.79)
+        dx = xx - float(chin_cx)
+        dy = yy - float(chin_cy)
+        dist = np.sqrt(dx * dx + dy * dy)
+        radius = max(1.0, fw * 0.16)
+        factor = np.clip(1.0 - dist / radius, 0.0, 1.0)
+        strength_chin = 0.030 * intensity
+        map_y_chin = yy - dy * factor * strength_chin * chin_mask
+
+        result = cv2.remap(result,
+                            xx.astype(np.float32),
+                            np.clip(map_y_chin, 0, h - 1).astype(np.float32),
+                            cv2.INTER_LINEAR)
+
+        # Lip filler: upper/lower lip zone only, avoid jaw.
+        lip_poly = ids_to_pts([61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146])
+        lip_mask = poly_mask(img.shape, lip_poly).astype(np.float32) / 255.0
+
+        # Restrict lip to mouth y-range
+        lip_top = min(P(i)[1] for i in [61, 185, 40, 39, 37, 0, 267, 17, 84] if len(lm) > i) if len(lm) else int(y + fh * 0.60)
+        lip_bottom = max(P(i)[1] for i in [14, 17, 84, 181, 91, 146, 291, 375] if len(lm) > i) if len(lm) else int(y + fh * 0.75)
+        lip_mask = np.where((yy < float(lip_top)) | (yy > float(lip_bottom)), 0.0, lip_mask).astype(np.float32)
+
+        lip_cx = center_x
+        lip_cy = int(P(13)[1]) if len(lm) > 13 else int(y + fh * 0.70)
+        dx = xx - float(lip_cx)
+        dy = yy - float(lip_cy)
+        dist = np.sqrt((dx / max(fw * 0.12, 1)) ** 2 + (dy / max(fh * 0.055, 1)) ** 2)
+        factor = np.clip(1.0 - dist, 0.0, 1.0)
+
+        strength_lip = 0.030 * intensity
+        map_x_lip = xx - dx * factor * strength_lip * lip_mask
+        map_y_lip = yy - dy * factor * (strength_lip * 1.8) * lip_mask
+
+        result = cv2.remap(result,
+                            np.clip(map_x_lip, 0, w - 1).astype(np.float32),
+                            np.clip(map_y_lip, 0, h - 1).astype(np.float32),
+                            cv2.INTER_LINEAR)
+
+        # Color lip region slightly (keeps your existing lip tint behavior but localized)
+        hsv = cv2.cvtColor(result, cv2.COLOR_BGR2HSV).astype(np.float32)
+        lip1 = cv2.inRange(hsv.astype(np.uint8), np.array([0, 25, 35]), np.array([18, 195, 255]))
+        lip2 = cv2.inRange(hsv.astype(np.uint8), np.array([155, 25, 35]), np.array([180, 195, 255]))
+        lip_mask_cv = cv2.GaussianBlur(cv2.bitwise_or(lip1, lip2), (31, 31), 0).astype(np.float32) / 255.0
+        lip_mask_cv = np.clip(lip_mask_cv * 0.18 * intensity, 0, 0.30)
+        hsv[:, :, 1] += lip_mask_cv * 22
+        hsv[:, :, 2] += lip_mask_cv * 7
+        result = cv2.cvtColor(np.clip(hsv, 0, 255).astype(np.uint8), cv2.COLOR_HSV2BGR)
+
+        result = gentle_sharpen(result, 0.055)
+        save_image(output_path, result)
+        print("Lip Filler, Chin Filler, and Jawtox (FaceMesh localized) educational visualization saved:", output_path)
+        print(DISCLAIMER)
+        sys.exit(0)
+
+    # --- Fallback: original combined warp implementation ---
     center_x = x + fw / 2.0
     jaw_mask = elliptical_mask(img.shape, (int(center_x), y + int(fh * 0.66)), (int(fw * 0.35), int(fh * 0.27)), blur=41).astype(np.float32) / 255.0
     distance_x = np.abs(xx - center_x)
     falloff = np.exp(-(distance_x ** 2) / (2 * (fw * 0.27) ** 2))
     direction = np.where(xx < center_x, -1.0, 1.0)
     map_x = xx + direction * 0.046 * intensity * distance_x * falloff * jaw_mask
+    result = img.copy()
     result = cv2.remap(result, np.clip(map_x, 0, w - 1).astype(np.float32), yy.astype(np.float32), cv2.INTER_LINEAR)
 
     chin_center = (int(center_x), y + int(fh * 0.79))
@@ -245,6 +389,7 @@ def process_lip_chin_jawtox(input_path, output_path, intensity=1.0):
     print("Lip Filler, Chin Filler, and Jawtox educational visualization saved:", output_path)
     print(DISCLAIMER)
     sys.exit(0)
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:

@@ -4,6 +4,12 @@ import numpy as np
 import sys
 from pathlib import Path
 
+try:
+    import mediapipe as mp
+except Exception:
+    mp = None
+
+
 DISCLAIMER = "Educational visualization only. Not a medical diagnosis or guaranteed treatment result."
 
 COLORS = {
@@ -65,8 +71,10 @@ def detect_face_bbox(img):
         fw = min(w - x, fw + 2 * pad_x)
         fh = min(h - y, fh + int(pad_y * 1.6))
         return x, y, fw, fh
+    
     # Fallback: center face estimate. This keeps the script usable for different image sizes even when detection fails.
     fw = int(w * 0.56)
+
     fh = int(h * 0.70)
     x = (w - fw) // 2
     y = int(h * 0.12)
@@ -169,10 +177,163 @@ def color_tint(original, mask, color, alpha=0.15):
     overlay[mask > 0] = color
     return cv2.addWeighted(overlay, alpha, original, 1-alpha, 0)
 
+def get_face_landmarks(img):
+    if mp is None:
+        return None
+    h, w = img.shape[:2]
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    with mp.solutions.face_mesh.FaceMesh(
+        static_image_mode=True,
+        max_num_faces=1,
+        refine_landmarks=True,
+        min_detection_confidence=0.50,
+    ) as face_mesh:
+        result = face_mesh.process(rgb)
+        if not result.multi_face_landmarks:
+            return None
+        return [(int(p.x * w), int(p.y * h)) for p in result.multi_face_landmarks[0].landmark]
+
+def polygon_mask(shape, points):
+    mask = np.zeros(shape[:2], np.uint8)
+    if points is None or len(points) < 3:
+        return mask
+    pts = np.array(points, np.int32)
+    cv2.fillPoly(mask, [pts], 255)
+    return mask
+
+def safe_points(lm, ids):
+    try:
+        return [lm[i] for i in ids]
+    except Exception:
+        return []
+
 def make_face_region_masks(img):
+    """FaceMesh landmark-based facial zones.
+
+    Falls back to conservative ellipses if landmarks aren't available.
+    """
     h, w = img.shape[:2]
     x, y, fw, fh = detect_face_bbox(img)
-    # Conservative segmented regions to avoid covering the whole face.
+
+    lm = get_face_landmarks(img)
+    if lm is not None and len(lm) >= 468:
+        def pts(ids):
+            return safe_points(lm, ids)
+
+        left_eye_ids = [33, 246, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163, 7]
+        right_eye_ids = [263, 466, 388, 387, 386, 385, 384, 398, 362, 382, 381, 380, 374, 373, 390, 249]
+        left_eye = pts(left_eye_ids)
+        right_eye = pts(right_eye_ids)
+
+        lcx = int(np.mean([p[0] for p in left_eye])) if left_eye else int(x + fw * 0.4)
+        rcx = int(np.mean([p[0] for p in right_eye])) if right_eye else int(x + fw * 0.6)
+        mid_x = int((lcx + rcx) / 2)
+
+        brow_y = int(np.mean([p[1] for p in pts([70, 63, 105, 66, 107, 336, 296, 334, 293, 300])]))
+        face_top_y = min(p[1] for p in pts([10, 67, 109, 338, 297]))
+
+        # Face oval for clipping.
+        face_oval_ids = [
+            10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378,
+            400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21,
+            54, 103, 67, 109
+        ]
+        face_mask = polygon_mask(img.shape, pts(face_oval_ids))
+
+        # FOREHEAD: broad trapezoid.
+        top_half = int(max(10, rcx - lcx) * 0.48)
+        forehead_pts = [
+            (mid_x - top_half, int(face_top_y + (brow_y - face_top_y) * 0.12)),
+            (mid_x, face_top_y),
+            (mid_x + top_half, int(face_top_y + (brow_y - face_top_y) * 0.12)),
+            (mid_x + int(top_half * 0.75), brow_y),
+            (mid_x - int(top_half * 0.75), brow_y),
+        ]
+        forehead = polygon_mask(img.shape, forehead_pts)
+
+        # UNDEREYE: lower eyelid polygon strips.
+        drop = max(5, int(fh * 0.030))
+        left_lower = pts([33, 7, 163, 144, 145, 153, 154, 155, 133])
+        right_lower = pts([362, 382, 381, 380, 374, 373, 390, 249, 263])
+        left_under = left_lower + [(px, py + drop) for px, py in reversed(left_lower)]
+        right_under = right_lower + [(px, py + drop) for px, py in reversed(right_lower)]
+        undereye = cv2.bitwise_or(polygon_mask(img.shape, left_under), polygon_mask(img.shape, right_under))
+
+        # NOSE: simple bridge/tip poly.
+        nose_tip = pts([1])[0] if pts([1]) else (mid_x, brow_y)
+        nose_bottom = pts([2])[0] if pts([2]) else (mid_x, brow_y + int(fh * 0.18))
+        eye_y = int(np.mean([p[1] for p in left_eye + right_eye]) / 2) if (left_eye and right_eye) else int(y + fh * 0.40)
+        eye_gap = max(1, rcx - lcx)
+        nose_bridge_half = max(8, int(eye_gap * 0.105))
+        nose_mid_half = max(12, int(eye_gap * 0.145))
+        nose_wing_half = max(18, int(eye_gap * 0.215))
+        nose_pts = [
+            (mid_x - nose_bridge_half, int(brow_y + (nose_tip[1] - brow_y) * 0.06)),
+            (mid_x + nose_bridge_half, int(brow_y + (nose_tip[1] - brow_y) * 0.06)),
+            (mid_x + nose_mid_half, int((eye_y + nose_tip[1]) * 0.52)),
+            (mid_x + nose_wing_half, int(nose_bottom[1] - fh * 0.015)),
+            (mid_x, int(nose_bottom[1] + fh * 0.055)),
+            (mid_x - nose_wing_half, int(nose_bottom[1] - fh * 0.015)),
+            (mid_x - nose_mid_half, int((eye_y + nose_tip[1]) * 0.52)),
+        ]
+        nose = polygon_mask(img.shape, nose_pts)
+
+        # CHEEKS: outer to inner cheek polygons.
+        left_outer_x = min(pts([234])[0][0], pts([132])[0][0]) if pts([234]) and pts([132]) else int(x + fw * 0.33)
+        right_outer_x = max(pts([454])[0][0], pts([361])[0][0]) if pts([454]) and pts([361]) else int(x + fw * 0.67)
+        eye_gap = max(1, rcx - lcx)
+        left_inner_x = int(mid_x - eye_gap * 0.22)
+        right_inner_x = int(mid_x + eye_gap * 0.22)
+        mouth_bottom_y = int(y + fh * 0.70)
+        cheek_top_y = int(eye_y + fh * 0.065)
+        cheek_mid_y = int(eye_y + (mouth_bottom_y - eye_y) * 0.50)
+        cheek_low_y = int(mouth_bottom_y + (y + fh * 0.78 - mouth_bottom_y) * 0.18)
+
+        left_cheek_pts = [
+            (left_outer_x + int(eye_gap * 0.12), cheek_top_y),
+            (left_inner_x, cheek_top_y + int(fh * 0.015)),
+            (left_inner_x - int(eye_gap * 0.04), cheek_mid_y),
+            (left_inner_x - int(eye_gap * 0.10), cheek_low_y),
+            (left_outer_x + int(eye_gap * 0.18), cheek_low_y + int(fh * 0.040)),
+        ]
+        right_cheek_pts = [
+            (right_outer_x - int(eye_gap * 0.12), cheek_top_y),
+            (right_inner_x, cheek_top_y + int(fh * 0.015)),
+            (right_inner_x + int(eye_gap * 0.04), cheek_mid_y),
+            (right_inner_x + int(eye_gap * 0.10), cheek_low_y),
+            (right_outer_x - int(eye_gap * 0.18), cheek_low_y + int(fh * 0.040)),
+        ]
+        left_cheek = polygon_mask(img.shape, left_cheek_pts)
+        right_cheek = polygon_mask(img.shape, right_cheek_pts)
+
+        chin_pts = [
+            (mid_x - int(eye_gap * 0.34), int(y + fh * 0.74)),
+            (mid_x + int(eye_gap * 0.34), int(y + fh * 0.74)),
+            (mid_x + int(eye_gap * 0.50), int(y + fh * 0.80)),
+            (mid_x, int(y + fh * 0.86)),
+            (mid_x - int(eye_gap * 0.50), int(y + fh * 0.80)),
+        ]
+        chin = polygon_mask(img.shape, chin_pts)
+
+        # Clip into face oval.
+        forehead = cv2.bitwise_and(forehead, face_mask)
+        undereye = cv2.bitwise_and(undereye, face_mask)
+        nose = cv2.bitwise_and(nose, face_mask)
+        left_cheek = cv2.bitwise_and(left_cheek, face_mask)
+        right_cheek = cv2.bitwise_and(right_cheek, face_mask)
+        chin = cv2.bitwise_and(chin, face_mask)
+
+        regions = {
+            "forehead": forehead,
+            "left_cheek": left_cheek,
+            "right_cheek": right_cheek,
+            "undereye": undereye,
+            "nose": nose,
+            "chin": chin,
+        }
+        return regions, (x, y, fw, fh)
+
+    # Fallback: Conservative segmented regions to avoid covering the whole face.
     regions = {}
     regions["forehead"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.24)), (int(fw*0.24), int(fh*0.060)), blur=0)
     regions["left_cheek"] = elliptical_mask(img.shape, (x + int(fw*0.31), y + int(fh*0.55)), (int(fw*0.105), int(fh*0.150)), blur=0)
@@ -184,6 +345,7 @@ def make_face_region_masks(img):
     regions["nose"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.51)), (int(fw*0.080), int(fh*0.150)), blur=0)
     regions["chin"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.78)), (int(fw*0.150), int(fh*0.075)), blur=0)
     return regions, (x, y, fw, fh)
+
 
 def score_region(issue_mask, region_mask):
     denom = max(1, cv2.countNonZero(region_mask))
@@ -215,14 +377,62 @@ def process_co2_dermapen(input_path, output_path, intensity=1.0):
     _, a, _ = cv2.split(lab)
     red_marks = cv2.inRange(a, 130, 205)
     dark_spots = cv2.inRange(gray, 0, int(max(60, cv2.mean(gray, mask=skin)[0] - 20)))
-    marks = cv2.bitwise_or(cv2.bitwise_and(red_marks, skin), cv2.bitwise_and(dark_spots, skin))
-    marks = cv2.morphologyEx(marks, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
-    marks = cv2.dilate(marks, np.ones((5, 5), np.uint8), iterations=1)
-    marks = cv2.GaussianBlur(marks, (31, 31), 0)
 
-    result = blend(original, smooth, usable_skin, 0.50 * intensity)
-    result = blend(result, smooth, marks, 0.78 * intensity)
-    result = gentle_sharpen(result, 0.045)
+    # Landmark-based facial zones (MediaPipe FaceMesh when available).
+    regions, _ = make_face_region_masks(original)
+
+    # Restrict detection to the facial zones only.
+    zone_mask = np.zeros_like(skin)
+    for rkey in regions:
+        zone_mask = cv2.bitwise_or(zone_mask, regions[rkey])
+
+    # Marks should represent “texture/scar-ish” localized areas.
+    marks = cv2.bitwise_or(
+        cv2.bitwise_and(red_marks, skin),
+        cv2.bitwise_and(dark_spots, skin),
+    )
+    marks = cv2.bitwise_and(marks, zone_mask)
+
+    # Make the mask thinner/cleaner so we don't just globally smooth.
+    marks = cv2.morphologyEx(marks, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8), iterations=1)
+    marks = cv2.morphologyEx(marks, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8), iterations=1)
+    marks = cv2.dilate(marks, np.ones((3, 3), np.uint8), iterations=1)
+
+    # Use a distance-like blur to create a soft local “impact” region.
+    marks = cv2.GaussianBlur(marks, (23, 23), 0)
+
+    # --- CO2-style localized enhancement ---
+    # 1) base blend on usable skin
+    result = blend(original, smooth, usable_skin, 0.35 * intensity)
+
+    # 2) within marks, reduce contrast a bit + increase local clarity
+    #    (implemented as a mix of LAB L-channel normalization)
+    marks_f = (marks.astype(np.float32) / 255.0)
+    marks_f = np.clip(marks_f, 0, 1)
+
+    lab_orig = cv2.cvtColor(original, cv2.COLOR_BGR2LAB)
+    lab_smooth = cv2.cvtColor(smooth, cv2.COLOR_BGR2LAB)
+    L0, A0, B0 = cv2.split(lab_orig)
+    L1, A1, B1 = cv2.split(lab_smooth)
+
+    # local “texture soften”: pull L toward the smoothed L
+    L_local = L0.astype(np.float32) * (1 - marks_f) + L1.astype(np.float32) * marks_f
+
+    # local “scar/texture brightening”: mild top-hat-like boost on L
+    top_hat = cv2.morphologyEx(gray, cv2.MORPH_TOPHAT, np.ones((9, 9), np.uint8))
+    top_hat = cv2.GaussianBlur(top_hat, (0, 0), 1.2)
+    L_local = L_local + (top_hat.astype(np.float32) * 0.10 * marks_f)
+
+    L_local = np.clip(L_local, 0, 255).astype(np.uint8)
+
+    enhanced_lab = cv2.merge((L_local, A0, B0))
+    enhanced = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
+
+    # blend enhanced only where marks are
+    result = blend(result, enhanced, marks, 0.65 * intensity)
+
+    result = gentle_sharpen(result, 0.035)
+
     save_image(output_path, result)
     print("CO2 Laser + Dermapen educational visualization saved:", output_path)
     print(DISCLAIMER)

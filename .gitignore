@@ -1,0 +1,11 @@
+# Google credentials
+*.json
+Credentials/
+python/Credentials/
+
+# uploads
+uploads/
+processed_uploads/
+temp_detect.jpg
+__pycache__/
+*.pyc
