@@ -6,6 +6,20 @@ from pathlib import Path
 
 DISCLAIMER = "Educational visualization only; not a medical diagnosis or guaranteed treatment result."
 
+COLORS = {
+    "red": (35, 55, 220),
+    "orange": (0, 145, 255),
+    "green": (70, 165, 70),
+    "blue": (210, 130, 35),
+    "purple": (185, 85, 175),
+    "cyan": (190, 150, 35),
+    "navy": (78, 48, 25),
+    "text": (45, 45, 45),
+    "muted": (100, 100, 100),
+    "panel": (255, 255, 255),
+    "line": (220, 224, 230),
+}
+
 
 def fail(message, code=1):
     print(message)
@@ -27,7 +41,7 @@ def save_image(output_path, img):
         fail("Failed to save output image")
 
 
-def resize_for_processing(img, max_size=1300):
+def resize_for_processing(img, max_size=1200):
     h, w = img.shape[:2]
     longest = max(h, w)
     if longest <= max_size:
@@ -45,95 +59,83 @@ def clamp_intensity(value, default=1.0):
 
 
 def detect_face_bbox(img):
-    """Return a face bounding box (x, y, w, h). Uses Haar detection, then a centered fallback."""
+    h, w = img.shape[:2]
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    gray = cv2.equalizeHist(gray)
-    cascades = [
-        cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml',
-        cv2.data.haarcascades + 'haarcascade_frontalface_default.xml',
-    ]
-    faces = []
-    for c in cascades:
-        clf = cv2.CascadeClassifier(c)
-        if not clf.empty():
-            found = clf.detectMultiScale(gray, scaleFactor=1.08, minNeighbors=4, minSize=(80, 80))
-            if len(found):
-                faces = found
-                break
-    H, W = img.shape[:2]
-    if len(faces):
-        x, y, w, h = max(faces, key=lambda r: r[2] * r[3])
-        pad_x, pad_y = int(w * 0.16), int(h * 0.22)
-        x1 = max(0, x - pad_x)
-        y1 = max(0, y - int(pad_y * 0.65))
-        x2 = min(W, x + w + pad_x)
-        y2 = min(H, y + h + pad_y)
-        return (x1, y1, x2 - x1, y2 - y1)
-    # fallback for very bright, stylized, or side-cropped images
-    fw, fh = int(W * 0.62), int(H * 0.72)
-    fx, fy = (W - fw) // 2, int(H * 0.12)
-    return (fx, fy, fw, fh)
-
-
-def ellipse_mask(shape, center, axes, angle=0, blur=0):
-    mask = np.zeros(shape[:2], dtype=np.uint8)
-    cv2.ellipse(mask, tuple(map(int, center)), tuple(map(int, axes)), angle, 0, 360, 255, -1)
-    if blur:
-        k = int(blur)
-        k = k if k % 2 == 1 else k + 1
-        mask = cv2.GaussianBlur(mask, (k, k), 0)
-    return mask
-
-
-def face_oval_mask(img, bbox=None, blur=41):
-    if bbox is None:
-        bbox = detect_face_bbox(img)
-    x, y, w, h = bbox
-    return ellipse_mask(img.shape, (x + w * 0.50, y + h * 0.52), (w * 0.46, h * 0.52), 0, blur)
+    try:
+        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+        cascade = cv2.CascadeClassifier(cascade_path)
+        faces = cascade.detectMultiScale(gray, scaleFactor=1.08, minNeighbors=4, minSize=(max(50, w//8), max(50, h//8)))
+    except Exception:
+        faces = []
+    if len(faces) > 0:
+        x, y, fw, fh = max(faces, key=lambda r: r[2] * r[3])
+        pad_x, pad_y = int(fw * 0.22), int(fh * 0.34)
+        x = max(0, x - pad_x)
+        y = max(0, y - pad_y)
+        fw = min(w - x, fw + pad_x * 2)
+        fh = min(h - y, fh + int(pad_y * 1.65))
+        return (x, y, fw, fh)
+    # fallback centered head/face estimate
+    return (int(w * 0.23), int(h * 0.10), int(w * 0.54), int(h * 0.68))
 
 
 def skin_mask_bgr(img, bbox=None):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     ycrcb = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
-    mask_hsv = cv2.inRange(hsv, np.array([0, 14, 35]), np.array([38, 235, 255]))
-    mask_ycrcb = cv2.inRange(ycrcb, np.array([0, 124, 68]), np.array([255, 190, 155]))
+    mask_hsv = cv2.inRange(hsv, np.array([0, 14, 32]), np.array([35, 235, 255]))
+    mask_ycrcb = cv2.inRange(ycrcb, np.array([0, 126, 68]), np.array([255, 188, 154]))
     mask = cv2.bitwise_and(mask_hsv, mask_ycrcb)
     if bbox is not None:
-        mask = cv2.bitwise_and(mask, face_oval_mask(img, bbox, blur=0))
+        face = face_oval_mask(np.zeros(img.shape[:2], np.uint8), bbox, blur=0)
+        mask = cv2.bitwise_and(mask, face)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
-    if cv2.countNonZero(mask) < img.shape[0] * img.shape[1] * 0.025:
-        mask = face_oval_mask(img, bbox, blur=0)
-    mask = cv2.GaussianBlur(mask, (35, 35), 0)
+    if cv2.countNonZero(mask) < img.shape[0] * img.shape[1] * 0.015:
+        h, w = img.shape[:2]
+        if bbox is None:
+            bbox = detect_face_bbox(img)
+        mask = face_oval_mask(np.zeros((h, w), np.uint8), bbox, blur=0)
+    return cv2.GaussianBlur(mask, (35, 35), 0)
+
+
+def face_oval_mask(mask, bbox, blur=21):
+    x, y, w, h = bbox
+    center = (int(x + w * 0.50), int(y + h * 0.52))
+    axes = (max(1, int(w * 0.43)), max(1, int(h * 0.50)))
+    cv2.ellipse(mask, center, axes, 0, 0, 360, 255, -1)
+    if blur:
+        k = blur if blur % 2 else blur + 1
+        mask = cv2.GaussianBlur(mask, (k, k), 0)
     return mask
 
 
-def mask3(mask, strength=1.0):
-    f = mask.astype(np.float32) / 255.0
-    f = np.clip(f * strength, 0, 1)
-    return cv2.merge([f, f, f])
+def ellipse_mask(shape, center, axes, blur=0):
+    h, w = shape[:2]
+    mask = np.zeros((h, w), np.uint8)
+    cv2.ellipse(mask, (int(center[0]), int(center[1])), (max(1, int(axes[0])), max(1, int(axes[1]))), 0, 0, 360, 255, -1)
+    if blur:
+        k = blur if blur % 2 else blur + 1
+        mask = cv2.GaussianBlur(mask, (k, k), 0)
+    return mask
 
 
 def blend(original, processed, mask, strength=1.0):
-    alpha = mask3(mask, strength)
-    out = processed.astype(np.float32) * alpha + original.astype(np.float32) * (1 - alpha)
-    return np.clip(out, 0, 255).astype(np.uint8)
+    f = np.clip((mask.astype(np.float32) / 255.0) * strength, 0, 1)
+    f3 = cv2.merge([f, f, f])
+    return np.clip(processed.astype(np.float32) * f3 + original.astype(np.float32) * (1 - f3), 0, 255).astype(np.uint8)
 
 
-def protect_features_mask(img, bbox=None):
+def protect_features_mask(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(gray, 45, 110)
-    dark = cv2.inRange(gray, 0, 65)
+    dark = cv2.inRange(gray, 0, 70)
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    lip1 = cv2.inRange(hsv, np.array([0, 24, 35]), np.array([18, 195, 245]))
-    lip2 = cv2.inRange(hsv, np.array([155, 24, 35]), np.array([180, 195, 245]))
+    lip1 = cv2.inRange(hsv, np.array([0, 25, 35]), np.array([18, 195, 245]))
+    lip2 = cv2.inRange(hsv, np.array([155, 25, 35]), np.array([180, 195, 245]))
     mask = cv2.bitwise_or(edges, dark)
     mask = cv2.bitwise_or(mask, cv2.bitwise_or(lip1, lip2))
-    if bbox is not None:
-        mask = cv2.bitwise_and(mask, face_oval_mask(img, bbox, blur=0))
     mask = cv2.dilate(mask, np.ones((5, 5), np.uint8), iterations=1)
-    mask = cv2.GaussianBlur(mask, (21, 21), 0)
-    return mask
+    return cv2.GaussianBlur(mask, (21, 21), 0)
 
 
 def gentle_sharpen(img, amount=0.06):
@@ -149,47 +151,140 @@ def enhance_lab(img, l_alpha=1.04, l_beta=4, a_smooth=0.06):
     return cv2.cvtColor(cv2.merge((l, a, b)), cv2.COLOR_LAB2BGR)
 
 
-def text(img, s, org, scale=0.55, color=(40,40,40), thick=1):
-    cv2.putText(img, str(s), org, cv2.FONT_HERSHEY_SIMPLEX, scale, color, thick, cv2.LINE_AA)
+def put_text(img, text, pos, scale=0.5, color=(45,45,45), thick=1):
+    cv2.putText(img, str(text), pos, cv2.FONT_HERSHEY_SIMPLEX, scale, color, thick, cv2.LINE_AA)
 
 
-def safe_mean(gray, mask):
-    if cv2.countNonZero(mask) == 0:
-        return float(np.mean(gray))
-    return cv2.mean(gray, mask=mask)[0]
+def wrap_lines(text, max_chars=45):
+    words = str(text).split()
+    lines, cur = [], ''
+    for word in words:
+        if len(cur) + len(word) + 1 <= max_chars:
+            cur = (cur + ' ' + word).strip()
+        else:
+            if cur: lines.append(cur)
+            cur = word
+    if cur: lines.append(cur)
+    return lines
+
+
+def put_wrapped(img, text, x, y, max_chars=45, scale=0.42, color=(45,45,45), line_h=18, max_lines=3):
+    for line in wrap_lines(text, max_chars)[:max_lines]:
+        put_text(img, line, (x, y), scale, color, 1)
+        y += line_h
+    return y
+
+
+def rounded_rect(img, pt1, pt2, color, border=None, radius=14, thickness=-1):
+    # Simple rectangle fallback with antialiased borders; OpenCV lacks native rounded rect.
+    cv2.rectangle(img, pt1, pt2, color, thickness, cv2.LINE_AA)
+    if border is not None:
+        cv2.rectangle(img, pt1, pt2, border, 1, cv2.LINE_AA)
+
+
+def draw_dashed_ellipse(img, center, axes, color, thickness=1, dash_deg=5, gap_deg=8):
+    start = 0
+    while start < 360:
+        end = min(start + dash_deg, 360)
+        cv2.ellipse(img, (int(center[0]), int(center[1])), (max(1, int(axes[0])), max(1, int(axes[1]))), 0, start, end, color, thickness, cv2.LINE_AA)
+        start += dash_deg + gap_deg
+
+
+def draw_soft_area(img, mask, color, alpha=0.045):
+    overlay = img.copy()
+    overlay[mask > 0] = color
+    return cv2.addWeighted(overlay, alpha, img, 1-alpha, 0)
+
+
+def draw_badge(img, center, text, color, r=13):
+    x, y = int(center[0]), int(center[1])
+    cv2.circle(img, (x, y), r, color, -1, cv2.LINE_AA)
+    cv2.circle(img, (x, y), r, (255,255,255), 2, cv2.LINE_AA)
+    tw = cv2.getTextSize(str(text), cv2.FONT_HERSHEY_SIMPLEX, 0.45, 2)[0][0]
+    put_text(img, text, (x - tw//2, y + 5), 0.45, (255,255,255), 2)
+
+
+def severity_label(score):
+    if score < 18: return 'Low'
+    if score < 40: return 'Mild'
+    if score < 65: return 'Moderate'
+    return 'High'
+
+
+def create_before_after_report(original, processed, title, findings, recommendations=None):
+    original = resize_for_processing(original, 900)
+    processed = cv2.resize(processed, (original.shape[1], original.shape[0]), interpolation=cv2.INTER_AREA)
+    h, w = original.shape[:2]
+    panel_h = 250
+    gap = 18
+    top_h = 58
+    out_w = w*2 + gap + 48
+    out_h = top_h + h + panel_h + 38
+    canvas = np.full((out_h, out_w, 3), 248, dtype=np.uint8)
+    cv2.rectangle(canvas, (0,0), (out_w, top_h), COLORS['navy'], -1)
+    tw = cv2.getTextSize(title, cv2.FONT_HERSHEY_SIMPLEX, 0.85, 2)[0][0]
+    put_text(canvas, title, ((out_w-tw)//2, 38), 0.85, (255,255,255), 2)
+    x1, y1 = 24, top_h + 16
+    x2 = x1 + w + gap
+    canvas[y1:y1+h, x1:x1+w] = original
+    canvas[y1:y1+h, x2:x2+w] = processed
+    cv2.rectangle(canvas, (x1,y1), (x1+w,y1+h), (225,225,225), 1)
+    cv2.rectangle(canvas, (x2,y1), (x2+w,y1+h), (225,225,225), 1)
+    # labels below image, not blocking face
+    for label, xx in [('BEFORE', x1), ('AFTER', x2)]:
+        cv2.rectangle(canvas, (xx+14, y1+h-42), (xx+120, y1+h-12), (20,20,20), -1, cv2.LINE_AA)
+        put_text(canvas, label, (xx+31, y1+h-20), 0.55, (255,255,255), 2)
+    py = y1 + h + 24
+    rounded_rect(canvas, (24, py), (out_w-24, out_h-20), (255,255,255), (220,225,232))
+    put_text(canvas, 'EDUCATIONAL VISUALIZATION FINDINGS', (48, py+32), 0.58, COLORS['navy'], 2)
+    col_w = (out_w-96)//2
+    fx = 48
+    fy = py + 64
+    for i, line in enumerate(findings[:4]):
+        yy = fy + i*36
+        cv2.circle(canvas, (fx+8, yy-2), 8, COLORS['green'], -1, cv2.LINE_AA)
+        put_text(canvas, '✓', (fx+3, yy+3), 0.35, (255,255,255), 1)
+        put_wrapped(canvas, line, fx+24, yy+3, 58, 0.42, COLORS['text'], 16, 2)
+    rx = 48 + col_w + 28
+    put_text(canvas, 'RECOMMENDED USE', (rx, py+32), 0.58, (40,100,45), 2)
+    if recommendations is None:
+        recommendations = ['Use as visual guide only', 'Consult a licensed professional for actual evaluation', 'Compare before and after output with original image']
+    for i, line in enumerate(recommendations[:4]):
+        yy = fy + i*36
+        cv2.circle(canvas, (rx+8, yy-2), 8, COLORS['orange'], -1, cv2.LINE_AA)
+        put_wrapped(canvas, line, rx+24, yy+3, 48, 0.42, COLORS['text'], 16, 2)
+    put_text(canvas, 'Disclaimer: ' + DISCLAIMER, (48, out_h-34), 0.38, COLORS['muted'], 1)
+    return canvas
 
 def process_co2_dermapen(input_path, output_path, intensity=1.0):
     intensity = clamp_intensity(intensity)
-    original = resize_for_processing(read_image(input_path), 1300)
+    original = resize_for_processing(read_image(input_path), 1100)
     bbox = detect_face_bbox(original)
     skin = skin_mask_bgr(original, bbox)
-    protect = protect_features_mask(original, bbox)
+    protect = protect_features_mask(original)
     usable_skin = (skin.astype(np.float32) * (1 - protect.astype(np.float32) / 255.0)).astype(np.uint8)
-
     smooth = cv2.bilateralFilter(original, 15, 45, 45)
     smooth = cv2.bilateralFilter(smooth, 9, 30, 30)
-    smooth = cv2.addWeighted(smooth, 0.78, cv2.GaussianBlur(smooth, (0, 0), 1.25), 0.22, 0)
-    smooth = enhance_lab(smooth, l_alpha=1.02, l_beta=2, a_smooth=0.08)
-
-    lab = cv2.cvtColor(original, cv2.COLOR_BGR2LAB)
-    gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
+    smooth = cv2.addWeighted(smooth, 0.78, cv2.GaussianBlur(smooth, (0,0), 1.25), 0.22, 0)
+    smooth = enhance_lab(smooth, 1.02, 2, 0.08)
+    lab = cv2.cvtColor(original, cv2.COLOR_BGR2LAB); gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
     _, a, _ = cv2.split(lab)
-    red_marks = cv2.inRange(a, int(max(132, cv2.mean(a, mask=skin)[0] + 7)), 210)
-    dark_spots = cv2.inRange(gray, 0, int(max(55, safe_mean(gray, skin) - 18)))
+    red_marks = cv2.inRange(a, 130, 205)
+    dark_spots = cv2.inRange(gray, 0, int(max(60, cv2.mean(gray, mask=skin)[0] - 20)))
     marks = cv2.bitwise_or(cv2.bitwise_and(red_marks, skin), cv2.bitwise_and(dark_spots, skin))
-    marks = cv2.morphologyEx(marks, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
-    marks = cv2.dilate(marks, np.ones((5, 5), np.uint8), iterations=1)
-    marks = cv2.GaussianBlur(marks, (31, 31), 0)
-
-    result = blend(original, smooth, usable_skin, 0.50 * intensity)
-    result = blend(result, smooth, marks, 0.78 * intensity)
+    marks = cv2.GaussianBlur(cv2.dilate(cv2.morphologyEx(marks, cv2.MORPH_CLOSE, np.ones((7,7),np.uint8)), np.ones((5,5),np.uint8), 1), (31,31), 0)
+    result = blend(original, smooth, usable_skin, 0.50*intensity)
+    result = blend(result, smooth, marks, 0.78*intensity)
     result = gentle_sharpen(result, 0.045)
-    save_image(output_path, result)
-    print("CO2 Laser + Dermapen educational visualization saved:", output_path)
-    print(DISCLAIMER)
-    sys.exit(0)
+    report = create_before_after_report(original, result, 'CO2 LASER + DERMAPEN', [
+        'Redness/acne-like marks are visually softened while keeping major facial details protected.',
+        'Uneven skin texture is gently refined using skin-area smoothing and protected feature masking.',
+        'Dark spot-like areas receive stronger localized blending for clearer educational visualization.',
+        'Eyes, brows, lips, and strong facial edges are protected to reduce artificial over-smoothing.'
+    ], ['For redness/acne-like visualization', 'For texture-refinement demonstration', 'Educational before-and-after comparison only'])
+    save_image(output_path, report)
+    print('CO2 Laser + Dermapen professional report saved:', output_path); print(DISCLAIMER); sys.exit(0)
 
-if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        fail("Usage: python process_co2_dermapen.py input output [intensity]")
-    process_co2_dermapen(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else 1.0)
+if __name__ == '__main__':
+    if len(sys.argv) < 3: fail('Usage: python process_co2_dermapen.py input output [intensity]')
+    process_co2_dermapen(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv)>3 else 1.0)
