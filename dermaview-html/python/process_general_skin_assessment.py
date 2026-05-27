@@ -3,11 +3,6 @@ import numpy as np
 import sys
 from pathlib import Path
 
-try:
-    import mediapipe as mp
-except Exception:
-    mp = None
-
 DISCLAIMER = "Educational visualization only. Not a medical diagnosis or guaranteed treatment result."
 
 COLORS = {
@@ -93,15 +88,45 @@ def score(mask, region):
 
 
 def severity(v):
-    if v < 10: return "Low"
-    if v < 25: return "Moderate"
+    if v < 8: return "Low"
+    if v < 20: return "Mild"
+    if v < 35: return "Moderate"
     return "High"
+
+# ---------------- SMART OBSERVATIONS ----------------
+
+def generate_observations(results):
+    obs = []
+
+    if results["forehead"][0] > 25:
+        obs.append("Elevated erythema detected in frontal zone")
+
+    if results["left_cheek"][0] > 20 or results["right_cheek"][0] > 20:
+        obs.append("Pigmentation signals across malar regions")
+
+    if results["undereye"][0] > 15:
+        obs.append("Infraorbital shadowing present")
+
+    if results["nose"][0] > 20:
+        obs.append("Pore activity concentrated in nasal (T-zone)")
+
+    if results["chin"][0] > 20:
+        obs.append("Texture irregularities observed in mental region")
+
+    if len(obs) == 0:
+        obs.append("Skin appears generally balanced with minimal concerns")
+
+    return obs
 
 # ---------------- DRAW ----------------
 
 def draw_overlay(img, regions):
-    for k, m in regions.items():
-        color = COLORS[["red","orange","green","purple","blue","teal"][list(regions.keys()).index(k)]]
+    keys = list(regions.keys())
+    palette = ["red","orange","green","purple","blue","teal"]
+
+    for i, k in enumerate(keys):
+        m = regions[k]
+        color = COLORS[palette[i]]
         overlay = img.copy()
         overlay[m>0] = color
         img[:] = cv2.addWeighted(img, 0.85, overlay, 0.15, 0)
@@ -110,9 +135,9 @@ def draw_overlay(img, regions):
 def label_map():
     return {
         "forehead": "FRONTAL ZONE",
-        "left_cheek": "LEFT MALAR",
-        "right_cheek": "RIGHT MALAR",
-        "undereye": "INFRAORBITAL",
+        "left_cheek": "LEFT MALAR REGION",
+        "right_cheek": "RIGHT MALAR REGION",
+        "undereye": "INFRAORBITAL REGION",
         "nose": "NASAL (T-ZONE)",
         "chin": "MENTAL REGION"
     }
@@ -135,21 +160,22 @@ def process(input_path, output_path):
 
     labels = label_map()
 
-    y = 30
-    for k in labels:
-        text = f"{labels[k]}: {results[k][1]}"
-        cv2.putText(canvas, text, (20,y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, COLORS["navy"], 2)
-        y += 30
+    # Title
+    cv2.putText(canvas, "GENERAL SKIN ASSESSMENT", (20,30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, COLORS["navy"], 2)
 
-    # Key Observations
-    cv2.putText(canvas, "KEY OBSERVATIONS", (20, y+20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, COLORS["navy"], 2)
-    y += 60
-    obs = [
-        "Frontal redness detected",
-        "Malar pigmentation present",
-        "Mild under-eye shadowing"
-    ]
-    for o in obs:
+    y = 70
+    for k in labels:
+        text = f"{labels[k]}: {results[k][1]} ({int(results[k][0])}%)"
+        cv2.putText(canvas, text, (20,y), cv2.FONT_HERSHEY_SIMPLEX, 0.55, COLORS["navy"], 1)
+        y += 28
+
+    # Key Observations (dynamic)
+    y += 20
+    cv2.putText(canvas, "KEY OBSERVATIONS", (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, COLORS["navy"], 2)
+    y += 40
+
+    observations = generate_observations(results)
+    for o in observations:
         cv2.putText(canvas, "- "+o, (20,y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS["gray"], 1)
         y += 25
 
