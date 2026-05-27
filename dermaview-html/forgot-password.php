@@ -33,6 +33,12 @@ $email = $user['email'];
 
 $code = rand(1000, 9999);
 
+// Ensure only the most recent reset code is valid:
+// delete previous codes for this email before inserting a new one.
+$deleteStmt = $conn->prepare("DELETE FROM password_resets WHERE email = ?");
+$deleteStmt->bind_param("s", $email);
+$deleteStmt->execute();
+
 $insert = $conn->prepare(
     "INSERT INTO password_resets
     (email, reset_code)
@@ -46,6 +52,7 @@ $insert->bind_param(
 );
 
 $insert->execute();
+
 
 $mail = new PHPMailer(true);
 
