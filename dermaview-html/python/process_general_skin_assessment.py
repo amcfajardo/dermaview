@@ -266,19 +266,41 @@ def draw_segment_overlay(face_img, regions, issue_scores, offset=(0,0)):
     # blend tinted exact regions
     face_img[:] = cv2.addWeighted(overlay, 0.55, face_img, 0.45, 0)
 
+def _put_label_box(canvas, text, x, y, color, side="right"):
+    """Draws readable callout text with a tiny white backing so labels stay clean."""
+    scale = 0.42
+    thickness = 1
+    (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, scale, thickness)
+    pad_x, pad_y = 7, 5
+    H, W = canvas.shape[:2]
+    if side == "left":
+        x = max(8, min(x, W - tw - 2 * pad_x - 8))
+    else:
+        x = max(8, min(x, W - tw - 2 * pad_x - 8))
+    y = max(20, min(y, H - 20))
+    cv2.rectangle(canvas, (x - pad_x, y - th - pad_y), (x + tw + pad_x, y + pad_y), (255,255,255), -1)
+    cv2.rectangle(canvas, (x - pad_x, y - th - pad_y), (x + tw + pad_x, y + pad_y), color, 1)
+    cv2.putText(canvas, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thickness, cv2.LINE_AA)
+
 def draw_callouts(canvas, img_area, regions, x0, y0, scale_x, scale_y):
-    # Fixed label lanes: prevents label text from overlapping on the right side
-    # and keeps the under-eye label aligned with the actual under-eye area.
+    # Fixed text lanes. These avoid the previous overlap where NOSE AREA and
+    # RIGHT CHEEK AREA were placed on almost the same line.
+    # Values are relative to the displayed image height so the layout still
+    # works with different face sizes and image dimensions.
     labels = [
-        ("forehead", "1", "FOREHEAD AREA", "red", "right", 0.00),
-        ("left_cheek", "2", "LEFT CHEEK AREA", "orange", "left", 0.00),
-        ("right_cheek", "3", "RIGHT CHEEK AREA", "green", "right", -18),
-        ("undereye", "4", "UNDEREYE AREA", "purple", "left", -10),
-        ("nose", "5", "NOSE AREA", "blue", "right", 18),
-        ("chin", "6", "CHIN AREA", "teal", "right", 0.00),
+        ("forehead",    "1", "FOREHEAD AREA",    "red",    "right", 0.26),
+        ("nose",        "5", "NOSE AREA",        "blue",   "right", 0.43),
+        ("right_cheek", "3", "RIGHT CHEEK AREA", "green",  "right", 0.48),
+        ("chin",        "6", "CHIN AREA",        "teal",   "right", 0.63),
+        ("undereye",    "4", "UNDEREYE AREA",    "purple", "left",  0.38),
+        ("left_cheek",  "2", "LEFT CHEEK AREA",  "orange", "left",  0.49),
     ]
     H, W = canvas.shape[:2]
-    for key, num, name, cname, side, lane_offset in labels:
+    _, _, iw, ih = img_area
+    left_badge_x = max(38, x0 - 72)
+    right_badge_x = min(W - 92, x0 + iw + 58)
+
+    for key, num, name, cname, side, lane_ratio in labels:
         mask = regions[key]
         ys, xs = np.where(mask > 0)
         if len(xs) == 0:
@@ -286,17 +308,26 @@ def draw_callouts(canvas, img_area, regions, x0, y0, scale_x, scale_y):
         cx = int(x0 + np.mean(xs) * scale_x)
         cy = int(y0 + np.mean(ys) * scale_y)
         color = COLORS[cname]
+        by = int(y0 + ih * lane_ratio)
+        by = int(np.clip(by, y0 + 22, y0 + ih - 22))
+
         if side == "left":
-            bx = max(30, x0 - 70)
+            bx = left_badge_x
+            label_x = bx - 178
+            label_x = max(12, label_x)
+            cv2.line(canvas, (cx, cy), (bx, by), color, 1, cv2.LINE_AA)
+            cv2.circle(canvas, (bx, by), 14, color, -1, cv2.LINE_AA)
+            cv2.putText(canvas, num, (bx-5, by+5), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255,255,255), 2, cv2.LINE_AA)
+            _put_label_box(canvas, name, label_x, by+5, color, "left")
         else:
-            bx = min(W - 40, x0 + img_area[2] + 48)
-        by = int(np.clip(cy + lane_offset, y0 + 16, y0 + img_area[3] - 16))
-        cv2.line(canvas, (cx, cy), (bx, by), color, 1, cv2.LINE_AA)
-        cv2.circle(canvas, (bx, by), 14, color, -1, cv2.LINE_AA)
-        cv2.putText(canvas, num, (bx-5, by+5), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255,255,255), 2, cv2.LINE_AA)
-        tx = bx + 20 if side == "right" else bx - 165
-        tx = max(12, min(W-190, tx))
-        cv2.putText(canvas, name, (tx, by+5), cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1, cv2.LINE_AA)
+            bx = right_badge_x
+            label_x = bx + 22
+            # Keep right labels fully inside the report canvas.
+            label_x = min(label_x, W - 205)
+            cv2.line(canvas, (cx, cy), (bx, by), color, 1, cv2.LINE_AA)
+            cv2.circle(canvas, (bx, by), 14, color, -1, cv2.LINE_AA)
+            cv2.putText(canvas, num, (bx-5, by+5), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255,255,255), 2, cv2.LINE_AA)
+            _put_label_box(canvas, name, label_x, by+5, color, "right")
 
 def compute_findings(img, regions):
     masks = issue_masks(img)
@@ -340,13 +371,14 @@ def draw_finding_card(canvas, x, y, w, h, num, title, color, zone, finding, seve
     cv2.rectangle(canvas, (x, y), (x+w, y+h), (225,225,225), 1)
     cv2.circle(canvas, (x+24, y+28), 14, color, -1, cv2.LINE_AA)
     cv2.putText(canvas, str(num), (x+19, y+34), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255,255,255), 2, cv2.LINE_AA)
-    cv2.putText(canvas, title, (x+48, y+26), cv2.FONT_HERSHEY_SIMPLEX, 0.48, color, 2, cv2.LINE_AA)
+    # Keep long titles from colliding with the severity badge.
+    draw_text(canvas, title, (x+48, y+26), scale=0.43, color=color, thickness=2, max_width=w-150, line_gap=16)
     # severity small badge
     sev_col = (60,170,60) if severity in ("Low","Mild") else ((0,135,255) if severity=="Moderate" else (45,45,220))
-    cv2.rectangle(canvas, (x+w-84, y+13), (x+w-14, y+36), sev_col, 1)
-    cv2.putText(canvas, severity, (x+w-76, y+29), cv2.FONT_HERSHEY_SIMPLEX, 0.34, sev_col, 1, cv2.LINE_AA)
-    draw_text(canvas, "Zone: " + zone, (x+48, y+50), scale=0.36, color=(45,45,45), thickness=1, max_width=w-70, line_gap=15)
-    draw_text(canvas, "Finding: " + finding, (x+48, y+68), scale=0.36, color=(45,45,45), thickness=1, max_width=w-70, line_gap=15)
+    cv2.rectangle(canvas, (x+w-92, y+13), (x+w-14, y+36), sev_col, 1)
+    cv2.putText(canvas, severity, (x+w-84, y+29), cv2.FONT_HERSHEY_SIMPLEX, 0.32, sev_col, 1, cv2.LINE_AA)
+    draw_text(canvas, "Zone: " + zone, (x+48, y+52), scale=0.34, color=(45,45,45), thickness=1, max_width=w-68, line_gap=15)
+    draw_text(canvas, "Finding: " + finding, (x+48, y+72), scale=0.34, color=(45,45,45), thickness=1, max_width=w-68, line_gap=15)
 
 def process_general_skin_assessment(input_path, output_path):
     src = resize_for_processing(read_image(input_path), 1200)
@@ -355,17 +387,17 @@ def process_general_skin_assessment(input_path, output_path):
     findings = compute_findings(src, regions)
 
     # Report canvas: wide enough for different images, with findings at the lower part.
-    W = 1200
+    W = 1300
     H = 1500
     canvas = np.full((H, W, 3), 255, dtype=np.uint8)
 
     # Header
     cv2.rectangle(canvas, (0,0), (W,80), (45, 24, 5), -1)
-    cv2.putText(canvas, "GENERAL SKIN ASSESSMENT", (265, 48), cv2.FONT_HERSHEY_SIMPLEX, 1.25, (255,255,255), 2, cv2.LINE_AA)
-    cv2.putText(canvas, "AREA-BY-AREA EDUCATIONAL ANALYSIS", (390, 74), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (220,230,245), 1, cv2.LINE_AA)
+    cv2.putText(canvas, "GENERAL SKIN ASSESSMENT", (315, 48), cv2.FONT_HERSHEY_SIMPLEX, 1.25, (255,255,255), 2, cv2.LINE_AA)
+    cv2.putText(canvas, "AREA-BY-AREA EDUCATIONAL ANALYSIS", (440, 74), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (220,230,245), 1, cv2.LINE_AA)
 
     # Image area bigger and centered
-    max_img_w, max_img_h = 860, 590
+    max_img_w, max_img_h = 820, 590
     scale = min(max_img_w / w, max_img_h / h)
     nw, nh = int(w * scale), int(h * scale)
     resized = cv2.resize(src, (nw, nh), interpolation=cv2.INTER_AREA)
@@ -386,10 +418,10 @@ def process_general_skin_assessment(input_path, output_path):
     panel_y = y0 + nh + 28
     rounded_rect(canvas, (28, panel_y), (W-28, H-78), (252,252,252), radius=16, thickness=-1)
     cv2.rectangle(canvas, (28, panel_y), (W-28, H-78), (225,225,225), 1)
-    cv2.putText(canvas, "AREA-BY-AREA EDUCATIONAL FINDINGS", (350, panel_y+42), cv2.FONT_HERSHEY_SIMPLEX, 0.72, COLORS["navy"], 2, cv2.LINE_AA)
+    cv2.putText(canvas, "AREA-BY-AREA EDUCATIONAL FINDINGS", (400, panel_y+42), cv2.FONT_HERSHEY_SIMPLEX, 0.72, COLORS["navy"], 2, cv2.LINE_AA)
 
-    card_w, card_h = 360, 130
-    cols = [55, 420, 785]
+    card_w, card_h = 375, 130
+    cols = [65, 470, 875]
     rows = [panel_y+65, panel_y+205]
     cards = [
         ("forehead", 1, "FOREHEAD AREA", "red", "Forehead/upper face"),
@@ -416,7 +448,7 @@ def process_general_skin_assessment(input_path, output_path):
     bar(canvas, summary_x, sy+119, 155, texture_pct, COLORS["blue"], "Texture / pores")
     bar(canvas, summary_x, sy+156, 155, under_pct, COLORS["purple"], "Undereye shadowing")
 
-    guide_x = 445
+    guide_x = 485
     cv2.putText(canvas, "SEVERITY GUIDE", (guide_x, sy), cv2.FONT_HERSHEY_SIMPLEX, 0.58, COLORS["navy"], 2, cv2.LINE_AA)
     sev = [("Low/Mild", "0-17%", COLORS["green"]), ("Moderate", "18-34%", COLORS["orange"]), ("High", "35%+", COLORS["red"])]
     gy = sy+45
@@ -426,17 +458,17 @@ def process_general_skin_assessment(input_path, output_path):
         cv2.putText(canvas, rng, (guide_x+150, gy), cv2.FONT_HERSHEY_SIMPLEX, 0.45, COLORS["navy"], 1, cv2.LINE_AA)
         gy += 37
 
-    rec_x = 690
+    rec_x = 760
     cv2.putText(canvas, "RECOMMENDED VISUALIZATIONS", (rec_x, sy), cv2.FONT_HERSHEY_SIMPLEX, 0.58, COLORS["navy"], 2, cv2.LINE_AA)
     recs = [("CO2 Laser + Dermapen", "for redness & texture", COLORS["red"]),
             ("PICO Carbon Laser", "for pigmentation & pores", COLORS["blue"]),
             ("Diamond Peel Facial", "for glow & exfoliation", COLORS["orange"]),
             ("Undereye + Lip Filler", "for dark circles & lip hydration", COLORS["purple"])]
     for i, (name, sub, col) in enumerate(recs):
-        rx = rec_x + (i % 2) * 230
+        rx = rec_x + (i % 2) * 245
         ry = sy + 28 + (i // 2) * 82
-        rounded_rect(canvas, (rx, ry), (rx+210, ry+65), (255,255,255), radius=10, thickness=-1)
-        cv2.rectangle(canvas, (rx, ry), (rx+210, ry+65), col, 1)
+        rounded_rect(canvas, (rx, ry), (rx+225, ry+65), (255,255,255), radius=10, thickness=-1)
+        cv2.rectangle(canvas, (rx, ry), (rx+225, ry+65), col, 1)
         cv2.circle(canvas, (rx+24, ry+32), 18, col, -1)
         cv2.putText(canvas, "✓", (rx+16, ry+40), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255,255,255), 2, cv2.LINE_AA)
         cv2.putText(canvas, name, (rx+52, ry+27), cv2.FONT_HERSHEY_SIMPLEX, 0.38, COLORS["navy"], 1, cv2.LINE_AA)
