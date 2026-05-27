@@ -201,5 +201,5 @@ def process_undereye_lip_filler(input_path, output_path, intensity=1.0):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        fail("Usage: python process_undereye_lip_filler_final.py input output [intensity]")
+        fail("Usage: python process_undereye_lip_filler.py input output [intensity]")
     process_undereye_lip_filler(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else 1.0)

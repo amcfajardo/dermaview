@@ -187,5 +187,5 @@ def process_pico_carbon_laser(input_path, output_path, intensity=1.0):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        fail("Usage: python process_pico_carbon_laser_final.py input output [intensity]")
+        fail("Usage: python process_pico_carbon_laser.py input output [intensity]")
     process_pico_carbon_laser(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else 1.0)

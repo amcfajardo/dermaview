@@ -179,5 +179,5 @@ def process_diamond_peel(input_path, output_path, intensity=1.0):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        fail("Usage: python process_diamond_peel_final.py input output [intensity]")
+        fail("Usage: python process_diamond_peel.py input output [intensity]")
     process_diamond_peel(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else 1.0)

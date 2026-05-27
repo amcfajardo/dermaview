@@ -199,182 +199,255 @@ def region_masks(img, bbox):
     }
 
 
-def draw_dashed_ellipse(img, center, axes, color, angle=0, thickness=2, segments=48):
-    pts = cv2.ellipse2Poly(tuple(map(int, center)), tuple(map(int, axes)), int(angle), 0, 360, max(5, 360//segments))
-    for i in range(0, len(pts)-1, 2):
-        cv2.line(img, tuple(pts[i]), tuple(pts[i+1]), color, thickness, cv2.LINE_AA)
+
+# ------------------------------------------------------------
+# Professional area-based visual reporting utilities
+# ------------------------------------------------------------
+def draw_dashed_ellipse(img, center, axes, color, thickness=1, dash_deg=7, gap_deg=7):
+    """Thin dashed ellipse for professional, non-heavy area marking."""
+    start = 0
+    while start < 360:
+        end = min(start + dash_deg, 360)
+        cv2.ellipse(img, tuple(map(int, center)), tuple(map(int, axes)), 0, start, end, color, thickness, cv2.LINE_AA)
+        start += dash_deg + gap_deg
 
 
-def draw_region_outline(img, name, bbox, num, color):
+def draw_soft_area(img, mask, color, alpha=0.10):
+    overlay = img.copy()
+    overlay[mask > 0] = color
+    return cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
+
+
+def pill(img, x, y, w, h, text_value, color):
+    cv2.rectangle(img, (x, y), (x+w, y+h), (245, 248, 252), -1, cv2.LINE_AA)
+    cv2.rectangle(img, (x, y), (x+w, y+h), color, 1, cv2.LINE_AA)
+    tw = cv2.getTextSize(text_value, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)[0][0]
+    cv2.putText(img, text_value, (x + max(6, (w-tw)//2), y + h - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.42, color, 1, cv2.LINE_AA)
+
+
+def put_wrapped(img, s, x, y, max_chars, scale=0.46, color=(45,45,45), thick=1, line_h=18):
+    words = str(s).split()
+    lines, cur = [], ''
+    for word in words:
+        if len(cur) + len(word) + 1 <= max_chars:
+            cur = (cur + ' ' + word).strip()
+        else:
+            if cur:
+                lines.append(cur)
+            cur = word
+    if cur:
+        lines.append(cur)
+    for line in lines[:3]:
+        cv2.putText(img, line, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thick, cv2.LINE_AA)
+        y += line_h
+    return y
+
+
+def face_regions(shape, bbox):
     x, y, w, h = bbox
-    settings = {
-        'FOREHEAD AREA': ((x+w*0.50, y+h*0.23), (w*0.29, h*0.105), 0),
-        'LEFT CHEEK AREA': ((x+w*0.33, y+h*0.53), (w*0.15, h*0.18), -10),
-        'RIGHT CHEEK AREA': ((x+w*0.67, y+h*0.53), (w*0.15, h*0.18), 10),
-        'NOSE AREA': ((x+w*0.50, y+h*0.50), (w*0.09, h*0.17), 0),
-        'CHIN AREA': ((x+w*0.50, y+h*0.78), (w*0.20, h*0.10), 0),
-    }
-    if name == 'UNDEREYE AREA':
-        for c in [(x+w*0.34, y+h*0.39), (x+w*0.66, y+h*0.39)]:
-            draw_dashed_ellipse(img, c, (w*0.13, h*0.045), color, 0, 2)
-        label = (int(x+w*0.18), int(y+h*0.40))
-    else:
-        c, a, ang = settings[name]
-        draw_dashed_ellipse(img, c, a, color, ang, 2)
-        label = (int(c[0]), int(c[1]))
-    cv2.circle(img, label, 16, color, -1, cv2.LINE_AA)
-    cv2.circle(img, label, 16, (255,255,255), 2, cv2.LINE_AA)
-    text(img, str(num), (label[0]-5, label[1]+6), 0.55, (255,255,255), 2)
+    # region colors are BGR for OpenCV
+    data = [
+        ('Forehead Area', 'redness / acne-like', (0, 70, 235), (x+w*0.50, y+h*0.19), (w*0.34, h*0.105)),
+        ('Left Cheek Area', 'pigmentation / dark-spot-like', (0, 135, 255), (x+w*0.30, y+h*0.50), (w*0.17, h*0.22)),
+        ('Right Cheek Area', 'pigmentation / dark-spot-like', (55, 170, 55), (x+w*0.70, y+h*0.50), (w*0.17, h*0.22)),
+        ('Undereye Area', 'dark-circle / shadowing-like', (190, 80, 190), (x+w*0.50, y+h*0.335), (w*0.31, h*0.055)),
+        ('Nose Area', 'pores / blackhead-like', (220, 130, 20), (x+w*0.50, y+h*0.45), (w*0.095, h*0.205)),
+        ('Chin Area', 'texture unevenness', (190, 145, 30), (x+w*0.50, y+h*0.76), (w*0.24, h*0.105)),
+    ]
+    out = []
+    face = face_oval_mask(np.zeros(shape, dtype=np.uint8), bbox, blur=0)
+    for idx, (name, concern, color, center, axes) in enumerate(data, 1):
+        mask = ellipse_mask(shape, center, axes, 0, 0)
+        mask = cv2.bitwise_and(mask, face)
+        out.append({'id':idx, 'name':name, 'concern':concern, 'color':color, 'center':center, 'axes':axes, 'mask':mask})
+    return out
 
 
-def analyze_regions(original, bbox):
-    hsv = cv2.cvtColor(original, cv2.COLOR_BGR2HSV)
-    lab = cv2.cvtColor(original, cv2.COLOR_BGR2LAB)
-    gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
-    skin = (skin_mask_bgr(original, bbox) > 30).astype(np.uint8) * 255
+def severity_label(score):
+    if score < 18:
+        return 'Low'
+    if score < 40:
+        return 'Mild'
+    if score < 65:
+        return 'Moderate'
+    return 'High'
+
+
+def assess_region(region, hsv, lab, gray, skin_mask):
+    mask = cv2.bitwise_and(region['mask'], skin_mask)
+    pixels = max(1, cv2.countNonZero(mask))
+    if pixels < 40:
+        mask = region['mask']
+        pixels = max(1, cv2.countNonZero(mask))
+
     _, a, _ = cv2.split(lab)
-    skin_mean_gray = safe_mean(gray, skin)
-    skin_mean_a = safe_mean(a, skin)
+    h_channel, s_channel, v_channel = cv2.split(hsv)
 
-    red_hsv1 = cv2.inRange(hsv, np.array([0, 35, 45]), np.array([20, 255, 255]))
+    # Redness: LAB a-channel + HSV red ranges; normalized to region skin area.
+    a_mean = cv2.mean(a, mask=skin_mask)[0] if cv2.countNonZero(skin_mask) else np.mean(a)
+    red_lab = cv2.inRange(a, int(max(132, a_mean + 8)), 210)
+    red_hsv1 = cv2.inRange(hsv, np.array([0, 35, 45]), np.array([18, 255, 255]))
     red_hsv2 = cv2.inRange(hsv, np.array([155, 35, 45]), np.array([180, 255, 255]))
-    red_lab = cv2.inRange(a, int(max(132, skin_mean_a + 8)), 215)
-    redness = cv2.bitwise_and(cv2.bitwise_or(cv2.bitwise_or(red_hsv1, red_hsv2), red_lab), skin)
-    redness = cv2.morphologyEx(redness, cv2.MORPH_OPEN, np.ones((3,3), np.uint8))
+    red = cv2.bitwise_or(red_lab, cv2.bitwise_or(red_hsv1, red_hsv2))
+    red = cv2.bitwise_and(red, mask)
+    red_pct = cv2.countNonZero(red) / pixels * 100.0
 
-    dark = cv2.inRange(gray, 0, int(max(45, skin_mean_gray - 20)))
-    pigmentation = cv2.bitwise_and(dark, skin)
-    pigmentation = cv2.morphologyEx(pigmentation, cv2.MORPH_OPEN, np.ones((3,3), np.uint8))
+    # Dark / pigmentation-like: darker than surrounding skin, not hair/background.
+    skin_mean = cv2.mean(gray, mask=skin_mask)[0] if cv2.countNonZero(skin_mask) else float(np.mean(gray))
+    dark = cv2.inRange(gray, 0, int(max(40, skin_mean - 20)))
+    dark = cv2.bitwise_and(dark, mask)
+    dark_pct = cv2.countNonZero(dark) / pixels * 100.0
 
-    lap_abs = cv2.convertScaleAbs(cv2.Laplacian(gray, cv2.CV_64F))
-    texture = cv2.inRange(lap_abs, 16, 255)
-    texture = cv2.bitwise_and(texture, skin)
+    # Texture and pores: edge / local contrast inside the region.
+    lap = cv2.Laplacian(gray, cv2.CV_64F)
+    vals = lap[mask > 0]
+    texture = float(np.var(vals)) if vals.size else 0.0
+    texture_norm = min(100.0, texture / 3.2)
 
-    regs = region_masks(original, bbox)
-    data = []
-    for name, m in regs.items():
-        area = cv2.bitwise_and(m, skin)
-        area_count = cv2.countNonZero(area)
-        if area_count < 30:
-            area = m
-        red_p = pct(redness, area)
-        pig_p = pct(pigmentation, area)
-        tex_p = pct(texture, area)
-        mean_region = safe_mean(gray, area)
+    # Undereye shadowing: region brightness compared with face average.
+    region_lum = cv2.mean(gray, mask=mask)[0]
+    shadow = max(0.0, skin_mean - region_lum)
+    shadow_norm = min(100.0, shadow * 2.8)
 
-        concerns = []
-        score = 0
-        color = COLORS['green']
-        primary = 'Even-looking area'
-        if name == 'UNDEREYE AREA':
-            # compare undereye to whole skin brightness, not a fixed threshold
-            dark_score = max(0, (skin_mean_gray - mean_region) * 2.2)
-            if dark_score >= 8 or pig_p >= 1.2:
-                concerns.append('dark-circle/shadowing-like signals')
-                score = max(score, min(100, dark_score + pig_p*8))
-                color = COLORS['purple']; primary = 'Undereye shadowing'
-        if red_p >= 0.8:
-            concerns.append('redness/acne-like signals')
-            score = max(score, min(100, red_p * 14))
-            color = COLORS['red']; primary = 'Redness / acne-like'
-        if pig_p >= 0.8:
-            concerns.append('pigmentation/dark-spot-like signals')
-            score = max(score, min(100, pig_p * 12))
-            if primary == 'Even-looking area':
-                color = COLORS['orange']; primary = 'Pigmentation / dark spots'
-        if tex_p >= 14 and name in ['CHIN AREA', 'NOSE AREA', 'LEFT CHEEK AREA', 'RIGHT CHEEK AREA']:
-            concerns.append('texture/visible-pore-like signals')
-            score = max(score, min(100, tex_p * 1.7))
-            if primary == 'Even-looking area':
-                color = COLORS['blue']; primary = 'Texture / pores'
-        if not concerns:
-            concerns.append('no strong visible concern from image processing')
-            score = min(7, max(red_p, pig_p, tex_p/5))
-        data.append({
-            'name': name, 'mask': m, 'red': red_p, 'pig': pig_p, 'tex': tex_p,
-            'score': round(score, 1), 'severity': severity(score), 'concerns': concerns[:2],
-            'color': color, 'primary': primary
-        })
-    return data, {'redness': redness, 'pigmentation': pigmentation, 'texture': texture}
+    name = region['name'].lower()
+    if 'forehead' in name:
+        score = min(100, red_pct * 3.0 + dark_pct * 1.5 + texture_norm * 0.15)
+        primary = 'redness/acne-like signals'
+    elif 'cheek' in name:
+        score = min(100, dark_pct * 2.4 + red_pct * 1.8 + texture_norm * 0.12)
+        primary = 'pigmentation/dark-spot-like signals'
+    elif 'undereye' in name:
+        score = min(100, shadow_norm + dark_pct * 1.7 + red_pct * 0.7)
+        primary = 'dark-circle/shadowing-like signals'
+    elif 'nose' in name:
+        score = min(100, texture_norm * 0.50 + dark_pct * 1.5 + red_pct * 0.7)
+        primary = 'pores/blackhead-like signals'
+    elif 'chin' in name:
+        score = min(100, texture_norm * 0.42 + red_pct * 1.5 + dark_pct * 1.0)
+        primary = 'texture unevenness / blemish-like signals'
+    else:
+        score = min(100, red_pct + dark_pct + texture_norm * 0.2)
+        primary = region['concern']
+
+    # Avoid every area looking extreme for bright red portraits; keep educational scaling moderate.
+    score = float(np.clip(score, 0, 100))
+    return {
+        'score': score,
+        'severity': severity_label(score),
+        'red_pct': red_pct,
+        'dark_pct': dark_pct,
+        'texture': texture_norm,
+        'shadow': shadow_norm,
+        'primary': primary,
+    }
 
 
-def draw_panel(canvas, x0, y0, w, h, title, data):
-    cv2.rectangle(canvas, (x0, y0), (x0+w, y0+h), (248,248,248), -1)
-    cv2.rectangle(canvas, (x0, y0), (x0+w, y0+48), (70,38,18), -1)
-    text(canvas, title, (x0+22, y0+32), 0.78, (255,255,255), 2)
-    y = y0 + 78
-    text(canvas, 'Area-by-area educational analysis', (x0+22, y), 0.55, COLORS['dark'], 2)
-    y += 32
-    for i, d in enumerate(data, 1):
-        color = d['color']
-        cv2.circle(canvas, (x0+35, y-5), 13, color, -1, cv2.LINE_AA)
-        text(canvas, str(i), (x0+30, y+1), 0.45, (255,255,255), 2)
-        text(canvas, d['name'], (x0+58, y), 0.52, color, 2)
-        desc = '; '.join(d['concerns'])
-        text(canvas, desc[:64], (x0+58, y+22), 0.43, COLORS['dark'], 1)
-        sev_col = color if d['severity'] != 'None' else (80,140,80)
-        cv2.rectangle(canvas, (x0+w-108, y-12), (x0+w-22, y+10), sev_col, 1)
-        text(canvas, d['severity'], (x0+w-96, y+4), 0.36, sev_col, 1)
-        y += 58
-    cv2.line(canvas, (x0+22, y-8), (x0+w-22, y-8), COLORS['line'], 1)
-    y += 22
-    text(canvas, 'Overall summary', (x0+22, y), 0.55, COLORS['dark'], 2)
-    y += 26
-    avg_red = np.mean([d['red'] for d in data])
-    avg_pig = np.mean([d['pig'] for d in data])
-    avg_tex = np.mean([d['tex'] for d in data])
-    rows = [('Redness / acne-like', avg_red, COLORS['red'], 8), ('Pigmentation / dark spots', avg_pig, COLORS['orange'], 8), ('Texture / pores', avg_tex, COLORS['blue'], 25)]
-    for label, val, col, scale in rows:
-        pctv = int(np.clip(val*scale, 0, 100))
-        text(canvas, label, (x0+22, y), 0.42, COLORS['dark'], 1)
-        cv2.rectangle(canvas, (x0+190, y-10), (x0+310, y-2), (230,230,230), -1)
-        cv2.rectangle(canvas, (x0+190, y-10), (x0+190+int(1.2*pctv), y-2), col, -1)
-        text(canvas, f'{pctv}%', (x0+322, y), 0.38, col, 1)
-        y += 24
-    y += 16
-    text(canvas, 'Recommended visualizations', (x0+22, y), 0.50, (40,120,45), 2)
-    y += 25
-    recs = []
-    if avg_red > 0.8: recs.append('CO2 Laser + Dermapen')
-    if avg_pig > 0.8: recs.append('PICO Carbon Laser')
-    if avg_tex > 13: recs.append('Diamond Peel Facial')
-    if any(d['name']=='UNDEREYE AREA' and d['score']>=8 for d in data): recs.append('Undereye + Lip Filler')
-    if not recs: recs.append('General consultation for confirmation')
-    for r in recs[:4]:
-        text(canvas, '✓ ' + r, (x0+30, y), 0.43, (30,110,40), 1)
-        y += 22
-    y = y0 + h - 28
-    text(canvas, 'Educational visualization only. Not a medical diagnosis.', (x0+22, y), 0.36, COLORS['dark'], 1)
+def build_professional_canvas(original, regions, assessments):
+    h, w = original.shape[:2]
+    # top image plus lower findings panel; no right-side findings.
+    panel_h = max(300, int(h * 0.55))
+    canvas = np.full((h + panel_h, w, 3), 248, dtype=np.uint8)
+    canvas[:h, :] = original
+
+    # subtle white fade at bottom for readability
+    cv2.rectangle(canvas, (0, h), (w, h+panel_h), (255,255,255), -1)
+
+    # Title bar
+    title_h = max(42, int(h * 0.07))
+    cv2.rectangle(canvas, (0, 0), (w, title_h), (32, 58, 92), -1)
+    title = 'GENERAL SKIN ASSESSMENT'
+    tw = cv2.getTextSize(title, cv2.FONT_HERSHEY_SIMPLEX, 0.88, 2)[0][0]
+    cv2.putText(canvas, title, ((w - tw)//2, int(title_h*0.68)), cv2.FONT_HERSHEY_SIMPLEX, 0.88, (255,255,255), 2, cv2.LINE_AA)
+
+    # Draw thin, color-coded area overlays on photo.
+    annotated = canvas[:h, :]
+    for r in regions:
+        a = assessments[r['id']]
+        color = r['color']
+        annotated[:] = draw_soft_area(annotated, r['mask'], color, alpha=0.055)
+        draw_dashed_ellipse(annotated, r['center'], r['axes'], color, thickness=1, dash_deg=6, gap_deg=8)
+        cx, cy = int(r['center'][0]), int(r['center'][1])
+        cv2.circle(annotated, (cx, cy), 15, color, -1, cv2.LINE_AA)
+        cv2.circle(annotated, (cx, cy), 15, (255,255,255), 2, cv2.LINE_AA)
+        id_txt = str(r['id'])
+        idw = cv2.getTextSize(id_txt, cv2.FONT_HERSHEY_SIMPLEX, 0.52, 2)[0][0]
+        cv2.putText(annotated, id_txt, (cx-idw//2, cy+6), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255,255,255), 2, cv2.LINE_AA)
+
+    # Bottom panel background cards
+    y0 = h + 18
+    margin = 22
+    cv2.rectangle(canvas, (margin, y0), (w-margin, h+panel_h-18), (255,255,255), -1, cv2.LINE_AA)
+    cv2.rectangle(canvas, (margin, y0), (w-margin, h+panel_h-18), (215,225,235), 1, cv2.LINE_AA)
+
+    cv2.putText(canvas, 'AREA-BY-AREA EDUCATIONAL FINDINGS', (margin+18, y0+34), cv2.FONT_HERSHEY_SIMPLEX, 0.62, (32,58,92), 2, cv2.LINE_AA)
+
+    left_x = margin + 18
+    right_x = w//2 + 8
+    row_h = 72
+    start_y = y0 + 60
+    for i, r in enumerate(regions):
+        col_x = left_x if i < 3 else right_x
+        row_y = start_y + (i % 3) * row_h
+        a = assessments[r['id']]
+        color = r['color']
+        cv2.circle(canvas, (col_x+15, row_y+12), 11, color, -1, cv2.LINE_AA)
+        cv2.putText(canvas, str(r['id']), (col_x+10, row_y+17), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (255,255,255), 1, cv2.LINE_AA)
+        cv2.putText(canvas, r['name'].upper(), (col_x+34, row_y+10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, color, 2, cv2.LINE_AA)
+        desc = f"{a['severity']} {a['primary']} observed in this area."
+        put_wrapped(canvas, desc, col_x+34, row_y+32, 42, 0.42, (45,45,45), 1, 16)
+        pill(canvas, col_x+360 if w > 850 else col_x+300, row_y-4, 92, 24, a['severity'], color)
+
+    # Summary bars and recommendations
+    sum_y = start_y + 3*row_h + 18
+    cv2.line(canvas, (margin+18, sum_y-18), (w-margin-18, sum_y-18), (220,225,230), 1, cv2.LINE_AA)
+    cv2.putText(canvas, 'OVERALL SUMMARY', (margin+18, sum_y+8), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (32,58,92), 2, cv2.LINE_AA)
+    labels = [
+        ('Redness / Acne-like', np.mean([assessments[1]['red_pct'], assessments[2]['red_pct'], assessments[3]['red_pct']]) * 3.0, (0,70,235)),
+        ('Pigmentation / Dark Spots', np.mean([assessments[2]['dark_pct'], assessments[3]['dark_pct']]) * 2.3, (0,135,255)),
+        ('Texture / Pores', np.mean([assessments[5]['texture'], assessments[6]['texture']]), (220,130,20)),
+        ('Undereye Shadowing', assessments[4]['shadow'], (190,80,190)),
+    ]
+    bar_x = margin + 260
+    bar_w = max(150, w//4)
+    for j, (labtxt, score, color) in enumerate(labels):
+        yy = sum_y + 36 + j*24
+        score = float(np.clip(score, 0, 100))
+        cv2.putText(canvas, labtxt, (margin+34, yy+5), cv2.FONT_HERSHEY_SIMPLEX, 0.43, (45,45,45), 1, cv2.LINE_AA)
+        cv2.rectangle(canvas, (bar_x, yy-6), (bar_x+bar_w, yy+4), (235,238,242), -1, cv2.LINE_AA)
+        cv2.rectangle(canvas, (bar_x, yy-6), (bar_x+int(bar_w*score/100), yy+4), color, -1, cv2.LINE_AA)
+        cv2.putText(canvas, f'{int(round(score))}%', (bar_x+bar_w+12, yy+5), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (80,80,80), 1, cv2.LINE_AA)
+
+    rec_x = w//2 + 10
+    cv2.putText(canvas, 'RECOMMENDED VISUALIZATIONS', (rec_x, sum_y+8), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (32,92,46), 2, cv2.LINE_AA)
+    recs = ['CO2 Laser + Dermapen', 'PICO Carbon Laser', 'Diamond Peel Facial', 'Undereye + Lip Filler']
+    for j, rec in enumerate(recs):
+        yy = sum_y + 36 + j*24
+        cv2.circle(canvas, (rec_x+8, yy), 8, (62,165,65), -1, cv2.LINE_AA)
+        cv2.putText(canvas, '✓', (rec_x+3, yy+5), cv2.FONT_HERSHEY_SIMPLEX, 0.40, (255,255,255), 1, cv2.LINE_AA)
+        cv2.putText(canvas, rec, (rec_x+24, yy+5), cv2.FONT_HERSHEY_SIMPLEX, 0.44, (45,45,45), 1, cv2.LINE_AA)
+
+    foot_y = h + panel_h - 28
+    cv2.putText(canvas, 'Disclaimer: Educational visualization only. Not a medical diagnosis or guaranteed treatment result.', (margin+18, foot_y), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (90,90,90), 1, cv2.LINE_AA)
+    return canvas
 
 
 def process_general_skin_assessment(input_path, output_path):
-    original = resize_for_processing(read_image(input_path), 1250)
+    original = resize_for_processing(read_image(input_path), 1200)
     bbox = detect_face_bbox(original)
-    data, signal_masks = analyze_regions(original, bbox)
-
-    # image side: tint only actually detected signal pixels, not the entire region
-    vis = original.copy()
-    red_overlay = vis.copy(); red_overlay[signal_masks['redness'] > 0] = COLORS['red']
-    vis = cv2.addWeighted(red_overlay, 0.18, vis, 0.82, 0)
-    pig_overlay = vis.copy(); pig_overlay[signal_masks['pigmentation'] > 0] = COLORS['orange']
-    vis = cv2.addWeighted(pig_overlay, 0.13, vis, 0.87, 0)
-
-    for i, d in enumerate(data, 1):
-        # Draw every area lightly, but use detected primary color and severity.
-        col = d['color'] if d['severity'] != 'None' else (120, 180, 120)
-        draw_region_outline(vis, d['name'], bbox, i, col)
-
-    H, W = vis.shape[:2]
-    panel_w = max(430, int(W * 0.60))
-    canvas = np.full((H, W + panel_w, 3), 255, dtype=np.uint8)
-    canvas[:H, :W] = vis
-    draw_panel(canvas, W, 0, panel_w, H, 'GENERAL SKIN ASSESSMENT', data)
+    hsv = cv2.cvtColor(original, cv2.COLOR_BGR2HSV)
+    lab = cv2.cvtColor(original, cv2.COLOR_BGR2LAB)
+    gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
+    skin = skin_mask_bgr(original, bbox)
+    regions = face_regions(original.shape, bbox)
+    assessments = {r['id']: assess_region(r, hsv, lab, gray, skin) for r in regions}
+    canvas = build_professional_canvas(original, regions, assessments)
     save_image(output_path, canvas)
     print('General Skin Assessment area-based educational visualization saved:', output_path)
     print(DISCLAIMER)
     sys.exit(0)
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     if len(sys.argv) < 3:
-        fail("Usage: python process_general_skin_assessment_final.py input output")
+        fail('Usage: python process_general_skin_assessment.py input output')
     process_general_skin_assessment(sys.argv[1], sys.argv[2])
