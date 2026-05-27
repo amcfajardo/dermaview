@@ -4,6 +4,11 @@ import numpy as np
 import sys
 from pathlib import Path
 
+try:
+    import mediapipe as mp
+except Exception:
+    mp = None
+
 DISCLAIMER = "Educational visualization only. Not a medical diagnosis or guaranteed treatment result."
 
 COLORS = {
@@ -52,6 +57,32 @@ def clamp_intensity(value, default=1.0):
 
 def detect_face_bbox(img):
     h, w = img.shape[:2]
+
+    # Best option: MediaPipe FaceMesh if installed.
+    if mp is not None:
+        rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        with mp.solutions.face_mesh.FaceMesh(
+            static_image_mode=True,
+            max_num_faces=1,
+            refine_landmarks=True,
+            min_detection_confidence=0.50
+        ) as face_mesh:
+            result = face_mesh.process(rgb)
+            if result.multi_face_landmarks:
+                lm = result.multi_face_landmarks[0].landmark
+                xs = [int(p.x * w) for p in lm]
+                ys = [int(p.y * h) for p in lm]
+                x1, y1 = max(0, min(xs)), max(0, min(ys))
+                x2, y2 = min(w - 1, max(xs)), min(h - 1, max(ys))
+                pad_x = int((x2 - x1) * 0.08)
+                pad_y = int((y2 - y1) * 0.10)
+                x1 = max(0, x1 - pad_x)
+                y1 = max(0, y1 - pad_y)
+                x2 = min(w - 1, x2 + pad_x)
+                y2 = min(h - 1, y2 + pad_y)
+                return x1, y1, max(1, x2 - x1), max(1, y2 - y1)
+
+    # Fallback: Haar cascade.
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
     cascade = cv2.CascadeClassifier(cascade_path)
@@ -65,12 +96,157 @@ def detect_face_bbox(img):
         fw = min(w - x, fw + 2 * pad_x)
         fh = min(h - y, fh + int(pad_y * 1.6))
         return x, y, fw, fh
-    # Fallback: center face estimate. This keeps the script usable for different image sizes even when detection fails.
+
+    # Last fallback: proportional center face estimate.
     fw = int(w * 0.56)
     fh = int(h * 0.70)
     x = (w - fw) // 2
     y = int(h * 0.12)
     return x, y, fw, fh
+
+def get_face_landmarks(img):
+    if mp is None:
+        return None
+    h, w = img.shape[:2]
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    with mp.solutions.face_mesh.FaceMesh(
+        static_image_mode=True,
+        max_num_faces=1,
+        refine_landmarks=True,
+        min_detection_confidence=0.50
+    ) as face_mesh:
+        result = face_mesh.process(rgb)
+        if not result.multi_face_landmarks:
+            return None
+        return [(int(p.x * w), int(p.y * h)) for p in result.multi_face_landmarks[0].landmark]
+
+def polygon_mask(shape, points):
+    mask = np.zeros(shape[:2], np.uint8)
+    pts = np.array(points, np.int32)
+    if len(pts) >= 3:
+        cv2.fillPoly(mask, [pts], 255)
+    return mask
+
+def safe_points(lm, ids):
+    try:
+        return [lm[i] for i in ids]
+    except Exception:
+        return []
+
+def make_face_region_masks(img):
+    h, w = img.shape[:2]
+    x, y, fw, fh = detect_face_bbox(img)
+    lm = get_face_landmarks(img)
+
+    regions = {}
+
+    if lm is not None and len(lm) >= 468:
+        # MediaPipe landmark-based regions.
+        # These follow the actual detected face, so they adjust better to different face sizes.
+        left_eye_pts = safe_points(lm, [33, 246, 161, 160, 159, 158, 157, 173, 133, 155, 154, 153, 145, 144, 163, 7])
+        right_eye_pts = safe_points(lm, [263, 466, 388, 387, 386, 385, 384, 398, 362, 382, 381, 380, 374, 373, 390, 249])
+
+        lcx = int(np.mean([p[0] for p in left_eye_pts]))
+        lcy = int(np.mean([p[1] for p in left_eye_pts]))
+        rcx = int(np.mean([p[0] for p in right_eye_pts]))
+        rcy = int(np.mean([p[1] for p in right_eye_pts]))
+        eye_y = int((lcy + rcy) / 2)
+        eye_gap = max(1, rcx - lcx)
+        nose_cx = int((lcx + rcx) / 2)
+
+        face_top = min(p[1] for p in safe_points(lm, [10, 67, 109, 338, 297]))
+        chin_y = lm[152][1]
+        mouth_bottom_y = max(lm[14][1], lm[17][1], lm[18][1])
+        nose_bottom_y = lm[2][1]
+
+        # Forehead: above eyebrows, inside the upper face.
+        forehead_y = int(face_top + (eye_y - face_top) * 0.55)
+        regions["forehead"] = elliptical_mask(
+            img.shape,
+            (nose_cx, forehead_y),
+            (int(eye_gap * 0.48), int(fh * 0.055)),
+            blur=0
+        )
+
+        # Undereye: directly below the actual eye landmarks, but not on the eye.
+        under_y = int(eye_y + max(10, fh * 0.050))
+        under_axes = (max(14, int(eye_gap * 0.18)), max(7, int(fh * 0.026)))
+        under = np.zeros((h, w), np.uint8)
+        cv2.ellipse(under, (lcx, under_y), under_axes, 0, 0, 360, 255, -1)
+        cv2.ellipse(under, (rcx, under_y), under_axes, 0, 0, 360, 255, -1)
+        regions["undereye"] = under
+
+        # Nose based on real nose bridge and tip landmarks.
+        nose_pts = safe_points(lm, [168, 6, 197, 195, 5, 4, 1, 19, 94, 2, 98, 327, 358, 129])
+        regions["nose"] = polygon_mask(img.shape, nose_pts)
+        if cv2.countNonZero(regions["nose"]) < 40:
+            regions["nose"] = elliptical_mask(img.shape, (nose_cx, int((eye_y + nose_bottom_y) / 2)), (int(eye_gap * 0.18), int(fh * 0.145)), blur=0)
+
+        # Cheeks are lower than undereye and outward from the nose.
+        cheek_y = int(eye_y + (mouth_bottom_y - eye_y) * 0.45)
+        left_cheek_cx = int(lcx - eye_gap * 0.10)
+        right_cheek_cx = int(rcx + eye_gap * 0.10)
+        cheek_axes = (int(eye_gap * 0.23), int(fh * 0.120))
+        regions["left_cheek"] = elliptical_mask(img.shape, (left_cheek_cx, cheek_y), cheek_axes, blur=0)
+        regions["right_cheek"] = elliptical_mask(img.shape, (right_cheek_cx, cheek_y), cheek_axes, blur=0)
+
+        # Chin below lower lip, between mouth and actual chin landmark.
+        chin_center_y = int(mouth_bottom_y + (chin_y - mouth_bottom_y) * 0.50)
+        regions["chin"] = elliptical_mask(
+            img.shape,
+            (nose_cx, chin_center_y),
+            (int(eye_gap * 0.34), int(max(10, (chin_y - mouth_bottom_y) * 0.28))),
+            blur=0
+        )
+
+        # Prevent overlaps between neighboring regions.
+        eye_protection = cv2.dilate(regions["undereye"], np.ones((max(7, int(fw * 0.030)), max(7, int(fw * 0.030))), np.uint8), iterations=2)
+        nose_protection = cv2.dilate(regions["nose"], np.ones((max(5, int(fw * 0.018)), max(5, int(fw * 0.018))), np.uint8), iterations=1)
+        mouth_protection = elliptical_mask(img.shape, (nose_cx, int(mouth_bottom_y - fh * 0.015)), (int(eye_gap * 0.38), int(fh * 0.055)), blur=0)
+
+        protection_for_cheeks = cv2.bitwise_or(eye_protection, nose_protection)
+        regions["left_cheek"] = cv2.bitwise_and(regions["left_cheek"], cv2.bitwise_not(protection_for_cheeks))
+        regions["right_cheek"] = cv2.bitwise_and(regions["right_cheek"], cv2.bitwise_not(protection_for_cheeks))
+        regions["chin"] = cv2.bitwise_and(regions["chin"], cv2.bitwise_not(mouth_protection))
+
+        return regions, (x, y, fw, fh)
+
+    # Fallback if MediaPipe is unavailable: eye-cascade proportional placement.
+    left_eye, right_eye = detect_eyes_in_face(img, (x, y, fw, fh))
+    lx, ly, lew, leh, lcx, lcy = left_eye
+    rx, ry, rew, reh, rcx, rcy = right_eye
+
+    eye_y = int((lcy + rcy) / 2)
+    eye_gap = max(1, rcx - lcx)
+    nose_cx = int((lcx + rcx) / 2)
+
+    regions["forehead"] = elliptical_mask(img.shape, (nose_cx, int(y + fh * 0.22)), (int(fw * 0.22), int(fh * 0.055)), blur=0)
+
+    under_y = int(eye_y + max(fh * 0.065, max(leh, reh) * 0.80))
+    under_axes = (max(14, int(eye_gap * 0.16)), max(7, int(fh * 0.028)))
+    under = np.zeros((h, w), np.uint8)
+    cv2.ellipse(under, (lcx, under_y), under_axes, 0, 0, 360, 255, -1)
+    cv2.ellipse(under, (rcx, under_y), under_axes, 0, 0, 360, 255, -1)
+    regions["undereye"] = under
+
+    regions["nose"] = elliptical_mask(img.shape, (nose_cx, int(eye_y + fh * 0.18)), (int(fw * 0.070), int(fh * 0.135)), blur=0)
+
+    cheek_y = int(eye_y + fh * 0.260)
+    regions["left_cheek"] = elliptical_mask(img.shape, (int(x + fw * 0.285), cheek_y), (int(fw * 0.090), int(fh * 0.120)), blur=0)
+    regions["right_cheek"] = elliptical_mask(img.shape, (int(x + fw * 0.715), cheek_y), (int(fw * 0.090), int(fh * 0.120)), blur=0)
+
+    protection = cv2.bitwise_or(
+        cv2.dilate(regions["undereye"], np.ones((max(7, int(fw * 0.030)), max(7, int(fw * 0.030))), np.uint8), iterations=2),
+        cv2.dilate(regions["nose"], np.ones((max(5, int(fw * 0.018)), max(5, int(fw * 0.018))), np.uint8), iterations=1)
+    )
+    regions["left_cheek"] = cv2.bitwise_and(regions["left_cheek"], cv2.bitwise_not(protection))
+    regions["right_cheek"] = cv2.bitwise_and(regions["right_cheek"], cv2.bitwise_not(protection))
+
+    # Chin lower than lip estimate.
+    regions["chin"] = elliptical_mask(img.shape, (nose_cx, int(y + fh * 0.850)), (int(fw * 0.145), int(fh * 0.060)), blur=0)
+
+    return regions, (x, y, fw, fh)
+
 
 def skin_mask_bgr(img):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -169,31 +345,128 @@ def color_tint(original, mask, color, alpha=0.15):
     overlay[mask > 0] = color
     return cv2.addWeighted(overlay, alpha, original, 1-alpha, 0)
 
+def detect_eyes_in_face(img, bbox):
+    x, y, fw, fh = bbox
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    face_gray = gray[y:y+fh, x:x+fw]
+    eye_path = cv2.data.haarcascades + "haarcascade_eye.xml"
+    eye_cascade = cv2.CascadeClassifier(eye_path)
+
+    search_top = int(fh * 0.20)
+    search_bottom = int(fh * 0.58)
+    roi = face_gray[search_top:search_bottom, :]
+    eyes = eye_cascade.detectMultiScale(
+        roi,
+        scaleFactor=1.08,
+        minNeighbors=5,
+        minSize=(max(14, fw // 14), max(10, fh // 20))
+    )
+
+    candidates = []
+    for ex, ey, ew, eh in eyes:
+        gx = x + int(ex)
+        gy = y + search_top + int(ey)
+        cx = gx + int(ew / 2)
+        cy = gy + int(eh / 2)
+        relx = (cx - x) / max(1, fw)
+        rely = (cy - y) / max(1, fh)
+        if 0.16 <= relx <= 0.84 and 0.24 <= rely <= 0.52:
+            candidates.append((gx, gy, int(ew), int(eh), cx, cy))
+
+    if len(candidates) >= 2:
+        lefts = [e for e in candidates if e[4] < x + fw * 0.50]
+        rights = [e for e in candidates if e[4] >= x + fw * 0.50]
+        if lefts and rights:
+            expected_y = y + fh * 0.38
+            left = sorted(lefts, key=lambda e: abs(e[5] - expected_y))[0]
+            right = sorted(rights, key=lambda e: abs(e[5] - expected_y))[0]
+            return left, right
+
+    # fallback if eye cascade fails
+    left = (
+        x + int(fw * 0.29), y + int(fh * 0.36),
+        int(fw * 0.15), int(fh * 0.075),
+        x + int(fw * 0.365), y + int(fh * 0.397)
+    )
+    right = (
+        x + int(fw * 0.56), y + int(fh * 0.36),
+        int(fw * 0.15), int(fh * 0.075),
+        x + int(fw * 0.635), y + int(fh * 0.397)
+    )
+    return left, right
+
 def make_face_region_masks(img):
     h, w = img.shape[:2]
     x, y, fw, fh = detect_face_bbox(img)
 
-    # Region positions are relative to the detected face box so the script still works
-    # for different face sizes. The under-eye zone is intentionally BELOW the eye line,
-    # not on top of the eyes.
-    regions = {}
-    regions["forehead"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.235)), (int(fw*0.24), int(fh*0.055)), blur=0)
-    regions["left_cheek"] = elliptical_mask(img.shape, (x + int(fw*0.31), y + int(fh*0.565)), (int(fw*0.105), int(fh*0.145)), blur=0)
-    regions["right_cheek"] = elliptical_mask(img.shape, (x + int(fw*0.69), y + int(fh*0.565)), (int(fw*0.105), int(fh*0.145)), blur=0)
+    left_eye, right_eye = detect_eyes_in_face(img, (x, y, fw, fh))
+    lx, ly, lew, leh, lcx, lcy = left_eye
+    rx, ry, rew, reh, rcx, rcy = right_eye
 
-    # Fixed: old value was fh*0.405, which places the purple mask over the eyes
-    # on many front-facing portraits. Use a lower, flatter ellipse for the actual
-    # lower eyelid / under-eye shadow area.
+    eye_y = int((lcy + rcy) / 2)
+    eye_gap = max(1, rcx - lcx)
+    nose_cx = int((lcx + rcx) / 2)
+
+    regions = {}
+
+    # Forehead above eyes
+    regions["forehead"] = elliptical_mask(
+        img.shape,
+        (nose_cx, int(y + fh * 0.22)),
+        (int(fw * 0.22), int(fh * 0.055)),
+        blur=0
+    )
+
+    # Undereye placed below detected eyes
+    under_y = int(eye_y + max(fh * 0.065, max(leh, reh) * 0.80))
+    under_axes = (max(14, int(eye_gap * 0.16)), max(7, int(fh * 0.028)))
     under = np.zeros((h, w), np.uint8)
-    under_y = y + int(fh * 0.465)
-    under_axes = (max(8, int(fw * 0.095)), max(3, int(fh * 0.020)))
-    cv2.ellipse(under, (x + int(fw*0.365), under_y), under_axes, 0, 0, 360, 255, -1)
-    cv2.ellipse(under, (x + int(fw*0.635), under_y), under_axes, 0, 0, 360, 255, -1)
+    cv2.ellipse(under, (lcx, under_y), under_axes, 0, 0, 360, 255, -1)
+    cv2.ellipse(under, (rcx, under_y), under_axes, 0, 0, 360, 255, -1)
     regions["undereye"] = under
 
-    regions["nose"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.525)), (int(fw*0.075), int(fh*0.145)), blur=0)
-    regions["chin"] = elliptical_mask(img.shape, (x + int(fw*0.50), y + int(fh*0.790)), (int(fw*0.150), int(fh*0.070)), blur=0)
+    # Nose centered between eyes
+    nose_cy = int(eye_y + fh * 0.18)
+    regions["nose"] = elliptical_mask(
+        img.shape,
+        (nose_cx, nose_cy),
+        (int(fw * 0.070), int(fh * 0.135)),
+        blur=0
+    )
+
+    # Cheeks lower and outward, with protection so they do not overlap the undereye
+    cheek_y = int(eye_y + fh * 0.245)
+    left_cheek_cx = int(x + fw * 0.285)
+    right_cheek_cx = int(x + fw * 0.715)
+    cheek_axes = (int(fw * 0.095), int(fh * 0.130))
+    regions["left_cheek"] = elliptical_mask(img.shape, (left_cheek_cx, cheek_y), cheek_axes, blur=0)
+    regions["right_cheek"] = elliptical_mask(img.shape, (right_cheek_cx, cheek_y), cheek_axes, blur=0)
+
+    eye_protection = cv2.dilate(
+        regions["undereye"],
+        np.ones((max(5, int(fw * 0.025)), max(5, int(fw * 0.025))), np.uint8),
+        iterations=2
+    )
+    nose_protection = cv2.dilate(
+        regions["nose"],
+        np.ones((max(5, int(fw * 0.018)), max(5, int(fw * 0.018))), np.uint8),
+        iterations=1
+    )
+    protection = cv2.bitwise_or(eye_protection, nose_protection)
+    regions["left_cheek"] = cv2.bitwise_and(regions["left_cheek"], cv2.bitwise_not(protection))
+    regions["right_cheek"] = cv2.bitwise_and(regions["right_cheek"], cv2.bitwise_not(protection))
+
+    # Chin below the lips, not on the lips
+    chin_cy = int(y + fh * 0.835)
+    regions["chin"] = elliptical_mask(
+        img.shape,
+        (nose_cx, chin_cy),
+        (int(fw * 0.145), int(fh * 0.065)),
+        blur=0
+    )
+
     return regions, (x, y, fw, fh)
+
 
 def score_region(issue_mask, region_mask):
     denom = max(1, cv2.countNonZero(region_mask))
@@ -261,7 +534,7 @@ def draw_segment_overlay(face_img, regions, issue_scores, offset=(0,0)):
             if cv2.contourArea(c) < 20:
                 continue
             c = c + np.array([[[ox, oy]]])
-            cv2.drawContours(face_img, [c], -1, color, 1, cv2.LINE_AA)
+            cv2.drawContours(face_img, [c], -1, color, 3, cv2.LINE_AA)
 
     # blend tinted exact regions
     face_img[:] = cv2.addWeighted(overlay, 0.55, face_img, 0.45, 0)
@@ -315,7 +588,7 @@ def draw_callouts(canvas, img_area, regions, x0, y0, scale_x, scale_y):
             bx = left_badge_x
             label_x = bx - 178
             label_x = max(12, label_x)
-            cv2.line(canvas, (cx, cy), (bx, by), color, 1, cv2.LINE_AA)
+            cv2.line(canvas, (cx, cy), (bx, by), color, 2, cv2.LINE_AA)
             cv2.circle(canvas, (bx, by), 14, color, -1, cv2.LINE_AA)
             cv2.putText(canvas, num, (bx-5, by+5), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255,255,255), 2, cv2.LINE_AA)
             _put_label_box(canvas, name, label_x, by+5, color, "left")
@@ -324,7 +597,7 @@ def draw_callouts(canvas, img_area, regions, x0, y0, scale_x, scale_y):
             label_x = bx + 22
             # Keep right labels fully inside the report canvas.
             label_x = min(label_x, W - 205)
-            cv2.line(canvas, (cx, cy), (bx, by), color, 1, cv2.LINE_AA)
+            cv2.line(canvas, (cx, cy), (bx, by), color, 2, cv2.LINE_AA)
             cv2.circle(canvas, (bx, by), 14, color, -1, cv2.LINE_AA)
             cv2.putText(canvas, num, (bx-5, by+5), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255,255,255), 2, cv2.LINE_AA)
             _put_label_box(canvas, name, label_x, by+5, color, "right")
