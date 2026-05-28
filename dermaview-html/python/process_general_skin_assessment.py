@@ -748,32 +748,47 @@ def draw_callouts(canvas, img_area, regions, x0, y0, scale_x, scale_y):
 def compute_findings(img, regions):
     masks = issue_masks(img)
     data = {}
+
+    def clamp01(x):
+        return max(0.0, min(100.0, float(x)))
+
     for key in regions:
         r = regions[key]
-        red = score_region(masks["redness"], r)
-        dark = score_region(masks["dark"], r)
-        texture = score_region(masks["texture"], r)
-        pores = score_region(masks["pores"], r)
+        red = clamp01(score_region(masks["redness"], r))
+        dark = clamp01(score_region(masks["dark"], r))
+        texture = clamp01(score_region(masks["texture"], r))
+        pores = clamp01(score_region(masks["pores"], r))
+
+        # Educational improvement: avoid single-channel spikes dominating.
+        # Instead of max(), use weighted blends that still emphasize the expected cue.
         if key == "forehead":
-            main = max(red, texture)
+            main = 0.65 * red + 0.35 * texture
             finding = "Redness/acne-like signals and uneven texture."
         elif key in ("left_cheek", "right_cheek"):
-            main = max(dark, red)
+            # Dark shadows + redness can both contribute to perceived pigmentation.
+            main = 0.55 * dark + 0.45 * red
             finding = "Pigmentation/dark-spot-like signals and uneven tone."
         elif key == "undereye":
-            main = max(dark, 10)
+            # Remove the forced floor (was biasing undereye severity upward).
+            main = 0.75 * dark + 0.25 * texture
             finding = "Dark-circle/shadowing-like signal."
         elif key == "nose":
-            main = max(pores, texture)
+            # Pore-like points plus texture/edge can indicate T-zone concerns.
+            main = 0.60 * pores + 0.40 * texture
             finding = "Pore/blackhead-like signal on T-zone."
         else:
-            main = max(texture, red)
+            # Chin: texture/blemish patterns usually dominate, but redness adds context.
+            main = 0.60 * texture + 0.40 * red
             finding = "Texture unevenness/blemish-like signal."
+
+        main = clamp01(main)
         data[key] = {
             "red": red, "dark": dark, "texture": texture, "pores": pores,
             "score": min(100.0, main), "severity": severity_from_score(main), "finding": finding
         }
+
     return data
+
 
 def bar(canvas, x, y, w, pct, color, label):
     cv2.putText(canvas, label, (x, y+4), cv2.FONT_HERSHEY_SIMPLEX, 0.42, COLORS["navy"], 1, cv2.LINE_AA)
