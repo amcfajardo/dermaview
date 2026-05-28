@@ -65,24 +65,10 @@ body {
   background: linear-gradient(180deg, var(--color-bg-light) 0%, var(--color-bg-lighter) 100%);
 }
 
-/* Prevent image previews from enlarging unpredictably.
-   Make every preview image fixed to a constant square size. */
-.admin-thumb,
-.image-preview-dialog img,
-.processed-image-compare img,
-.image-card img,
-.processed-image-compare figure img,
-figure img[data-preview-image] {
-  width: 256px;
-  height: 256px;
-  object-fit: cover;
-  display: block;
-}
 
 .page-shell {
   min-height: 100vh;
 }
-
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
@@ -521,10 +507,18 @@ p {
 
 :root[data-theme="dark"] .auth-card {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,0.04),
+      rgba(255,255,255,0.02)
+    ),
     #111c2f !important;
-  border-color: rgba(148, 163, 184, 0.24) !important;
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.38) !important;
+
+  border: 1px solid rgba(148, 163, 184, 0.22);
+
+  box-shadow:
+    0 28px 90px rgba(0,0,0,0.38),
+    0 4px 20px rgba(94, 234, 212, 0.05);
 }
 
 :root[data-theme="dark"] .auth-title {
