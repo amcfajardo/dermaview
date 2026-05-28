@@ -108,14 +108,23 @@ if (
         $inputPath
     )
 ) {
+    $fileErr = $_FILES['image']['error'] ?? null;
+    $fileSize = $_FILES['image']['size'] ?? null;
+    $fileName = $_FILES['image']['name'] ?? null;
+    $tmpName = $_FILES['image']['tmp_name'] ?? null;
 
     echo json_encode([
         "success" => false,
-        "message" => "Failed to upload image"
+        "message" => "Failed to upload image",
+        "uploadError" => $fileErr,
+        "uploadSize" => $fileSize,
+        "uploadName" => $fileName,
+        "uploadTmp" => $tmpName
     ]);
 
     exit;
 }
+
 
 
 /*
