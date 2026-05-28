@@ -4,14 +4,12 @@ import numpy as np
 import sys
 from pathlib import Path
 
-try:
-    import mediapipe as mp
-    # Some environments have an incomplete mediapipe package where mp.solutions is missing.
-    # The script must gracefully fall back to Haar-based regions in that case.
-    if not hasattr(mp, "solutions"):
-        mp = None
-except Exception:
-    mp = None
+# MediaPipe FaceMesh is optional.
+# In your environment mediapipe imports, but mp.solutions is missing,
+# so FaceMesh cannot be used.
+
+import mediapipe as mp
+
 
 
 DISCLAIMER = "Educational visualization only. Not a medical diagnosis or guaranteed treatment result."
@@ -110,6 +108,7 @@ def detect_face_bbox(img):
     return x, y, fw, fh
 
 def get_face_landmarks(img):
+    """Return FaceMesh landmarks (468 points) if available; else None."""
     if mp is None:
         return None
     h, w = img.shape[:2]
@@ -217,8 +216,8 @@ def make_face_region_masks_adaptive(img):
         return True
 
     if lm is not None and len(lm) >= 468 and _plausible_landmarks(lm):
-        print("Using REGION_V4 anatomical landmark polygons")
-
+        # Important: this message indicates MediaPipe FaceMesh landmarks are actually used.
+        print("Using REGION_V4 anatomical landmark polygons (FaceMesh active)")
 
         def P(i):
             return lm[i]
@@ -379,7 +378,7 @@ def make_face_region_masks_adaptive(img):
 
         return regions, (x, y, fw, fh)
 
-    print("Using fallback ellipse regions because MediaPipe landmarks were not detected")
+    print("Using fallback ellipse regions because MediaPipe landmarks were not detected (FaceMesh inactive or not detected)")
     return make_face_region_masks_fallback(img)
 
 def skin_mask_bgr(img):

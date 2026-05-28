@@ -209,8 +209,10 @@ def safe_points(lm, ids):
 def make_face_region_masks(img):
     """Pico Carbon Laser uses FaceMesh zones to localize pigment/pores detection.
 
-    Google Vision isn't integrated in this repo, so FaceMesh provides the
+    FaceMesh provides the
     'face detection' equivalent for zone restriction.
+
+
 
     Falls back to ellipses if landmarks aren't available.
     """

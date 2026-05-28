@@ -65,10 +65,24 @@ body {
   background: linear-gradient(180deg, var(--color-bg-light) 0%, var(--color-bg-lighter) 100%);
 }
 
+/* Prevent image previews from enlarging unpredictably.
+   Make every preview image fixed to a constant square size. */
+.admin-thumb,
+.image-preview-dialog img,
+.processed-image-compare img,
+.image-card img,
+.processed-image-compare figure img,
+figure img[data-preview-image] {
+  width: 256px;
+  height: 256px;
+  object-fit: cover;
+  display: block;
+}
 
 .page-shell {
   min-height: 100vh;
 }
+
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
