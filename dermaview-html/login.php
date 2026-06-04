@@ -54,6 +54,7 @@ if (password_verify($password, $account['password'])) {
     $_SESSION['role'] = $account_role;
     $_SESSION['user_name'] = trim(($account['first_name'] ?? '') . ' ' . ($account['last_name'] ?? ''));
     $_SESSION['login_at'] = time();
+    $_SESSION['last_activity_at'] = time();
 
     // Presence: touch immediately on successful login
     try {

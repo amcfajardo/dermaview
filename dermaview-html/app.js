@@ -1080,7 +1080,30 @@ function getScheduleCalendarDates(cursor) {
 }
 
 function getScheduleTimeSlots() {
-  return [
+  const configuredSlots = window.DermaViewBranding?.loadSettings?.().appointmentSlots || "";
+  const parsedSlots = configuredSlots
+    .split(",")
+    .map((slot) => slot.trim())
+    .filter(Boolean)
+    .map((slot) => {
+      const match = slot.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+      if (!match) return null;
+
+      const hour = Number(match[1]);
+      const minute = Number(match[2]);
+      if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+
+      const value = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`;
+      const displayHour = hour % 12 || 12;
+      const period = hour >= 12 ? "PM" : "AM";
+      return {
+        value,
+        label: `${displayHour}:${String(minute).padStart(2, "0")} ${period}`
+      };
+    })
+    .filter(Boolean);
+
+  return parsedSlots.length ? parsedSlots : [
     { value: "09:00:00", label: "9:00 AM" },
     { value: "10:00:00", label: "10:00 AM" },
     { value: "11:00:00", label: "11:00 AM" },

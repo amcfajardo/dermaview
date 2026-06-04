@@ -94,6 +94,7 @@ function staff_display_name_from_row($row) {
 }
 
 ensure_consultation_records_table($conn);
+ensure_table_column($conn, 'consultation_image_records', 'archived_at', "ALTER TABLE consultation_image_records ADD COLUMN archived_at TIMESTAMP NULL AFTER date_processed");
 
 $action = $_POST['action'] ?? 'fetch';
 
@@ -130,6 +131,7 @@ $result = $conn->query("
     SELECT id, procedure_id, procedure_name, original_image_path, processed_image_path,
            processing_status, handled_by, notes, date_processed
     FROM consultation_image_records
+    WHERE archived_at IS NULL
     ORDER BY date_processed DESC, id DESC
 ");
 
@@ -143,6 +145,7 @@ if ($result) {
 if (table_exists($conn, 'processed_images')) {
     ensure_table_column($conn, 'processed_images', 'handled_by', "ALTER TABLE processed_images ADD COLUMN handled_by VARCHAR(160) NULL AFTER recommendations_json");
     ensure_table_column($conn, 'processed_images', 'handled_by_user_id', "ALTER TABLE processed_images ADD COLUMN handled_by_user_id INT NULL AFTER handled_by");
+    ensure_table_column($conn, 'processed_images', 'archived_at', "ALTER TABLE processed_images ADD COLUMN archived_at TIMESTAMP NULL AFTER created_at");
 
     $result = $conn->query("
         SELECT pi.id, pi.procedure_id, pi.procedure_name, pi.before_image_path, pi.after_image_path,
@@ -152,6 +155,7 @@ if (table_exists($conn, 'processed_images')) {
                u.role AS staff_role
         FROM processed_images pi
         LEFT JOIN users u ON u.id = pi.handled_by_user_id
+        WHERE pi.archived_at IS NULL
         ORDER BY pi.created_at DESC, pi.id DESC
         LIMIT 200
     ");

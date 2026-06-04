@@ -58,6 +58,29 @@ function ensure_appointments_table($conn) {
     ");
 }
 
+function ensure_table_column($conn, $table_name, $column_name, $alter_sql) {
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) AS total
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = ?
+          AND column_name = ?
+    ");
+
+    if (!$stmt) {
+        return;
+    }
+
+    $stmt->bind_param("ss", $table_name, $column_name);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result ? $result->fetch_assoc() : null;
+
+    if (!$row || (int) $row['total'] === 0) {
+        $conn->query($alter_sql);
+    }
+}
+
 function patient_key($name, $email, $phone) {
     $base = strtolower(trim($email ?: $phone ?: $name));
     return preg_replace('/[^a-z0-9@._+-]+/', '-', $base);
@@ -92,6 +115,8 @@ function upsert_patient(&$patients, $name, $email, $phone) {
 
 ensure_patient_notes_table($conn);
 ensure_appointments_table($conn);
+ensure_table_column($conn, 'appointments', 'archived_at', "ALTER TABLE appointments ADD COLUMN archived_at TIMESTAMP NULL AFTER updated_at");
+ensure_table_column($conn, 'patient_notes', 'archived_at', "ALTER TABLE patient_notes ADD COLUMN archived_at TIMESTAMP NULL AFTER updated_at");
 
 $action = $_POST['action'] ?? 'fetch';
 
@@ -122,6 +147,7 @@ if (table_exists($conn, 'appointments')) {
     $result = $conn->query("
         SELECT patient_name, email, phone, procedure_name, appointment_date, appointment_time, status, notes
         FROM appointments
+        WHERE archived_at IS NULL
         ORDER BY appointment_date DESC, appointment_time DESC, id DESC
     ");
 
@@ -144,9 +170,12 @@ if (table_exists($conn, 'appointments')) {
 }
 
 if (table_exists($conn, 'processed_images')) {
+    ensure_table_column($conn, 'processed_images', 'archived_at', "ALTER TABLE processed_images ADD COLUMN archived_at TIMESTAMP NULL AFTER created_at");
+
     $result = $conn->query("
         SELECT procedure_name, before_image_path, after_image_path, analysis_type, created_at
         FROM processed_images
+        WHERE archived_at IS NULL
         ORDER BY created_at DESC, id DESC
     ");
 
@@ -168,7 +197,7 @@ if (table_exists($conn, 'processed_images')) {
     }
 }
 
-$notes_result = $conn->query("SELECT patient_key, notes FROM patient_notes");
+$notes_result = $conn->query("SELECT patient_key, notes FROM patient_notes WHERE archived_at IS NULL");
 if ($notes_result) {
     while ($row = $notes_result->fetch_assoc()) {
         if (isset($patients[$row['patient_key']])) {

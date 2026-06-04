@@ -15,6 +15,24 @@ if (isset($_SESSION['role']) && maintenance_requires_logout($conn, $_SESSION['ro
 }
 
 if (isset($_SESSION['role'])) {
+    $settings = maintenance_read_settings($conn);
+    $timeout_minutes = (int)($settings['sessionTimeout'] ?? 30);
+    $timeout_minutes = max(5, min(480, $timeout_minutes));
+    $last_activity = (int)($_SESSION['last_activity_at'] ?? $_SESSION['login_at'] ?? time());
+
+    if ((time() - $last_activity) > ($timeout_minutes * 60)) {
+        maintenance_destroy_current_session();
+        echo json_encode([
+            'status' => 'expired',
+            'message' => 'Session expired. Please log in again.'
+        ]);
+        exit;
+    }
+
+    $_SESSION['last_activity_at'] = time();
+}
+
+if (isset($_SESSION['role'])) {
     echo json_encode([
         'status' => 'ok',
         'user_id' => $_SESSION['user_id'] ?? null,

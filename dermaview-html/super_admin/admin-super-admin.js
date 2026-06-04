@@ -17,18 +17,6 @@
     });
   }
 
-  function downloadTextFile(filename, content) {
-    const blob = new Blob([content], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  }
-
   window.initRolePermissions = function () {
     const key = 'dermaview.superAdmin.rolePermissions';
     const body = document.getElementById('rolePermissionsBody');
@@ -96,110 +84,215 @@
   };
 
   window.initPrivacyDataManagement = function () {
-    const key = 'dermaview.superAdmin.cleanupHistory';
     const body = document.getElementById('cleanupHistoryBody');
     const count = document.getElementById('cleanupHistoryCount');
-    const print = document.getElementById('printPrivacyPolicy');
+    const printButtons = document.querySelectorAll('[data-print-privacy-policy]');
 
     if (!body) return;
 
-    function getRows() {
-      return JSON.parse(localStorage.getItem(key) || '[]');
+    function endpoint(action) {
+      return `admin-privacy-data.php?action=${encodeURIComponent(action)}&v=${Date.now()}`;
     }
 
-    function saveRows(rows) {
-      localStorage.setItem(key, JSON.stringify(rows));
+    function setBusy(button, busy, label) {
+      if (!button) return;
+      if (!button.dataset.defaultText) button.dataset.defaultText = button.textContent;
+      button.disabled = busy;
+      button.textContent = busy ? label : button.dataset.defaultText;
     }
 
-    function render() {
-      const rows = getRows();
+    function render(rows) {
       if (count) count.textContent = rows.length.toLocaleString();
       body.innerHTML = rows.length
         ? rows.map(row => `
             <tr>
               <td>${escapeHtml(row.action)}</td>
-              <td>${escapeHtml(row.status)}</td>
+              <td>${escapeHtml(row.status === 'Recorded for Super Admin review' || row.status === 'Logged only - no files or records deleted' ? 'Legacy log only - no archive performed' : row.status)}</td>
               <td>${escapeHtml(formatDate(row.date))}</td>
             </tr>
           `).join('')
-        : '<tr><td colspan="3" class="accounts-empty-cell">No cleanup actions recorded.</td></tr>';
+        : '<tr><td colspan="3" class="accounts-empty-cell">No archive actions recorded.</td></tr>';
     }
 
-    document.querySelectorAll('[data-cleanup-action]').forEach(button => {
-      button.addEventListener('click', function () {
-        const rows = getRows();
-        rows.unshift({
-          action: button.dataset.cleanupAction,
-          status: 'Recorded for Super Admin review',
-          date: new Date().toISOString()
+    function loadHistory() {
+      return fetch(endpoint('list'), { cache: 'no-store' })
+        .then(response => response.json())
+        .then(payload => {
+          if (payload.status !== 'ok') {
+            throw new Error(payload.message || 'Unable to load archive history.');
+          }
+          render(payload.records || []);
+        })
+        .catch(error => {
+          body.innerHTML = `<tr><td colspan="3" class="accounts-empty-cell">${escapeHtml(error.message || 'Unable to load archive history.')}</td></tr>`;
         });
-        saveRows(rows.slice(0, 25));
-        render();
+    }
+
+    document.querySelectorAll('[data-archive-action]').forEach(button => {
+      button.addEventListener('click', function () {
+        if (!confirm(`${button.textContent.trim()}?`)) return;
+
+        const data = new FormData();
+        data.append('action', button.dataset.archiveAction);
+        setBusy(button, true, 'Archiving...');
+
+        fetch('admin-privacy-data.php', { method: 'POST', body: data })
+          .then(response => response.json())
+          .then(payload => {
+            if (payload.status !== 'ok') {
+              throw new Error(payload.message || 'Archive action failed.');
+            }
+            render(payload.records || []);
+            alert(payload.message || 'Archive action completed.');
+          })
+          .catch(error => alert(error.message || 'Archive action failed.'))
+          .finally(() => setBusy(button, false));
       });
     });
 
-    if (print) print.addEventListener('click', () => window.print());
-    render();
+    printButtons.forEach(print => {
+      print.addEventListener('click', () => {
+        const settings = window.DermaViewBranding?.loadSettings?.() || {};
+        const clinicName = settings.clinicName || 'DermaView';
+        const retention = settings.imageRetentionPeriod || '180 days';
+        const printWindow = window.open('', '_blank', 'width=900,height=700');
+
+        if (!printWindow) {
+          alert('Please allow popups to print the privacy policy.');
+          return;
+        }
+
+        printWindow.document.write(`
+          <!doctype html>
+          <html>
+          <head>
+            <title>${escapeHtml(clinicName)} Privacy Policy</title>
+            <style>
+              body { font-family: Arial, sans-serif; color: #111827; line-height: 1.6; padding: 32px; }
+              h1 { margin: 0 0 8px; font-size: 28px; }
+              h2 { margin-top: 24px; font-size: 18px; }
+              p, li { font-size: 14px; }
+              .meta { color: #4b5563; margin-bottom: 24px; }
+            </style>
+          </head>
+          <body>
+            <h1>${escapeHtml(clinicName)} Privacy Policy</h1>
+            <p class="meta">Generated on ${escapeHtml(formatDate(new Date().toISOString()))}</p>
+            <h2>Data Collection</h2>
+            <p>The clinic stores patient contact details, appointment records, consultation notes, uploaded images, and processed image records needed for consultation and documentation.</p>
+            <h2>Image Retention</h2>
+            <p>Uploaded and processed images follow the configured retention period: <strong>${escapeHtml(retention)}</strong>.</p>
+            <h2>Archiving</h2>
+            <p>Old image files and inactive patient records may be archived by the Super Admin. Archiving preserves data for review and audit instead of permanently deleting it.</p>
+            <h2>Access Control</h2>
+            <p>Administrative privacy, archive, backup, and restore tools are limited to authorized users, with Super Admin access required for archive actions.</p>
+            <h2>Restore and Backup</h2>
+            <p>Database backups are saved as server files. Restore requests are logged for review and do not automatically replace the active database.</p>
+          </body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+      });
+    });
+
+    loadHistory();
   };
 
   window.initBackupRestore = function () {
-    const key = 'dermaview.superAdmin.backupHistory';
     const body = document.getElementById('backupHistoryBody');
     const create = document.getElementById('createBackupRecord');
     const download = document.getElementById('downloadBackupRecord');
     const clear = document.getElementById('clearBackupHistory');
     const restoreForm = document.getElementById('restoreDatabaseForm');
+    let latestBackupId = null;
 
     if (!body) return;
 
-    function getRows() {
-      return JSON.parse(localStorage.getItem(key) || '[]');
+    function endpoint(action) {
+      return `admin-backup-restore.php?action=${encodeURIComponent(action)}&v=${Date.now()}`;
     }
 
-    function saveRows(rows) {
-      localStorage.setItem(key, JSON.stringify(rows));
+    function setBusy(button, busy, label) {
+      if (!button) return;
+      if (!button.dataset.defaultText) button.dataset.defaultText = button.textContent;
+      button.disabled = busy;
+      button.textContent = busy ? label : button.dataset.defaultText;
     }
 
-    function render() {
-      const rows = getRows();
+    function render(rows) {
+      latestBackupId = null;
+      const latestBackup = rows.find(row => row.type === 'Backup');
+      if (latestBackup) latestBackupId = latestBackup.id;
+
+      if (download) {
+        download.disabled = !latestBackupId;
+      }
+
       body.innerHTML = rows.length
         ? rows.map(row => `
             <tr>
               <td>${escapeHtml(row.type)}</td>
-              <td><strong>${escapeHtml(row.name)}</strong></td>
-              <td>${escapeHtml(row.status)}</td>
+              <td>
+                <strong>${escapeHtml(row.file_name)}</strong>
+                ${row.reason ? `<br><span class="table-muted">${escapeHtml(row.reason)}</span>` : ''}
+              </td>
+              <td>${escapeHtml(row.status === 'Pending server verification' ? 'Request logged only - database not restored' : row.status)}</td>
               <td>${escapeHtml(formatDate(row.date))}</td>
             </tr>
           `).join('')
         : '<tr><td colspan="4" class="accounts-empty-cell">No backup history recorded.</td></tr>';
     }
 
-    if (create) {
-      create.addEventListener('click', function () {
-        const date = new Date();
-        const rows = getRows();
-        rows.unshift({
-          type: 'Backup',
-          name: `dermaview-backup-${date.toISOString().slice(0, 10)}.json`,
-          status: 'Backup manifest created',
-          date: date.toISOString()
+    function loadHistory() {
+      return fetch(endpoint('list'), { cache: 'no-store' })
+        .then(response => response.json())
+        .then(payload => {
+          if (payload.status !== 'ok') {
+            throw new Error(payload.message || 'Unable to load backup history.');
+          }
+          render(payload.records || []);
+        })
+        .catch(error => {
+          body.innerHTML = `<tr><td colspan="4" class="accounts-empty-cell">${escapeHtml(error.message || 'Unable to load backup history.')}</td></tr>`;
         });
-        saveRows(rows.slice(0, 25));
-        render();
-      });
     }
 
-    if (download) {
-      download.addEventListener('click', function () {
-        downloadTextFile('dermaview-backup-history.json', JSON.stringify(getRows(), null, 2));
+    if (create) {
+      create.addEventListener('click', function () {
+        const data = new FormData();
+        data.append('action', 'create_backup');
+        setBusy(create, true, 'Creating...');
+
+        fetch('admin-backup-restore.php', { method: 'POST', body: data })
+          .then(response => response.json())
+          .then(payload => {
+            if (payload.status !== 'ok') {
+              throw new Error(payload.message || 'Unable to create backup.');
+            }
+            render(payload.records || []);
+            alert(payload.message || 'Database backup created.');
+          })
+          .catch(error => alert(error.message || 'Unable to create backup.'))
+          .finally(() => setBusy(create, false));
       });
     }
 
     if (clear) {
       clear.addEventListener('click', function () {
-        if (!confirm('Clear local backup history?')) return;
-        localStorage.removeItem(key);
-        render();
+        loadHistory();
+      });
+    }
+
+    if (download) {
+      download.addEventListener('click', function () {
+        if (!latestBackupId) {
+          alert('No backup file is available to download yet.');
+          return;
+        }
+
+        window.location.href = endpoint('download') + `&id=${encodeURIComponent(latestBackupId)}`;
       });
     }
 
@@ -208,19 +301,40 @@
         event.preventDefault();
         const file = document.getElementById('restoreFile');
         const reason = document.getElementById('restoreReason');
-        const rows = getRows();
-        rows.unshift({
-          type: 'Restore Request',
-          name: `${file?.files?.[0]?.name || 'No file selected'}${reason?.value ? ' - ' + reason.value : ''}`,
-          status: 'Pending Super Admin verification',
-          date: new Date().toISOString()
-        });
-        saveRows(rows.slice(0, 25));
-        restoreForm.reset();
-        render();
+        const submit = restoreForm.querySelector('button[type="submit"]');
+
+        if (!file?.files?.[0]) {
+          alert('Please choose a backup file.');
+          return;
+        }
+
+        if (!reason?.value?.trim()) {
+          alert('Please enter a restore reason.');
+          reason?.focus();
+          return;
+        }
+
+        const data = new FormData();
+        data.append('action', 'restore_request');
+        data.append('restore_file', file.files[0]);
+        data.append('reason', reason.value.trim());
+        setBusy(submit, true, 'Recording...');
+
+        fetch('admin-backup-restore.php', { method: 'POST', body: data })
+          .then(response => response.json())
+          .then(payload => {
+            if (payload.status !== 'ok') {
+              throw new Error(payload.message || 'Unable to record restore request.');
+            }
+            restoreForm.reset();
+            render(payload.records || []);
+            alert(payload.message || 'Restore request recorded.');
+          })
+          .catch(error => alert(error.message || 'Unable to record restore request.'))
+          .finally(() => setBusy(submit, false));
       });
     }
 
-    render();
+    loadHistory();
   };
 })();

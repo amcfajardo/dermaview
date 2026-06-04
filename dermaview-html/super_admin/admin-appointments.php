@@ -14,8 +14,35 @@ require '../src/Exception.php';
 require '../src/PHPMailer.php';
 require '../src/SMTP.php';
 
+function appointment_system_settings($conn) {
+    $defaults = [
+        'clinicName' => 'DermaView',
+        'emailSender' => 'dermaview2026@gmail.com',
+        'emailReplyTo' => '',
+        'emailNotifications' => 'enabled'
+    ];
+
+    $result = $conn->query("SELECT settings_json FROM system_settings WHERE id = 1");
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $saved = json_decode($row['settings_json'] ?? '', true);
+        if (is_array($saved)) {
+            return array_merge($defaults, $saved);
+        }
+    }
+
+    return $defaults;
+}
+
 function sendAppointmentEmail($toEmail, $patientName, $subject, $messageBody) {
+    global $conn;
+
     if (empty($toEmail)) {
+        return false;
+    }
+
+    $settings = appointment_system_settings($conn);
+    if (($settings['emailNotifications'] ?? 'enabled') === 'disabled') {
         return false;
     }
 
@@ -33,7 +60,14 @@ function sendAppointmentEmail($toEmail, $patientName, $subject, $messageBody) {
         $mail->Port = 587;
         $mail->CharSet = 'UTF-8';
 
-        $mail->setFrom('dermaview2026@gmail.com', 'DermaView Clinic');
+        $sender = trim($settings['emailSender'] ?? '') ?: 'dermaview2026@gmail.com';
+        $replyTo = trim($settings['emailReplyTo'] ?? '');
+        $clinicName = trim($settings['clinicName'] ?? '') ?: 'DermaView';
+
+        $mail->setFrom($sender, $clinicName . ' Clinic');
+        if ($replyTo !== '') {
+            $mail->addReplyTo($replyTo, $clinicName . ' Clinic');
+        }
         $mail->addAddress($toEmail, $patientName);
 
         $mail->isHTML(true);

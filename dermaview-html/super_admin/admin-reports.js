@@ -311,8 +311,13 @@
     const generatedDate = document.getElementById('reportsGeneratedDate');
     const generatedBy = document.getElementById('reportsGeneratedBy');
     const period = document.getElementById('reportsPeriod');
+    const reportFooter = window.DermaViewBranding?.loadSettings?.().reportFooter || '';
 
     if (!summary || !recentBody || !logsBody || !usageBody) return;
+
+    document.querySelectorAll('.reports-disclaimer').forEach(item => {
+      if (reportFooter.trim()) item.textContent = reportFooter.trim();
+    });
 
 
     let reportProcedures = [];

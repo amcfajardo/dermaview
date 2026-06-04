@@ -2,6 +2,57 @@
 
 header('Content-Type: application/json');
 
+function process_read_system_settings() {
+    $settings = [
+        'uploadSizeLimit' => '10 MB',
+        'allowedImageTypes' => 'JPG, PNG, WEBP'
+    ];
+
+    $config_path = __DIR__ . '/config.php';
+    if (!is_file($config_path)) {
+        return $settings;
+    }
+
+    include $config_path;
+    if (!isset($conn) || !$conn) {
+        return $settings;
+    }
+
+    $result = $conn->query("SELECT settings_json FROM system_settings WHERE id = 1");
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $saved = json_decode($row['settings_json'] ?? '', true);
+        if (is_array($saved)) {
+            $settings = array_merge($settings, $saved);
+        }
+    }
+
+    return $settings;
+}
+
+function process_size_limit_bytes($value) {
+    if (!preg_match('/(\d+(?:\.\d+)?)\s*(kb|mb|gb)?/i', (string)$value, $matches)) {
+        return 10 * 1024 * 1024;
+    }
+
+    $number = (float)$matches[1];
+    $unit = strtolower($matches[2] ?? 'mb');
+    if ($unit === 'gb') return (int)round($number * 1024 * 1024 * 1024);
+    if ($unit === 'kb') return (int)round($number * 1024);
+    return (int)round($number * 1024 * 1024);
+}
+
+function process_allowed_extensions($value) {
+    $extensions = preg_split('/[\s,]+/', strtolower((string)$value));
+    $extensions = array_filter(array_map(function ($item) {
+        $item = ltrim(trim($item), '.');
+        return $item === 'jpeg' ? 'jpg' : $item;
+    }, $extensions));
+
+    return $extensions ?: ['jpg', 'png', 'webp'];
+}
+
+
 /*
 |--------------------------------------------------------------------------
 | CHECK REQUEST METHOD
@@ -34,6 +85,30 @@ if (!isset($_FILES['image'])) {
     exit;
 }
 
+$systemSettings = process_read_system_settings();
+$sizeLimitBytes = process_size_limit_bytes($systemSettings['uploadSizeLimit'] ?? '10 MB');
+$allowedExtensions = process_allowed_extensions($systemSettings['allowedImageTypes'] ?? 'JPG, PNG, WEBP');
+$uploadedExtension = strtolower(pathinfo($_FILES['image']['name'] ?? '', PATHINFO_EXTENSION));
+if ($uploadedExtension === 'jpeg') {
+    $uploadedExtension = 'jpg';
+}
+
+if (($_FILES['image']['size'] ?? 0) > $sizeLimitBytes) {
+    echo json_encode([
+        "success" => false,
+        "message" => "Image exceeds the configured upload size limit"
+    ]);
+    exit;
+}
+
+if (!in_array($uploadedExtension, $allowedExtensions, true)) {
+    echo json_encode([
+        "success" => false,
+        "message" => "Image type is not allowed by system settings"
+    ]);
+    exit;
+}
+
 /*
 |--------------------------------------------------------------------------
 | GET PROCEDURE
@@ -48,24 +123,61 @@ $procedure = $_POST['procedure'] ?? '';
 |--------------------------------------------------------------------------
 */
 
-$uploadDir = "uploads/";
+$baseDir = dirname(__FILE__) . DIRECTORY_SEPARATOR;
 
-if (!file_exists($uploadDir)) {
 
-    mkdir($uploadDir, 0777, true);
+$uploadDirWeb = "uploads/";
+$uploadDir = $baseDir . $uploadDirWeb;
 
-}
-
-$archiveDirs = [
+$archiveDirsWeb = [
     "archive/files/",
     "archive/images/"
 ];
-
-foreach ($archiveDirs as $archiveDir) {
-    if (!file_exists($archiveDir)) {
-        mkdir($archiveDir, 0777, true);
-    }
+$archiveDirs = [];
+foreach ($archiveDirsWeb as $dweb) {
+    $archiveDirs[] = $baseDir . $dweb;
 }
+
+function ensureWritableDir(string $dir, string $dirWeb): array {
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+
+
+    $exists = is_dir($dir);
+    $writable = is_writable($dir);
+
+    return [
+        'dir' => $dir,
+        'dirWeb' => $dirWeb,
+        'exists' => $exists,
+        'writable' => $writable,
+    ];
+}
+
+$uploadStatus = ensureWritableDir($uploadDir, $uploadDirWeb);
+$archiveStatus = [];
+foreach ($archiveDirs as $idx => $adir) {
+    $archiveStatus[] = ensureWritableDir($adir, $archiveDirsWeb[$idx]);
+}
+
+if (!$uploadStatus['exists'] || !$uploadStatus['writable']) {
+    echo json_encode([
+        "success" => false,
+        "message" => "Upload directory is not writable",
+        "uploadDir" => $uploadStatus,
+        "archiveDirs" => $archiveStatus,
+    ]);
+    exit;
+}
+
+// Use web-relative paths for python output returned to frontend, but absolute paths for filesystem operations
+$uploadDirWeb = rtrim($uploadDirWeb, '/').'/';
+foreach ($archiveDirsWeb as &$dweb) {
+    $dweb = rtrim($dweb, '/').'/';
+}
+unset($dweb);
+
 
 /*
 |--------------------------------------------------------------------------
@@ -90,11 +202,15 @@ $filename =
 $inputPath =
     $uploadDir . $filename;
 
-$outputPath =
-    $uploadDir .
+$outputFileName =
     "processed_" .
     pathinfo($filename, PATHINFO_FILENAME) .
     ".jpg";
+
+$outputPath = $uploadDir . $outputFileName;
+
+// web URL path returned to frontend
+$webOutputPath = $uploadDirWeb . $outputFileName;
 
 /*
 |--------------------------------------------------------------------------
@@ -171,7 +287,7 @@ if (
 
         echo json_encode([
             "success" => true,
-            "image" => $outputPath
+"image" => $webOutputPath
         ]);
 
     } else {
@@ -233,8 +349,9 @@ if (
 
         echo json_encode([
             "success" => true,
-            "image" => $outputPath
+"image" => $webOutputPath
         ]);
+
 
     } else {
 
@@ -282,9 +399,9 @@ if (
     ) {
 
         echo json_encode([
-            "success" => true,
-            "image" => $outputPath
-        ]);
+        "success" => true,
+        "image" => $webOutputPath
+    ]);
 
     } else {
 
@@ -330,9 +447,9 @@ if (
     ) {
 
         echo json_encode([
-            "success" => true,
-            "image" => $outputPath
-        ]);
+        "success" => true,
+        "image" => $webOutputPath
+    ]);
 
     } else {
 
@@ -378,9 +495,9 @@ if (
     ) {
 
         echo json_encode([
-            "success" => true,
-            "image" => $outputPath
-        ]);
+        "success" => true,
+        "image" => $webOutputPath
+    ]);
 
     } else {
 
@@ -428,9 +545,9 @@ if (
     ) {
 
         echo json_encode([
-            "success" => true,
-            "image" => $outputPath
-        ]);
+        "success" => true,
+        "image" => $webOutputPath
+    ]);
 
     } else {
 
@@ -467,9 +584,9 @@ if ($procedure === "general-skin-assessment") {
 
     if ($status === 0 && file_exists($outputPath)) {
         echo json_encode([
-            "success" => true,
-            "image" => $outputPath
-        ]);
+        "success" => true,
+        "image" => $webOutputPath
+    ]);
     } else {
         echo json_encode([
             "success" => false,

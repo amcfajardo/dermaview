@@ -9,6 +9,10 @@ document
     const formData = new FormData(form);
 
     try {
+      if (window.location.protocol === 'file:') {
+        throw new Error('Please open this page through XAMPP: http://localhost/dermaview/dermaview-html/index.html');
+      }
+
       const resp = await fetch("login.php", { method: "POST", body: formData });
       const text = await resp.text();
 
@@ -68,7 +72,7 @@ document
 
     } catch (error) {
       console.error(error);
-      alert('Something went wrong');
+      alert(error.message || 'Unable to connect to the login server. Make sure Apache and MySQL are running in XAMPP.');
     }
 
 });

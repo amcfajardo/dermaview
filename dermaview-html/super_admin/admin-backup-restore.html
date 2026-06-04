@@ -2,18 +2,18 @@
   <div class="accounts-header">
     <div>
       <h3>Backup and Restore</h3>
-      <p class="section-text">Create database backup records, download a backup manifest, track backup history, and stage restore notes for Super Admin review.</p>
+      <p class="section-text">Create a server backup file, download the latest saved backup, and log restore notes without automatically changing the database.</p>
     </div>
     <div class="admin-button-row">
-      <button type="button" class="accounts-create-btn" id="createBackupRecord">Backup Database</button>
+      <button type="button" class="accounts-create-btn" id="createBackupRecord">Create Backup File</button>
       <button type="button" class="accounts-close" id="downloadBackupRecord">Download Backup File</button>
     </div>
   </div>
 
   <form id="restoreDatabaseForm" class="accounts-form system-settings-form">
     <div class="accounts-form-title">
-      <h4>Restore Database</h4>
-      <p class="table-muted">This page records restore requests for audit review. Run the actual SQL restore from the server environment after verifying the file.</p>
+      <h4>Log Restore Request</h4>
+      <p class="table-muted">This saves the selected file and reason for review. It does not import the SQL file or replace the current database.</p>
     </div>
     <div class="accounts-field accounts-field-wide">
       <label for="restoreFile">Backup File</label>
@@ -30,7 +30,7 @@
 
   <div class="accounts-list-header">
     <h4>Backup History</h4>
-    <button type="button" class="accounts-close" id="clearBackupHistory">Clear Local History</button>
+    <button type="button" class="accounts-close" id="clearBackupHistory">Refresh History</button>
   </div>
 
   <div class="accounts-table-wrap">
@@ -44,7 +44,7 @@
         </tr>
       </thead>
       <tbody id="backupHistoryBody">
-        <tr><td colspan="4" class="accounts-empty-cell">No backup history recorded.</td></tr>
+        <tr><td colspan="4" class="accounts-empty-cell">Loading backup history...</td></tr>
       </tbody>
     </table>
   </div>
