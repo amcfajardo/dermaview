@@ -817,23 +817,18 @@ def process_general_skin_assessment(input_path, output_path):
     regions, bbox = make_face_region_masks(src)
     findings = compute_findings(src, regions)
 
-    # Report canvas: larger face image, with only area findings below.
+    # Report canvas: focus on the enlarged analyzed face and callouts.
     W = 1300
-    H = 1350
+    H = 900
     canvas = np.full((H, W, 3), 255, dtype=np.uint8)
 
-    # Header
-    cv2.rectangle(canvas, (0,0), (W,80), (45, 24, 5), -1)
-    cv2.putText(canvas, "GENERAL SKIN ASSESSMENT", (315, 48), cv2.FONT_HERSHEY_SIMPLEX, 1.25, (255,255,255), 2, cv2.LINE_AA)
-    cv2.putText(canvas, "AREA-BY-AREA EDUCATIONAL ANALYSIS", (440, 74), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (220,230,245), 1, cv2.LINE_AA)
-
     # Image area bigger and centered
-    max_img_w, max_img_h = 980, 720
+    max_img_w, max_img_h = 980, 760
     scale = min(max_img_w / w, max_img_h / h)
     nw, nh = int(w * scale), int(h * scale)
     resized = cv2.resize(src, (nw, nh), interpolation=cv2.INTER_AREA)
     x0 = (W - nw) // 2
-    y0 = 98
+    y0 = 20
     canvas[y0:y0+nh, x0:x0+nw] = resized
 
     # Draw segmented overlays on a transparent layer based on scaled masks
@@ -844,29 +839,6 @@ def process_general_skin_assessment(input_path, output_path):
     draw_segment_overlay(local, scaled_regions, findings)
     canvas[y0:y0+nh, x0:x0+nw] = local
     draw_callouts(canvas, (x0, y0, nw, nh), scaled_regions, x0, y0, 1.0, 1.0)
-
-    # Lower findings section
-    panel_y = y0 + nh + 28
-    rounded_rect(canvas, (28, panel_y), (W-28, H-78), (252,252,252), radius=16, thickness=-1)
-    cv2.rectangle(canvas, (28, panel_y), (W-28, H-78), (225,225,225), 1)
-    cv2.putText(canvas, "AREA-BY-AREA EDUCATIONAL FINDINGS", (400, panel_y+42), cv2.FONT_HERSHEY_SIMPLEX, 0.72, COLORS["navy"], 2, cv2.LINE_AA)
-
-    card_w, card_h = 375, 130
-    cols = [65, 470, 875]
-    rows = [panel_y+65, panel_y+205]
-    cards = [
-        ("forehead", 1, "FOREHEAD AREA", "red", "Forehead/upper face"),
-        ("left_cheek", 2, "LEFT CHEEK AREA", "orange", "Left mid-to-lower cheek"),
-        ("right_cheek", 3, "RIGHT CHEEK AREA", "green", "Right mid-to-lower cheek"),
-        ("undereye", 4, "UNDEREYE AREA", "purple", "Both left and right under-eye areas"),
-        ("nose", 5, "NOSE AREA (T-ZONE)", "blue", "Nose bridge, sides, and tip"),
-        ("chin", 6, "CHIN AREA", "teal", "Central chin and lower jawline"),
-    ]
-    for idx, (key, num, title, cname, zone) in enumerate(cards):
-        draw_finding_card(canvas, cols[idx % 3], rows[idx // 3], card_w, card_h, num, title, COLORS[cname], zone, findings[key]["finding"], findings[key]["severity"])
-
-    # Overall summary, severity guide, and recommended visualization blocks were removed
-    # so the output focuses on the enlarged detected face and area-by-area findings.
 
     # Disclaimer strip
     cv2.rectangle(canvas, (28, H-62), (W-28, H-20), (245,249,255), -1)

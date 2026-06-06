@@ -54,15 +54,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 200px;
-  max-height: 400px;
+  aspect-ratio: 4 / 3;
+  min-height: 0;
+  max-height: none;
 }
 
 .upload-preview img {
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
   border-radius: var(--radius-md);
-  object-fit: contain;
+  object-fit: cover;
   padding: 12px;
 }
 

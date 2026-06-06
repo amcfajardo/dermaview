@@ -476,6 +476,13 @@ function renderTreatment(id) {
   const resultsTitle = document.getElementById("results-title");
   const workflowTitle = document.getElementById("workflow-title");
   const workflowList = document.getElementById("workflow-list");
+  const treatmentLayout = document.querySelector(".treatment-layout");
+
+  if (treatmentLayout) {
+    const hasResults = Boolean(showResults && uploadedImageUrl && processedImageUrl);
+    treatmentLayout.classList.toggle("has-upload", Boolean(uploadedImageUrl));
+    treatmentLayout.classList.toggle("has-results", hasResults);
+  }
 
   document.getElementById("treatment-title").textContent = procedure.name;
   document.getElementById("treatment-description").textContent = procedure.description;
@@ -839,7 +846,7 @@ function renderAssessmentResults() {
   const { metrics, recommendations } = assessmentResult;
 
   return `
-    <div class="comparison-grid">
+    <div class="comparison-grid assessment-result-images">
       <div class="image-card">
         <img src="${uploadedImageUrl}" alt="Uploaded skin image" data-preview-image data-preview-title="Before Analysis" tabindex="0" />
       </div>
