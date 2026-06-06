@@ -24,7 +24,7 @@
 
     if (!body) return;
 
-    const allowedRoleIndexes = [0, 1, 4];
+    const allowedRoleIndexes = [0, 1, 2];
     const allowedRoleHeaders = ['Super Admin', 'Admin', 'Staff'];
     const table = body.closest('table');
 
@@ -60,7 +60,7 @@
 
       const savedValues = saved[row.dataset.feature];
       const values = Array.isArray(savedValues) && savedValues.length === 5
-        ? [savedValues[0], savedValues[1], savedValues[4]]
+        ? [savedValues[0], savedValues[1], savedValues[2]]
         : savedValues;
       if (!Array.isArray(values)) return;
 

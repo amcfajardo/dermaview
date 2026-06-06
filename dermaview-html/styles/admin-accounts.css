@@ -855,6 +855,17 @@ textarea.accounts-input {
   margin-top: 24px;
 }
 
+.accounts-panel[data-account-scope="admin"] .accounts-permissions-panel .accounts-create-btn,
+.accounts-panel[data-account-scope="admin"] .accounts-permissions-panel .accounts-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .appointment-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));

@@ -471,6 +471,16 @@ function privacy_archive_patients($conn, $days) {
     return $status;
 }
 
+function privacy_archive_expired_all($conn, $days) {
+    $messages = [
+        privacy_archive_images($conn, 'uploaded', $days),
+        privacy_archive_images($conn, 'processed', $days),
+        privacy_archive_patients($conn, $days)
+    ];
+
+    return implode(' | ', $messages);
+}
+
 privacy_ensure_tables($conn);
 $action = $_POST['action'] ?? $_GET['action'] ?? 'list';
 
@@ -490,6 +500,10 @@ if ($action === 'archive_processed_images') {
 
 if ($action === 'archive_inactive_patients') {
     privacy_json(['status' => 'ok', 'message' => privacy_archive_patients($conn, $days), 'records' => privacy_rows($conn)]);
+}
+
+if ($action === 'archive_expired_all') {
+    privacy_json(['status' => 'ok', 'message' => privacy_archive_expired_all($conn, $days), 'records' => privacy_rows($conn)]);
 }
 
 privacy_json(['status' => 'error', 'message' => 'Unknown privacy action.'], 400);

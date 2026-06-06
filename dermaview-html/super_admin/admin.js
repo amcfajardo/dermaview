@@ -217,12 +217,46 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  pageContent.addEventListener('click', function (event) {
+    const link = event.target.closest('[data-admin-page]');
+    if (!link) return;
+
+    event.preventDefault();
+    const page = normalizePage(link.dataset.adminPage || link.getAttribute('href'));
+    if (location.hash !== `#${page}`) {
+      location.hash = page;
+    } else {
+      renderPage(page);
+    }
+  });
+
+  function runDailyExpiredArchive() {
+    const today = new Date().toISOString().slice(0, 10);
+    const key = 'dermaview.superAdmin.expiredArchiveRunDate';
+    if (localStorage.getItem(key) === today) return;
+
+    const data = new FormData();
+    data.append('action', 'archive_expired_all');
+
+    fetch('admin-privacy-data.php', { method: 'POST', body: data, cache: 'no-store' })
+      .then(response => response.json())
+      .then(payload => {
+        if (payload && payload.status === 'ok') {
+          localStorage.setItem(key, today);
+        }
+      })
+      .catch(() => {});
+  }
+
   function handleHash() {
     renderPage(normalizePage(location.hash || 'dashboard'));
   }
 
   window.addEventListener('hashchange', handleHash);
   guardSuperAdminSession().then(isAllowed => {
-    if (isAllowed) handleHash();
+    if (isAllowed) {
+      runDailyExpiredArchive();
+      handleHash();
+    }
   });
 });
