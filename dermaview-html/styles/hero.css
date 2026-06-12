@@ -87,9 +87,9 @@
 /* Index home page */
 
 .home-hero {
-  min-height: calc(100vh - 112px);
+  min-height: auto;
   align-items: start;
-  padding: 28px 0 34px;
+  padding: 28px 0 36px;
 }
 
 .home-hero .hero-grid {
@@ -191,7 +191,7 @@
 }
 
 .home-section {
-  padding: 44px 0 10px;
+  padding: 34px 0 10px;
 }
 
 .home-section-header {
