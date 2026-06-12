@@ -175,12 +175,20 @@
   border-radius: 14px;
   padding: 12px;
   margin-bottom: 10px;
-  display:flex;
+  display:grid;
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items:flex-start;
   gap: 12px;
 }
 
 .apt-time{ font-weight: 900; min-width: 110px; color: var(--color-text); }
+.apt-info{ min-width: 0; }
+.apt-patient,
+.apt-procedure,
+.apt-contact{
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .apt-patient{ font-weight: 900; }
 .apt-procedure{ color: var(--color-text-secondary); font-weight: 700; }
 .apt-contact{
@@ -272,5 +280,15 @@
   .staff-cal-header{
     align-items:flex-start;
     flex-direction:column;
+  }
+}
+
+@media (max-width: 520px){
+  .appointment-detail-card{
+    grid-template-columns: 1fr;
+  }
+
+  .apt-time{
+    min-width: 0;
   }
 }
