@@ -1,6 +1,7 @@
 <?php
 
 header('Content-Type: application/json');
+$requestStart = microtime(true);
 
 function process_read_system_settings() {
     $settings = [
@@ -50,6 +51,56 @@ function process_allowed_extensions($value) {
     }, $extensions));
 
     return $extensions ?: ['jpg', 'png', 'webp'];
+}
+
+function processing_timing_payload(float $requestStart, float $scriptStart, float $scriptEnd): array {
+    return [
+        'script_ms' => (int)round(($scriptEnd - $scriptStart) * 1000),
+        'total_ms' => (int)round((microtime(true) - $requestStart) * 1000),
+        'script_seconds' => round($scriptEnd - $scriptStart, 3),
+        'total_seconds' => round(microtime(true) - $requestStart, 3),
+    ];
+}
+
+function run_procedure_script(
+    string $procedure,
+    string $pythonScript,
+    string $failureMessage,
+    string $inputPath,
+    string $outputPath,
+    string $webOutputPath,
+    float $requestStart
+): void {
+    $command =
+        "python \"$pythonScript\" " .
+        escapeshellarg($inputPath) . " " .
+        escapeshellarg($outputPath) . " 2>&1";
+
+    $scriptStart = microtime(true);
+    exec($command, $output, $status);
+    $scriptEnd = microtime(true);
+    $timing = processing_timing_payload($requestStart, $scriptStart, $scriptEnd);
+
+    if ($status === 0 && file_exists($outputPath)) {
+        echo json_encode([
+            "success" => true,
+            "image" => $webOutputPath,
+            "procedure" => $procedure,
+            "timing" => $timing
+        ]);
+    } else {
+        echo json_encode([
+            "success" => false,
+            "message" => $failureMessage,
+            "debug" => $output,
+            "command" => $command,
+            "outputPath" => $outputPath,
+            "procedure" => $procedure,
+            "timing" => $timing
+        ]);
+    }
+
+    exit;
 }
 
 
@@ -245,359 +296,51 @@ if (
 
 /*
 |--------------------------------------------------------------------------
-| CO2 FRACTIONAL LASER + DERMAPEN
+| RUN SUPPORTED PROCEDURE SCRIPT
 |--------------------------------------------------------------------------
 */
 
-if (
-    $procedure ===
-    "co2-fractional-laser-dermapen"
-) {
+$procedureScripts = [
+    "co2-fractional-laser-dermapen" => [
+        "script" => "python/process_co2_dermapen.py",
+        "message" => "CO2 Fractional Laser + Dermapen processing failed"
+    ],
+    "face_slimming" => [
+        "script" => "python/process_face_slimming.py",
+        "message" => "Face slimming processing failed"
+    ],
+    "diamond-peel-facial" => [
+        "script" => "python/process_diamond_peel.py",
+        "message" => "Diamond Peel processing failed"
+    ],
+    "undereye-lip-filler" => [
+        "script" => "python/process_undereye_lip_filler.py",
+        "message" => "Undereye and Lip Filler processing failed"
+    ],
+    "pico-carbon-laser" => [
+        "script" => "python/process_pico_carbon_laser.py",
+        "message" => "PICO Carbon Laser processing failed"
+    ],
+    "lip-chin-jawtox" => [
+        "script" => "python/process_lip_chin_jawtox.py",
+        "message" => "Lip, Chin, and Jawtox processing failed"
+    ],
+    "general-skin-assessment" => [
+        "script" => "python/process_general_skin_assessment.py",
+        "message" => "General Skin Assessment processing failed"
+    ]
+];
 
-    $pythonScript =
-        "python/process_co2_dermapen.py";
-
-    /*
-    |--------------------------------------------------------------------------
-    | PYTHON COMMAND
-    |--------------------------------------------------------------------------
-    */
-
-    $command =
-    "python \"$pythonScript\" " .
-    escapeshellarg($inputPath) . " " .
-    escapeshellarg($outputPath) . " 2>&1";
-
-    exec(
-        $command,
-        $output,
-        $status
+if (isset($procedureScripts[$procedure])) {
+    run_procedure_script(
+        $procedure,
+        $procedureScripts[$procedure]["script"],
+        $procedureScripts[$procedure]["message"],
+        $inputPath,
+        $outputPath,
+        $webOutputPath,
+        $requestStart
     );
-
-    /*
-    |--------------------------------------------------------------------------
-    | SUCCESS
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-        $status === 0 &&
-        file_exists($outputPath)
-    ) {
-
-        echo json_encode([
-            "success" => true,
-"image" => $webOutputPath
-        ]);
-
-    } else {
-
-        echo json_encode([
-            "success" => false,
-            "message" => "Python image processing failed",
-            "debug" => $output,
-"command" => $command,
-"outputPath" => $outputPath
-        ]);
-
-    }
-
-    exit;
-}
-
-/*
-|--------------------------------------------------------------------------
-| FACE SLIMMING
-|--------------------------------------------------------------------------
-*/
-
-if (
-    $procedure ===
-    "face_slimming"
-) {
-
-    $pythonScript =
-        "python/process_face_slimming.py";
-
-    /*
-    |--------------------------------------------------------------------------
-    | PYTHON COMMAND
-    |--------------------------------------------------------------------------
-    */
-
-    $command =
-    "python \"$pythonScript\" " .
-    escapeshellarg($inputPath) . " " .
-    escapeshellarg($outputPath) . " 2>&1";
-
-    exec(
-        $command,
-        $output,
-        $status
-    );
-
-    /*
-    |--------------------------------------------------------------------------
-    | SUCCESS
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-        $status === 0 &&
-        file_exists($outputPath)
-    ) {
-
-        echo json_encode([
-            "success" => true,
-"image" => $webOutputPath
-        ]);
-
-
-    } else {
-
-        echo json_encode([
-            "success" => false,
-            "message" => "Face slimming processing failed",
-            "debug" => $output,
-            "command" => $command,
-            "outputPath" => $outputPath
-        ]);
-
-    }
-
-    exit;
-}
-
-/*
-|--------------------------------------------------------------------------
-| DIAMOND PEEL WITH FACIAL
-|--------------------------------------------------------------------------
-*/
-
-if (
-    $procedure ===
-    "diamond-peel-facial"
-) {
-
-    $pythonScript =
-        "python/process_diamond_peel.py";
-
-    $command =
-    "python \"$pythonScript\" " .
-    escapeshellarg($inputPath) . " " .
-    escapeshellarg($outputPath) . " 2>&1";
-
-    exec(
-        $command,
-        $output,
-        $status
-    );
-
-    if (
-        $status === 0 &&
-        file_exists($outputPath)
-    ) {
-
-        echo json_encode([
-        "success" => true,
-        "image" => $webOutputPath
-    ]);
-
-    } else {
-
-        echo json_encode([
-            "success" => false,
-            "message" => "Diamond Peel processing failed",
-            "debug" => $output
-        ]);
-
-    }
-
-    exit;
-}
-
-/*
-|--------------------------------------------------------------------------
-| UNDEREYE AND LIP FILLER
-|--------------------------------------------------------------------------
-*/
-
-if (
-    $procedure ===
-    "undereye-lip-filler"
-) {
-
-    $pythonScript =
-        "python/process_undereye_lip_filler.py";
-
-    $command =
-    "python \"$pythonScript\" " .
-    escapeshellarg($inputPath) . " " .
-    escapeshellarg($outputPath) . " 2>&1";
-
-    exec(
-        $command,
-        $output,
-        $status
-    );
-
-    if (
-        $status === 0 &&
-        file_exists($outputPath)
-    ) {
-
-        echo json_encode([
-        "success" => true,
-        "image" => $webOutputPath
-    ]);
-
-    } else {
-
-        echo json_encode([
-            "success" => false,
-            "message" => "Undereye and Lip Filler processing failed",
-            "debug" => $output
-        ]);
-
-    }
-
-    exit;
-}
-
-/*
-|--------------------------------------------------------------------------
-| PICO CARBON LASER FACIAL
-|--------------------------------------------------------------------------
-*/
-
-if (
-    $procedure ===
-    "pico-carbon-laser"
-) {
-
-    $pythonScript =
-        "python/process_pico_carbon_laser.py";
-
-    $command =
-    "python \"$pythonScript\" " .
-    escapeshellarg($inputPath) . " " .
-    escapeshellarg($outputPath) . " 2>&1";
-
-    exec(
-        $command,
-        $output,
-        $status
-    );
-
-    if (
-        $status === 0 &&
-        file_exists($outputPath)
-    ) {
-
-        echo json_encode([
-        "success" => true,
-        "image" => $webOutputPath
-    ]);
-
-    } else {
-
-        echo json_encode([
-            "success" => false,
-            "message" => "PICO Carbon Laser processing failed",
-            "debug" => $output,
-            "command" => $command,
-            "outputPath" => $outputPath
-        ]);
-
-    }
-
-    exit;
-}
-
-/*
-|--------------------------------------------------------------------------
-| LIP FILLER, CHIN FILLER, AND JAWTOX
-|--------------------------------------------------------------------------
-*/
-
-if (
-    $procedure ===
-    "lip-chin-jawtox"
-) {
-
-    $pythonScript =
-        "python/process_lip_chin_jawtox.py";
-
-    $command =
-    "python \"$pythonScript\" " .
-    escapeshellarg($inputPath) . " " .
-    escapeshellarg($outputPath) . " 2>&1";
-
-    exec(
-        $command,
-        $output,
-        $status
-    );
-
-    if (
-        $status === 0 &&
-        file_exists($outputPath)
-    ) {
-
-        echo json_encode([
-        "success" => true,
-        "image" => $webOutputPath
-    ]);
-
-    } else {
-
-        echo json_encode([
-            "success" => false,
-            "message" => "Lip, Chin, and Jawtox processing failed",
-            "debug" => $output,
-            "command" => $command,
-            "outputPath" => $outputPath
-        ]);
-
-    }
-
-    exit;
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| GENERAL SKIN ASSESSMENT
-|--------------------------------------------------------------------------
-*/
-
-if ($procedure === "general-skin-assessment") {
-
-    $pythonScript = "python/process_general_skin_assessment.py";
-
-    $command =
-        "python \"$pythonScript\" " .
-        escapeshellarg($inputPath) . " " .
-        escapeshellarg($outputPath) . " 2>&1";
-
-    exec($command, $output, $status);
-
-    if ($status === 0 && file_exists($outputPath)) {
-        echo json_encode([
-        "success" => true,
-        "image" => $webOutputPath
-    ]);
-    } else {
-        echo json_encode([
-            "success" => false,
-            "message" => "General Skin Assessment processing failed",
-            "debug" => $output,
-            "command" => $command,
-            "outputPath" => $outputPath
-        ]);
-    }
-
-    exit;
 }
 
 /*

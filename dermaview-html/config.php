@@ -1,9 +1,9 @@
 <?php
 
 $host = "localhost";
-$username = "dermaviewuser";
-$password = "admin123";
-$database = "dermaview";
+$username = "root";
+$password = "";
+$database = "dermaview_restore";
 
 $conn = mysqli_connect($host, $username, $password, $database);
 

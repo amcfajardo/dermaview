@@ -421,6 +421,7 @@ p {
 
 :root[data-theme="dark"] .detail-list li,
 :root[data-theme="dark"] .stat-card span,
+:root[data-theme="dark"] .processing-time-card small,
 :root[data-theme="dark"] .schedule-date-card span,
 :root[data-theme="dark"] .schedule-time-slot span,
 :root[data-theme="dark"] .schedule-date-day.is-outside,

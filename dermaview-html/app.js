@@ -158,11 +158,61 @@ let showResults = false;
 let isSavingAnalysis = false;
 let analysisSaveMessage = "";
 let lastSavedRecordId = null;
+let lastProcessingTiming = null;
 
 function escapeHtml(value) {
   const div = document.createElement("div");
   div.textContent = value == null ? "" : String(value);
   return div.innerHTML;
+}
+
+function formatDuration(seconds) {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value < 0) return "N/A";
+  if (value < 1) return `${Math.round(value * 1000)} ms`;
+  return `${value.toFixed(value < 10 ? 2 : 1)} sec`;
+}
+
+function normalizeProcessingTiming(serverTiming, clientStart, clientEnd) {
+  const clientSeconds = Number.isFinite(clientStart) && Number.isFinite(clientEnd)
+    ? Math.max(0, (clientEnd - clientStart) / 1000)
+    : null;
+  const scriptSeconds = Number(serverTiming?.script_seconds);
+  const totalSeconds = Number(serverTiming?.total_seconds);
+
+  return {
+    script_seconds: Number.isFinite(scriptSeconds) ? scriptSeconds : null,
+    server_seconds: Number.isFinite(totalSeconds) ? totalSeconds : null,
+    client_seconds: clientSeconds,
+    script_ms: Number(serverTiming?.script_ms) || null,
+    server_ms: Number(serverTiming?.total_ms) || null,
+    client_ms: clientSeconds == null ? null : Math.round(clientSeconds * 1000),
+    recorded_at: new Date().toISOString()
+  };
+}
+
+function renderProcessingTimingStats() {
+  if (!lastProcessingTiming) return "";
+
+  const primarySeconds = lastProcessingTiming.script_seconds
+    ?? lastProcessingTiming.server_seconds
+    ?? lastProcessingTiming.client_seconds;
+  const detailParts = [];
+  if (lastProcessingTiming.server_seconds != null) {
+    detailParts.push(`Server ${formatDuration(lastProcessingTiming.server_seconds)}`);
+  }
+  if (lastProcessingTiming.client_seconds != null) {
+    detailParts.push(`Total wait ${formatDuration(lastProcessingTiming.client_seconds)}`);
+  }
+
+  return `
+    <div class="processing-time-popup" role="status" aria-live="polite">
+      <button type="button" class="processing-time-close" aria-label="Dismiss processing time" onclick="this.closest('.processing-time-popup')?.remove()">×</button>
+      <span>Processing Time</span>
+      <strong>${formatDuration(primarySeconds)}</strong>
+      ${detailParts.length ? `<small>${detailParts.join(" | ")}</small>` : ""}
+    </div>
+  `;
 }
 
 function getClinicName() {
@@ -543,6 +593,7 @@ function renderTreatment(id) {
           <strong>4 weeks</strong>
           <span>Avg. Recovery Time</span>
         </div>
+        ${renderProcessingTimingStats()}
       </div>
       <div style="margin-top:24px;">
         <h4>Recommended Treatments</h4>
@@ -590,6 +641,7 @@ function bindTreatmentEvents(id) {
       uploadedImageUrl = URL.createObjectURL(file);
       showResults = false;
       processedImageUrl = null;
+      lastProcessingTiming = null;
 
       renderTreatment(id);
     });
@@ -602,12 +654,18 @@ function bindTreatmentEvents(id) {
       isProcessing = true;
       analysisSaveMessage = "";
       lastSavedRecordId = null;
+      lastProcessingTiming = null;
+      processedImageUrl = null;
+      assessmentResult = null;
+      showResults = false;
       renderTreatment(id);
 
       const formData = new FormData();
 
       formData.append("image", uploadedImageFile);
       formData.append("procedure", id);
+
+      const clientStart = performance.now();
 
       try {
         const response = await fetch("../process-image.php", {
@@ -616,15 +674,18 @@ function bindTreatmentEvents(id) {
         });
 
         const result = await response.json();
+        const clientEnd = performance.now();
 
         console.log("PHP result:", result);
         if (result.success) {
           processedImageUrl = "../" + result.image + "?v=" + Date.now();
+          lastProcessingTiming = normalizeProcessingTiming(result.timing, clientStart, clientEnd);
           assessmentResult = id === "general-skin-assessment"
             ? await buildAssessmentResult(uploadedImageUrl)
             : null;
           showResults = true;
         } else {
+          lastProcessingTiming = normalizeProcessingTiming(result.timing, clientStart, clientEnd);
           showResults = false;
           alert(result.message || "Image processing failed");
           console.log(result);
@@ -638,6 +699,8 @@ function bindTreatmentEvents(id) {
       isProcessing = false;
       showResults = Boolean(processedImageUrl);
       renderTreatment(id);
+
+      if (!processedImageUrl) return;
 
       try {
         isSavingAnalysis = true;
@@ -669,6 +732,7 @@ function bindTreatmentEvents(id) {
       isSavingAnalysis = false;
       analysisSaveMessage = "";
       lastSavedRecordId = null;
+      lastProcessingTiming = null;
       renderTreatment(id);
     });
   }
@@ -871,6 +935,7 @@ function renderAssessmentResults() {
         <strong>${formatMetric(metrics.brightness)}</strong>
         <span>Brightness</span>
       </div>
+      ${renderProcessingTimingStats()}
     </div>
     <div class="assessment-recommendations">
       <h4>Suggested treatments to discuss</h4>
@@ -1035,7 +1100,10 @@ async function saveAnalyzedImages(id) {
   );
   formData.append("before_image", beforeImageForSave);
   formData.append("after_image", afterImageForSave);
-  formData.append("metrics_json", JSON.stringify(assessmentResult?.metrics || {}));
+  formData.append("metrics_json", JSON.stringify({
+    ...(assessmentResult?.metrics || {}),
+    processing_timing: lastProcessingTiming
+  }));
   formData.append("recommendations_json", JSON.stringify(buildSavedRecommendations()));
 
   const response = await fetch(getProcessedImagesEndpoint(), {
