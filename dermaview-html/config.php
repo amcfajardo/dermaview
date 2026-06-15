@@ -3,7 +3,7 @@
 $host = "localhost";
 $username = "dermaviewuser";
 $password = "admin123";
-$database = "dermaview_restore";
+$database = "dermaview";
 
 $conn = mysqli_connect($host, $username, $password, $database);
 
