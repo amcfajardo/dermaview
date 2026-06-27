@@ -54,7 +54,7 @@ def clamp_intensity(value, default=1.0):
         value = float(value)
     except Exception:
         value = default
-    return float(np.clip(value, 0.30, 1.60))
+    return float(np.clip(value, 0.30, 4.00))
 
 def detect_face_bbox(img):
     h, w = img.shape[:2]
@@ -318,13 +318,21 @@ def process_pico_carbon_laser(input_path, output_path, intensity=1.0):
     intensity = clamp_intensity(intensity)
     original = resize_for_processing(read_image(input_path), 1300)
     skin = skin_mask_bgr(original)
+    x, y, fw, fh = detect_face_bbox(original)
+    face_area = elliptical_mask(original.shape, (x + fw // 2, y + int(fh * 0.52)), (int(fw * 0.48), int(fh * 0.52)), blur=51)
+    skin = face_area
+    gray_skin_guard = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
+    dark_features = cv2.inRange(gray_skin_guard, 0, 82)
+    dark_features = cv2.dilate(dark_features, np.ones((5, 5), np.uint8), iterations=1)
+    dark_features = cv2.GaussianBlur(dark_features, (31, 31), 0)
+    skin = cv2.bitwise_and(skin, cv2.bitwise_not(dark_features))
     protect = protect_features_mask(original)
     usable_skin = (skin.astype(np.float32) * (1 - 0.40 * protect.astype(np.float32) / 255.0)).astype(np.uint8)
 
     smooth = cv2.bilateralFilter(original, d=19, sigmaColor=70, sigmaSpace=70)
     smooth = cv2.bilateralFilter(smooth, d=11, sigmaColor=45, sigmaSpace=45)
-    bright = enhance_lab(smooth, l_alpha=1.07, l_beta=7, a_smooth=0.08)
-    radiant = cv2.addWeighted(bright, 0.84, cv2.GaussianBlur(bright, (0, 0), 2.5), 0.16, 0)
+    bright = enhance_lab(smooth, l_alpha=1.18, l_beta=20, a_smooth=0.22)
+    radiant = cv2.addWeighted(bright, 0.68, cv2.GaussianBlur(bright, (0, 0), 4.5), 0.32, 0)
 
     gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
     mean = cv2.mean(gray, mask=skin)[0]
@@ -332,9 +340,16 @@ def process_pico_carbon_laser(input_path, output_path, intensity=1.0):
     pigment = cv2.bitwise_and(pigment, skin)
     pigment = cv2.GaussianBlur(cv2.dilate(pigment, np.ones((5, 5), np.uint8), 1), (31, 31), 0)
 
-    result = blend(original, radiant, usable_skin, 0.62 * intensity)
-    result = blend(result, radiant, pigment, 0.42 * intensity)
-    result = gentle_sharpen(result, 0.05)
+    result = blend(original, radiant, usable_skin, 1.02 * intensity)
+    result = blend(result, radiant, pigment, 0.95 * intensity)
+    hsv_preview = cv2.cvtColor(result, cv2.COLOR_BGR2HSV).astype(np.float32)
+    face_f = (usable_skin.astype(np.float32) / 255.0) * min(1.0, 0.42 * intensity)
+    hsv_preview[:, :, 1] *= (1.0 - 0.42 * face_f)
+    v_channel = hsv_preview[:, :, 2]
+    lifted_v = np.minimum(v_channel + 24, 205)
+    hsv_preview[:, :, 2] = v_channel * (1.0 - face_f) + lifted_v * face_f
+    result = cv2.cvtColor(np.clip(hsv_preview, 0, 255).astype(np.uint8), cv2.COLOR_HSV2BGR)
+    result = gentle_sharpen(result, 0.09)
     save_image(output_path, result)
     print("PICO Carbon Laser educational visualization saved:", output_path)
     print(DISCLAIMER)

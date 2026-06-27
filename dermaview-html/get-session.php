@@ -2,14 +2,14 @@
 require __DIR__ . '/auth_common.php';
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/maintenance_common.php';
-session_start();
+auth_start_session();
 header('Content-Type: application/json');
 
-if (isset($_SESSION['role']) && maintenance_requires_logout($conn, $_SESSION['role'])) {
+if (auth_should_force_logout()) {
     maintenance_destroy_current_session();
     echo json_encode([
-        'status' => 'maintenance',
-        'message' => 'Maintenance mode is active. Please log in again when maintenance is complete.'
+        'status' => 'expired',
+        'message' => 'This account was signed in somewhere else. Please log in again.'
     ]);
     exit;
 }

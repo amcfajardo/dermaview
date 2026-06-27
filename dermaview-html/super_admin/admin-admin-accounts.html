@@ -1,3 +1,8 @@
+<?php
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../auth_common.php';
+auth_require_super_admin_page('../index.html');
+?>
 <div class="panel-card accounts-panel" data-account-scope="admin">
   <div class="accounts-header">
     <div>
@@ -47,7 +52,12 @@
 
     <div class="accounts-field">
       <label for="accountPassword">Temporary Password</label>
-      <input id="accountPassword" type="password" name="password" class="accounts-input" autocomplete="new-password" required>
+      <input id="accountPassword" type="password" name="password" class="accounts-input" autocomplete="new-password" minlength="8" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}" title="Password must be at least 8 characters and include uppercase, lowercase, number, and special character." required>
+    </div>
+
+    <div class="accounts-field">
+      <label for="accountConfirmPassword">Confirm Temporary Password</label>
+      <input id="accountConfirmPassword" type="password" name="confirm_password" class="accounts-input" autocomplete="new-password" required>
     </div>
 
     <div class="accounts-actions">

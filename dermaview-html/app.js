@@ -3,7 +3,7 @@ const defaultProcedures = [
     id: "general-skin-assessment",
     name: "General Skin Assessment",
     description:
-      "Upload a skin image and get educational treatment suggestions based on visible image signals.",
+      "Capture a skin image and get educational treatment suggestions based on visible image signals.",
 
     category: "Assessment",
 
@@ -151,6 +151,7 @@ const app = document.getElementById("app");
 let selectedProcedureId = null;
 let uploadedImageUrl = null;
 let uploadedImageFile = null;
+let cameraStream = null;
 let processedImageUrl = null;
 let assessmentResult = null;
 let isProcessing = false;
@@ -339,15 +340,20 @@ function renderHome() {
 
   app.innerHTML = `
     <section class="hero home-hero">
+      <div class="hero-status-row">
+        <p class="status-badge">Professional Dermatology Platform</p>
+        <div class="hero-session-welcome" id="sessionWelcome" aria-live="polite" hidden>
+          <span>Welcome</span>
+          <strong>Loading...</strong>
+        </div>
+      </div>
       <div class="hero-grid">
         <div class="hero-copy-block">
-          <p class="status-badge">Professional Dermatology Platform</p>
           <h1 class="hero-headline">Professional Dermatology Image Analysis</h1>
           <p class="hero-copy">Leverage advanced image processing technology to visualize and analyze skin conditions with precision.</p>
           <p class="hero-copy">DermaView helps clinicians and patients understand treatment outcomes through sophisticated image analysis.</p>
           <div class="cta-row">
             <a href="pages/procedures.html" class="button">Get Started</a>
-            <a href="pages/procedures.html" class="button-secondary">Browse Procedures</a>
           </div>
         </div>
         <div class="features-grid">
@@ -398,8 +404,8 @@ function renderHome() {
       <div class="home-steps">
         <div class="home-step">
           <span>1</span>
-          <h3>Upload a clear image</h3>
-          <p>Start with a patient image or treatment-area photo for visualization.</p>
+          <h3>Capture a clear image</h3>
+          <p>Start with a camera-captured patient image or treatment-area photo for visualization.</p>
         </div>
         <div class="home-step">
           <span>2</span>
@@ -421,7 +427,7 @@ function renderHome() {
       <div>
         <span class="section-kicker">Start</span>
         <h2 class="section-heading">Ready to preview a treatment?</h2>
-        <p class="section-text">Browse procedures, upload an image, and review a visual treatment simulation.</p>
+        <p class="section-text">Browse procedures, capture an image, and review a visual treatment simulation.</p>
       </div>
       <a href="pages/procedures.html" class="button">Browse Procedures</a>
     </section>
@@ -527,11 +533,16 @@ function renderTreatment(id) {
   const workflowTitle = document.getElementById("workflow-title");
   const workflowList = document.getElementById("workflow-list");
   const treatmentLayout = document.querySelector(".treatment-layout");
+  const uploadPanel = document.querySelector(".upload-panel");
 
   if (treatmentLayout) {
     const hasResults = Boolean(showResults && uploadedImageUrl && processedImageUrl);
     treatmentLayout.classList.toggle("has-upload", Boolean(uploadedImageUrl));
     treatmentLayout.classList.toggle("has-results", hasResults);
+  }
+
+  if (uploadPanel) {
+    uploadPanel.classList.toggle("has-captured-image", Boolean(uploadedImageUrl));
   }
 
   document.getElementById("treatment-title").textContent = procedure.name;
@@ -547,13 +558,13 @@ function renderTreatment(id) {
     workflowTitle.textContent = isAssessment ? "How Assessment Works" : "How It Works";
     workflowList.innerHTML = isAssessment
       ? `
-        <li>Upload a clear, well-lit image of the skin area.</li>
+        <li>Capture a clear, well-lit image of the skin area.</li>
         <li>DermaView checks redness, texture, contrast, and brightness signals.</li>
         <li>Review educational treatment suggestions to discuss with a dermatologist.</li>
         <li>Use the result as guidance only, not as a diagnosis.</li>
       `
       : `
-        <li>Upload a clear image of the treatment area.</li>
+        <li>Capture a clear image of the treatment area.</li>
         <li>DermaView applies a preview effect for visualization.</li>
         <li>Compare the before and after visuals.</li>
         <li>Consult with your dermatologist for next steps.</li>
@@ -563,11 +574,13 @@ function renderTreatment(id) {
   const uploadPreviewContainer = document.getElementById("upload-preview-container");
   if (uploadedImageUrl) {
     uploadPreviewContainer.innerHTML = `
-      <div class="upload-preview">
-        <img src="${uploadedImageUrl}" alt="Uploaded" />
+      <div class="captured-preview-panel">
+        <button type="button" class="captured-image-button" id="restart-camera-image" aria-label="Restart camera">
+          <img src="${uploadedImageUrl}" alt="Captured skin image" />
+        </button>
+        <button id="process-button" class="button" style="width:100%; margin-top:18px;">${isProcessing ? "Processing Image..." : isAssessment ? "Assess Skin Image" : "Analyze Image"}</button>
+        <button id="clear-button" class="button-secondary" style="width:100%; margin-top:12px;">Restart Camera</button>
       </div>
-      <button id="process-button" class="button" style="width:100%; margin-top:18px;">${isProcessing ? "Processing Image..." : isAssessment ? "Assess Skin Image" : "Analyze Image"}</button>
-      <button id="clear-button" class="button-secondary" style="width:100%; margin-top:12px;">Clear Image</button>
     `;
   } else {
     uploadPreviewContainer.innerHTML = "";
@@ -616,7 +629,7 @@ function renderTreatment(id) {
             <path d="M12 8v12" />
             <path d="M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <p>${isAssessment ? "Upload an image to start the skin assessment." : "Upload an image to see treatment visualization."}</p>
+          <p>${isAssessment ? "Capture an image to start the skin assessment." : "Capture an image to see treatment visualization."}</p>
         </div>
       </div>
     `;
@@ -627,24 +640,23 @@ function renderTreatment(id) {
 }
 
 function bindTreatmentEvents(id) {
-  const uploadInput = document.getElementById("image-upload");
+  const openCameraButton = document.getElementById("open-camera-button");
+  const restartCameraImage = document.getElementById("restart-camera-image");
   const processButton = document.getElementById("process-button");
   const clearButton = document.getElementById("clear-button");
 
-  if (uploadInput) {
-    uploadInput.addEventListener("change", (event) => {
-      const file = event.target.files[0];
-
-      if (!file) return;
-
-      uploadedImageFile = file;
-      uploadedImageUrl = URL.createObjectURL(file);
-      showResults = false;
-      processedImageUrl = null;
-      lastProcessingTiming = null;
-
-      renderTreatment(id);
+  if (openCameraButton) {
+    openCameraButton.addEventListener("click", () => openCameraModal(id));
+    openCameraButton.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openCameraModal(id);
+      }
     });
+  }
+
+  if (restartCameraImage) {
+    restartCameraImage.addEventListener("click", () => openCameraModal(id));
   }
 
   if (processButton) {
@@ -687,13 +699,13 @@ function bindTreatmentEvents(id) {
         } else {
           lastProcessingTiming = normalizeProcessingTiming(result.timing, clientStart, clientEnd);
           showResults = false;
-          alert(result.message || "Image processing failed");
+          await DermaViewDialog.alert(result.message || "Image processing failed", { title: "Image Processing" });
           console.log(result);
         }
 
       } catch (error) {
         console.error(error);
-        alert("Could not connect to image processing.");
+        await DermaViewDialog.alert("Could not connect to image processing.", { title: "Image Processing" });
       }
 
       isProcessing = false;
@@ -723,20 +735,125 @@ function bindTreatmentEvents(id) {
 
   if (clearButton) {
     clearButton.addEventListener("click", () => {
-      uploadedImageFile = null;
-      uploadedImageUrl = null;
-      processedImageUrl = null;
-      showResults = false;
-      isProcessing = false;
-      assessmentResult = null;
-      isSavingAnalysis = false;
-      analysisSaveMessage = "";
-      lastSavedRecordId = null;
-      lastProcessingTiming = null;
-      renderTreatment(id);
+      openCameraModal(id);
     });
   }
 }
+
+function ensureCameraModal() {
+  let modal = document.getElementById("cameraCaptureModal");
+  if (modal) return modal;
+
+  modal = document.createElement("div");
+  modal.id = "cameraCaptureModal";
+  modal.className = "camera-capture-modal";
+  modal.innerHTML = `
+    <div class="camera-capture-dialog" role="dialog" aria-modal="true" aria-labelledby="cameraCaptureTitle">
+      <div class="camera-capture-header">
+        <h3 id="cameraCaptureTitle">Capture Image</h3>
+        <button type="button" class="camera-modal-close" aria-label="Close camera">&times;</button>
+      </div>
+      <video id="camera-preview" class="camera-preview" autoplay playsinline muted></video>
+      <canvas id="camera-canvas" hidden></canvas>
+      <div class="camera-actions">
+        <button type="button" id="capture-camera-button" class="button">Capture Image</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal || event.target.classList.contains("camera-modal-close")) {
+      closeCameraModal();
+    }
+  });
+
+  return modal;
+}
+
+async function openCameraModal(procedureId) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    await DermaViewDialog.alert("Camera access is not available in this browser.", { title: "Camera Capture" });
+    return;
+  }
+
+  const modal = ensureCameraModal();
+  const cameraPreview = modal.querySelector("#camera-preview");
+  const captureCameraButton = modal.querySelector("#capture-camera-button");
+  const cameraCanvas = modal.querySelector("#camera-canvas");
+
+  try {
+    stopCameraStream();
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1600 },
+        height: { ideal: 1200 }
+      },
+      audio: false
+    });
+    cameraPreview.srcObject = cameraStream;
+    modal.classList.add("active");
+    captureCameraButton.focus();
+
+    captureCameraButton.onclick = async () => {
+      if (!cameraStream || !cameraPreview.videoWidth || !cameraPreview.videoHeight) {
+        await DermaViewDialog.alert("Wait for the camera preview before capturing an image.", { title: "Camera Capture" });
+        return;
+      }
+
+      cameraCanvas.width = cameraPreview.videoWidth;
+      cameraCanvas.height = cameraPreview.videoHeight;
+      const context = cameraCanvas.getContext("2d");
+      context.translate(cameraCanvas.width, 0);
+      context.scale(-1, 1);
+      context.drawImage(cameraPreview, 0, 0, cameraCanvas.width, cameraCanvas.height);
+
+      cameraCanvas.toBlob((blob) => {
+        if (!blob) return;
+        closeCameraModal();
+        setCapturedImage(blob, procedureId);
+      }, "image/jpeg", 0.92);
+    };
+  } catch (error) {
+    closeCameraModal();
+    await DermaViewDialog.alert("Unable to open the camera. Please allow camera access and try again.", { title: "Camera Capture" });
+  }
+}
+
+function closeCameraModal() {
+  const modal = document.getElementById("cameraCaptureModal");
+  if (modal) {
+    modal.classList.remove("active");
+  }
+  stopCameraStream();
+}
+
+function stopCameraStream() {
+  if (!cameraStream) return;
+  cameraStream.getTracks().forEach((track) => track.stop());
+  cameraStream = null;
+}
+
+function clearCapturedImage() {
+  if (uploadedImageUrl) {
+    URL.revokeObjectURL(uploadedImageUrl);
+  }
+  uploadedImageFile = null;
+  uploadedImageUrl = null;
+}
+
+function setCapturedImage(blob, procedureId) {
+  clearCapturedImage();
+  uploadedImageFile = new File([blob], `captured-${Date.now()}.jpg`, { type: "image/jpeg" });
+  uploadedImageUrl = URL.createObjectURL(uploadedImageFile);
+  showResults = false;
+  processedImageUrl = null;
+  lastProcessingTiming = null;
+  renderTreatment(procedureId);
+}
+
+window.addEventListener("beforeunload", closeCameraModal);
 
 function renderImageDataUrl(imageUrl, options = {}) {
   return new Promise((resolve, reject) => {
@@ -912,7 +1029,7 @@ function renderAssessmentResults() {
   return `
     <div class="comparison-grid assessment-result-images">
       <div class="image-card">
-        <img src="${uploadedImageUrl}" alt="Uploaded skin image" data-preview-image data-preview-title="Before Analysis" tabindex="0" />
+        <img src="${uploadedImageUrl}" alt="Captured skin image" data-preview-image data-preview-title="Before Analysis" tabindex="0" />
       </div>
       <div class="image-card">
         <img src="${processedImageUrl}" alt="Processed skin image preview" data-preview-image data-preview-title="After Analysis" tabindex="0" />
@@ -1529,42 +1646,41 @@ function bindScheduleEvents() {
   loadAppointmentBookings(state);
 
   if (scheduleForm && confirmation) {
-    scheduleForm.addEventListener("submit", (event) => {
+    scheduleForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const formData = new FormData(scheduleForm);
       const procedure = findProcedureById(formData.get("procedure_id"));
-      fetch(getScheduleEndpoint(), {
-        method: "POST",
-        body: formData
-      })
-        .then((response) => response.text().then((message) => ({ response, message })))
-        .then(({ response, message }) => {
-          const cleanMessage = cleanScheduleErrorMessage(message);
-
-          if (!response.ok || cleanMessage !== "Appointment scheduled successfully.") {
-            throw new Error(cleanMessage || "Unable to save appointment.");
-          }
-
-          alert("Appointment has been scheduled");
-          confirmation.hidden = false;
-          confirmation.innerHTML = `
-            <strong>${cleanMessage}</strong>
-            <p>${formData.get("patient_name")}, your appointment for ${procedure ? procedure.name : "this procedure"} has been scheduled.</p>
-            <p>A confirmation email has been sent to your email address.</p>
-          `;
-          scheduleForm.reset();
-          if (dateInput) {
-            dateInput.value = state.selectedDateIso;
-          }
-          loadAppointmentBookings(state);
-        })
-        .catch((error) => {
-          confirmation.hidden = false;
-          confirmation.innerHTML = `
-            <strong>Unable to save request</strong>
-            <p>${escapeHtml(cleanScheduleErrorMessage(error.message))}</p>
-          `;
+      try {
+        const response = await fetch(getScheduleEndpoint(), {
+          method: "POST",
+          body: formData
         });
+        const message = await response.text();
+        const cleanMessage = cleanScheduleErrorMessage(message);
+
+        if (!response.ok || cleanMessage !== "Appointment scheduled successfully.") {
+          throw new Error(cleanMessage || "Unable to save appointment.");
+        }
+
+        await DermaViewDialog.alert("Appointment has been scheduled", { title: "Appointment" });
+        confirmation.hidden = false;
+        confirmation.innerHTML = `
+          <strong>${cleanMessage}</strong>
+          <p>${formData.get("patient_name")}, your appointment for ${procedure ? procedure.name : "this procedure"} has been scheduled.</p>
+          <p>A confirmation email has been sent to your email address.</p>
+        `;
+        scheduleForm.reset();
+        if (dateInput) {
+          dateInput.value = state.selectedDateIso;
+        }
+        loadAppointmentBookings(state);
+      } catch (error) {
+        confirmation.hidden = false;
+        confirmation.innerHTML = `
+          <strong>Unable to save request</strong>
+          <p>${escapeHtml(cleanScheduleErrorMessage(error.message))}</p>
+        `;
+      }
     });
   }
 }

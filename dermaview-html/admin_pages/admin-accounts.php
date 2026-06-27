@@ -2,17 +2,20 @@
 
 require_once '../auth_common.php';
 include '../config.php';
+require_once '../password_policy.php';
 
 auth_require_admin(false);
 
 $action = $_POST['action'] ?? '';
 
-$allowed_roles = ['staff'];
+$allowed_roles = ['admin', 'staff'];
 
-$staff_role_sql = "'staff'";
+$staff_role_sql = "'staff', 'pending'";
 
 function role_label($role) {
     $labels = [
+        'admin' => 'Admin',
+        'pending' => 'Awaiting Role Assignment',
         'staff' => 'Staff'
     ];
 
@@ -25,7 +28,14 @@ if ($action === 'add') {
     $email = trim($_POST['email']);
     $employee_number = trim($_POST['employee_number']);
     $role = strtolower(trim($_POST['role']));
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+    $plain_password = $_POST['password'] ?? '';
+    $confirm_password = $_POST['confirm_password'] ?? '';
+    if ($plain_password !== $confirm_password) {
+        echo "Passwords do not match.";
+        exit();
+    }
+    password_policy_require($plain_password);
+    $password = password_hash($plain_password, PASSWORD_DEFAULT);
     $status = "Active";
     $must_change_password = 1;
     if (!in_array($role, $allowed_roles, true)) {
@@ -80,7 +90,8 @@ if ($action === 'update') {
 
     $stmt = $conn->prepare("
         UPDATE users
-        SET first_name = ?, last_name = ?, email = ?, employee_number = ?, role = ?
+        SET first_name = ?, last_name = ?, email = ?, employee_number = ?, role = ?,
+            status = CASE WHEN status = 'Pending' THEN 'Active' ELSE status END
         WHERE id = ?
           AND role IN ($staff_role_sql)
     ");
@@ -97,9 +108,20 @@ if ($action === 'update') {
 if ($action === 'reset_password') {
     $id = (int) ($_POST['id'] ?? 0);
     $password = trim($_POST['password'] ?? '');
+    $confirm_password = trim($_POST['confirm_password'] ?? '');
 
-    if ($id <= 0 || strlen($password) < 6) {
-        echo "Enter a temporary password with at least 6 characters.";
+    if ($id <= 0) {
+        echo "Invalid account.";
+        exit();
+    }
+
+    if ($password !== $confirm_password) {
+        echo "Passwords do not match.";
+        exit();
+    }
+
+    if (!password_policy_is_valid($password)) {
+        echo password_policy_message();
         exit();
     }
 
@@ -110,7 +132,7 @@ if ($action === 'reset_password') {
         UPDATE users
         SET password = ?, must_change_password = ?
         WHERE id = ?
-          AND role IN ($staff_role_sql)
+          AND role = 'staff'
     ");
 
     $stmt->bind_param("sii", $hash, $must_change_password, $id);
@@ -134,7 +156,7 @@ if ($action === 'deactivate') {
         UPDATE users
         SET status = 'Inactive'
         WHERE id = ?
-          AND role IN ($staff_role_sql)
+          AND role = 'staff'
     ");
 
     $stmt->bind_param("i", $id);
@@ -160,7 +182,7 @@ if ($action === 'reactivate') {
         UPDATE users
         SET status = 'Active'
         WHERE id = ?
-          AND role IN ($staff_role_sql)
+          AND role = 'staff'
     ");
 
     $stmt->bind_param("i", $id);
@@ -200,7 +222,8 @@ if ($action === 'fetch') {
             $role_key = strtolower($row['role']);
             $role = htmlspecialchars(role_label($role_key));
             $status = htmlspecialchars($row['status']);
-            $status_class = $row['status'] === 'Active' ? 'account-status-active' : 'account-status-inactive';
+            $status_key = strtolower($row['status']);
+            $status_class = $status_key === 'active' ? 'account-status-active' : ($status_key === 'pending' ? 'account-status-pending' : 'account-status-inactive');
             $first_name = htmlspecialchars($row['first_name']);
             $last_name = htmlspecialchars($row['last_name']);
             $role_raw = htmlspecialchars($role_key);
@@ -221,11 +244,16 @@ if ($action === 'fetch') {
               <td><span class='account-status $status_class'>$status</span></td>
               <td>
                 <div class='account-row-actions'>
-                  <button type='button' class='account-action-btn edit-account-btn' data-id='$id'>Edit</button>
-                  <button type='button' class='account-action-btn reset-password-btn' data-id='$id'>Reset Password</button>
+                  <button type='button' class='account-action-btn edit-account-btn' data-id='$id'>" . ($role_key === 'pending' ? 'Assign Role' : 'Edit') . "</button>
             ";
 
-            if ($row['status'] === 'Active') {
+            if ($role_key !== 'pending') {
+                echo "<button type='button' class='account-action-btn reset-password-btn' data-id='$id'>Reset Password</button>";
+            }
+
+            if ($role_key === 'pending') {
+                echo "";
+            } elseif ($row['status'] === 'Active') {
                 echo "<button type='button' class='account-action-btn deactivate-btn' data-id='$id'>Deactivate</button>";
             } else {
                 echo "<button type='button' class='account-action-btn reactivate-btn' data-id='$id'>Reactivate</button>";

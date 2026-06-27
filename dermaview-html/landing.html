@@ -1,3 +1,8 @@
+<?php
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/auth_common.php';
+auth_require_staff_page('index.html', 'admin_pages/admin.html', 'super_admin/super-admin.html');
+?>
 <!doctype html>
 <html lang="en">
   <head>
@@ -6,13 +11,13 @@
     <title>DermaView</title>
     <!-- Global Styles -->
     <link rel="stylesheet" href="styles/global.css?v=20260526-6" />
-    <link rel="stylesheet" href="styles/header.css?v=20260527-1" />
+    <link rel="stylesheet" href="styles/header.css?v=20260626-3" />
     <!-- Component Styles -->
-    <link rel="stylesheet" href="styles/hero.css?v=20260612-1" />
+    <link rel="stylesheet" href="styles/hero.css?v=20260626-3" />
     <link rel="stylesheet" href="styles/buttons.css?v=20260523-5" />
     <link rel="stylesheet" href="styles/cards.css?v=20260523-5" />
     <link rel="stylesheet" href="styles/procedures.css?v=20260523-5" />
-    <link rel="stylesheet" href="styles/upload.css?v=20260523-5" />
+    <link rel="stylesheet" href="styles/upload.css?v=20260627-1" />
     <link rel="stylesheet" href="styles/treatment.css?v=20260523-5" />
     <!-- Responsive and Utilities -->
     <link rel="stylesheet" href="styles/responsive.css?v=20260612-1" />
@@ -41,8 +46,10 @@
     </div>
 
     <script src="system-branding.js?v=20260527-1"></script>
-    <script src="logout-confirm.js?v=20260523-1"></script>
-    <script src="app.js?v=20260604-1"></script>
+    <script src="app-dialog.js?v=20260627-1"></script>
+    <script src="logout-confirm.js?v=20260626-1"></script>
+    <script src="app.js?v=20260626-5"></script>
+    <script src="session-welcome.js?v=20260626-6"></script>
 
   </body>
 

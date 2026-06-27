@@ -1,9 +1,14 @@
+<?php
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../auth_common.php';
+auth_require_admin_page('../index.html');
+?>
 <div class="panel-card accounts-panel" data-account-scope="staff">
   <div class="accounts-header">
     <div>
       <h3>Manage Staff / Employee Accounts</h3>
       <p class="section-text">
-        Create staff access, pause inactive accounts, and restore users when they need to sign in again.
+        Review new registrations, assign staff or admin roles, pause inactive accounts, and restore users when they need to sign in again.
       </p>
     </div>
     <button type="button" class="accounts-create-btn" id="showAccountForm">
@@ -44,13 +49,19 @@
       <label for="accountRole">Role</label>
       <select id="accountRole" name="role" class="accounts-select" required>
         <option value="">Select Role</option>
+        <option value="admin">Admin</option>
         <option value="staff">Staff</option>
       </select>
     </div>
 
     <div class="accounts-field">
       <label for="accountPassword">Temporary Password</label>
-      <input id="accountPassword" type="password" name="password" class="accounts-input" autocomplete="new-password" required>
+      <input id="accountPassword" type="password" name="password" class="accounts-input" autocomplete="new-password" minlength="8" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}" title="Password must be at least 8 characters and include uppercase, lowercase, number, and special character." required>
+    </div>
+
+    <div class="accounts-field">
+      <label for="accountConfirmPassword">Confirm Temporary Password</label>
+      <input id="accountConfirmPassword" type="password" name="confirm_password" class="accounts-input" autocomplete="new-password" required>
     </div>
 
     <div class="accounts-actions">
@@ -60,6 +71,7 @@
 
   <div class="accounts-list-header">
     <h4>User / Staff / Employee Accounts</h4>
+    <p class="table-muted">New registrations appear here until an admin assigns their role.</p>
     <label class="accounts-search" for="accountsSearch">
       <span>Search accounts</span>
       <input id="accountsSearch" type="search" placeholder="Search name, email, role..." autocomplete="off">

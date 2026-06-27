@@ -9,7 +9,12 @@ document
     const confirm = e.target.confirm_password ? e.target.confirm_password.value : null;
 
     if (confirm !== null && password !== confirm) {
-      alert("Passwords do not match");
+      await DermaViewDialog.alert("Passwords do not match", { title: "Reset Password" });
+      return;
+    }
+
+    if (window.isPasswordComplexEnough && !window.isPasswordComplexEnough(password)) {
+      await DermaViewDialog.alert(window.passwordPolicyMessage, { title: "Password Requirement" });
       return;
     }
 
@@ -24,6 +29,10 @@ document
       "password",
       password
     );
+    formData.append(
+      "confirm_password",
+      confirm
+    );
 
     const response = await fetch(
       "reset-password.php",
@@ -36,7 +45,7 @@ document
     const result =
       await response.text();
 
-    alert(result);
+    await DermaViewDialog.alert(result, { title: "Reset Password" });
 
     if (
       result ===

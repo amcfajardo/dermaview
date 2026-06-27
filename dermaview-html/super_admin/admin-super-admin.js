@@ -129,8 +129,13 @@
     }
 
     document.querySelectorAll('[data-archive-action]').forEach(button => {
-      button.addEventListener('click', function () {
-        if (!confirm(`${button.textContent.trim()}?`)) return;
+      button.addEventListener('click', async function () {
+        const shouldArchive = await DermaViewDialog.confirm(`${button.textContent.trim()}?`, {
+          title: 'Privacy Data',
+          okText: 'Continue'
+        });
+
+        if (!shouldArchive) return;
 
         const data = new FormData();
         data.append('action', button.dataset.archiveAction);

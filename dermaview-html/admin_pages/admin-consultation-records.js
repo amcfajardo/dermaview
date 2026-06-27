@@ -288,7 +288,7 @@
       if (input) input.addEventListener('change', render);
     });
 
-    body.addEventListener('click', event => {
+    body.addEventListener('click', async event => {
       const button = event.target.closest('button');
       if (!button) return;
 
@@ -302,7 +302,12 @@
         return;
       }
 
-      if (!confirm('Delete this record?')) return;
+      const shouldDelete = await DermaViewDialog.confirm('Delete this record?', {
+        title: 'Consultation Records',
+        okText: 'Delete'
+      });
+
+      if (!shouldDelete) return;
 
       const data = new FormData();
       data.append('action', 'delete');
@@ -328,8 +333,13 @@
     }
 
     if (clearBtn) {
-      clearBtn.addEventListener('click', () => {
-        if (!confirm('Clear records older than 90 days?')) return;
+      clearBtn.addEventListener('click', async () => {
+        const shouldClear = await DermaViewDialog.confirm('Clear records older than 90 days?', {
+          title: 'Consultation Records',
+          okText: 'Clear'
+        });
+
+        if (!shouldClear) return;
         const data = new FormData();
         data.append('action', 'clear_old');
         fetch('admin-consultation-records.php', { method: 'POST', body: data })

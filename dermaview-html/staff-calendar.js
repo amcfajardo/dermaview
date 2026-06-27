@@ -358,13 +358,18 @@ function initStaffCalendar() {
       });
   }
 
-  mount.addEventListener('change', event => {
+  mount.addEventListener('change', async event => {
     const select = event.target.closest('[data-staffcal-status]');
     if (!select) return;
     const previousStatus = select.dataset.currentStatus || '';
     const nextLabel = select.options[select.selectedIndex]?.textContent || select.value;
 
-    if (!confirm(`Update this appointment status to ${nextLabel}?`)) {
+    const shouldUpdate = await DermaViewDialog.confirm(`Update this appointment status to ${nextLabel}?`, {
+      title: 'Appointment Status',
+      okText: 'Update'
+    });
+
+    if (!shouldUpdate) {
       select.value = previousStatus;
       return;
     }

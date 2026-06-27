@@ -1,3 +1,8 @@
+<?php
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../auth_common.php';
+auth_require_staff_page('../index.html', '../admin_pages/admin.html', '../super_admin/super-admin.html');
+?>
 <!doctype html>
 <html lang="en">
   <head>
@@ -77,7 +82,8 @@
     </div>
 
     <script src="../system-branding.js?v=20260527-1"></script>
+    <script src="../app-dialog.js?v=20260627-1"></script>
     <script src="../logout-confirm.js?v=20260523-1"></script>
-    <script src="../staff-calendar.js?v=20260526-2"></script>
+    <script src="../staff-calendar.js?v=20260627-1"></script>
   </body>
 </html>

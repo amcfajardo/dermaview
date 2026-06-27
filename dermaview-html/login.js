@@ -65,14 +65,14 @@ document
 
       // show server message if available
       if (parsed && parsed.message) {
-        alert(parsed.message);
+        await DermaViewDialog.alert(parsed.message, { title: 'Login' });
       } else {
-        alert(text || 'Login failed');
+        await DermaViewDialog.alert(text || 'Login failed', { title: 'Login' });
       }
 
     } catch (error) {
       console.error(error);
-      alert(error.message || 'Unable to connect to the login server. Make sure Apache and MySQL are running in XAMPP.');
+      await DermaViewDialog.alert(error.message || 'Unable to connect to the login server. Make sure Apache and MySQL are running in XAMPP.', { title: 'Connection Error' });
     }
 
 });

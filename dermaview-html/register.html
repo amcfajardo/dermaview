@@ -108,7 +108,7 @@
       <h1 class="auth-title">Create Account</h1>
 
       <p class="auth-subtitle">
-        Join DermaView and start tracking your skin health journey.
+        Register your employee account. An admin will review it and assign your role.
       </p>
 
      <form id="registerForm" class="auth-form">
@@ -137,23 +137,16 @@
     required
   />
 
-  <select
-    name="role"
-    class="auth-input"
-    required
-  >
-    <option value="">Select Role</option>
-    <option value="staff">Staff</option>
-    <option value="admin">Admin</option>
-    <option value="superadmin">Super Admin</option>
-  </select>
-
   <input
     type="text"
-    name="employee_number"
-    placeholder="Employee Number"
+    name="otp"
+    id="registrationOtp"
+    placeholder="Enter Email OTP"
     class="auth-input"
-    required
+    inputmode="numeric"
+    pattern="[0-9]{6}"
+    maxlength="6"
+    hidden
   />
 
   <input
@@ -161,11 +154,23 @@
     name="password"
     placeholder="Password"
     class="auth-input"
+    minlength="8"
+    pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}"
+    title="Password must be at least 8 characters and include uppercase, lowercase, number, and special character."
+    required
+  />
+
+  <input
+    type="password"
+    name="confirm_password"
+    placeholder="Confirm Password"
+    class="auth-input"
+    autocomplete="new-password"
     required
   />
 
   <button type="submit" class="auth-button">
-    Create Account
+    Send OTP
   </button>
 
 </form>
@@ -180,7 +185,9 @@
   </div>
 
   <script src="system-branding.js?v=20260527-1"></script>
-  <script src="register.js"></script>
+  <script src="app-dialog.js?v=20260627-1"></script>
+  <script src="password-policy.js"></script>
+  <script src="register.js?v=20260627-1"></script>
 
 </body>
 </html>

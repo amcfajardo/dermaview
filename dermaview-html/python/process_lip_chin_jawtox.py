@@ -48,7 +48,7 @@ def clamp_intensity(value, default=1.0):
         value = float(value)
     except Exception:
         value = default
-    return float(np.clip(value, 0.30, 1.60))
+    return float(np.clip(value, 0.30, 4.00))
 
 def detect_face_bbox(img):
     h, w = img.shape[:2]
@@ -252,12 +252,6 @@ def process_lip_chin_jawtox(input_path, output_path, intensity=1.0):
             return [P(i) for i in ids if 0 <= i < len(lm)]
 
         # Jawtox (lateral jaw): sides only, avoid mixing with chin/lip.
-        # MediaPipe jaw/cheek anchors (approximation using stable IDs).
-        jaw_left_ids = [234, 93, 132, 58, 212, 199, 187, 176, 149, 152, 10]
-        jaw_right_ids = [454, 323, 361, 288, 427, 416, 401, 377, 400, 400, 152]
-        jaw_y_top = min(P(152)[1], P(10)[1]) if len(lm) > 152 else int(y + fh * 0.55)
-        jaw_y_bottom = max(P(152)[1], P(10)[1]) if len(lm) > 152 else int(y + fh * 0.88)
-
         # Build masks and clip them into left/right and lower-face ranges.
         jaw_left_poly = ids_to_pts([234, 93, 132, 58, 205, 187, 152, 176])
         jaw_right_poly = ids_to_pts([323, 361, 288, 306, 401, 377, 152, 172])
@@ -276,7 +270,7 @@ def process_lip_chin_jawtox(input_path, output_path, intensity=1.0):
         distance_x = np.abs(xx - float(center_x))
         falloff = np.exp(-(distance_x ** 2) / (2 * (fw * 0.22) ** 2))
         direction = np.where(xx < center_x, 1.0, -1.0)  # pull towards center
-        strength_jaw = 0.045 * intensity
+        strength_jaw = 0.125 * intensity
         map_x_jaw = xx + direction * strength_jaw * distance_x * falloff * jaw_mask
 
         result = img.copy()
@@ -299,7 +293,7 @@ def process_lip_chin_jawtox(input_path, output_path, intensity=1.0):
         dist = np.sqrt(dx * dx + dy * dy)
         radius = max(1.0, fw * 0.16)
         factor = np.clip(1.0 - dist / radius, 0.0, 1.0)
-        strength_chin = 0.030 * intensity
+        strength_chin = 0.105 * intensity
         map_y_chin = yy - dy * factor * strength_chin * chin_mask
 
         result = cv2.remap(result,
@@ -323,7 +317,7 @@ def process_lip_chin_jawtox(input_path, output_path, intensity=1.0):
         dist = np.sqrt((dx / max(fw * 0.12, 1)) ** 2 + (dy / max(fh * 0.055, 1)) ** 2)
         factor = np.clip(1.0 - dist, 0.0, 1.0)
 
-        strength_lip = 0.030 * intensity
+        strength_lip = 0.110 * intensity
         map_x_lip = xx - dx * factor * strength_lip * lip_mask
         map_y_lip = yy - dy * factor * (strength_lip * 1.8) * lip_mask
 
@@ -337,9 +331,9 @@ def process_lip_chin_jawtox(input_path, output_path, intensity=1.0):
         lip1 = cv2.inRange(hsv.astype(np.uint8), np.array([0, 25, 35]), np.array([18, 195, 255]))
         lip2 = cv2.inRange(hsv.astype(np.uint8), np.array([155, 25, 35]), np.array([180, 195, 255]))
         lip_mask_cv = cv2.GaussianBlur(cv2.bitwise_or(lip1, lip2), (31, 31), 0).astype(np.float32) / 255.0
-        lip_mask_cv = np.clip(lip_mask_cv * 0.18 * intensity, 0, 0.30)
-        hsv[:, :, 1] += lip_mask_cv * 22
-        hsv[:, :, 2] += lip_mask_cv * 7
+        lip_mask_cv = np.clip(lip_mask_cv * 0.66 * intensity, 0, 0.95)
+        hsv[:, :, 1] += lip_mask_cv * 76
+        hsv[:, :, 2] += lip_mask_cv * 12
         result = cv2.cvtColor(np.clip(hsv, 0, 255).astype(np.uint8), cv2.COLOR_HSV2BGR)
 
         result = gentle_sharpen(result, 0.055)
@@ -354,7 +348,7 @@ def process_lip_chin_jawtox(input_path, output_path, intensity=1.0):
     distance_x = np.abs(xx - center_x)
     falloff = np.exp(-(distance_x ** 2) / (2 * (fw * 0.27) ** 2))
     direction = np.where(xx < center_x, -1.0, 1.0)
-    map_x = xx + direction * 0.046 * intensity * distance_x * falloff * jaw_mask
+    map_x = xx + direction * 0.135 * intensity * distance_x * falloff * jaw_mask
     result = img.copy()
     result = cv2.remap(result, np.clip(map_x, 0, w - 1).astype(np.float32), yy.astype(np.float32), cv2.INTER_LINEAR)
 
@@ -364,7 +358,7 @@ def process_lip_chin_jawtox(input_path, output_path, intensity=1.0):
     dist = np.sqrt(dx * dx + dy * dy)
     radius = max(1, int(fw * 0.16))
     factor = np.clip(1 - dist / radius, 0, 1)
-    map_y = yy - dy * factor * 0.036 * intensity
+    map_y = yy - dy * factor * 0.175 * intensity
     result = cv2.remap(result, xx.astype(np.float32), np.clip(map_y, 0, h - 1).astype(np.float32), cv2.INTER_LINEAR)
 
     lip_center = (int(center_x), y + int(fh * 0.69))
@@ -372,17 +366,17 @@ def process_lip_chin_jawtox(input_path, output_path, intensity=1.0):
     dy = yy - lip_center[1]
     dist = np.sqrt((dx / max(fw * 0.13, 1)) ** 2 + (dy / max(fh * 0.065, 1)) ** 2)
     factor = np.clip(1 - dist, 0, 1)
-    map_x = xx - dx * factor * 0.038 * intensity
-    map_y = yy - dy * factor * 0.058 * intensity
+    map_x = xx - dx * factor * 0.120 * intensity
+    map_y = yy - dy * factor * 0.175 * intensity
     result = cv2.remap(result, np.clip(map_x, 0, w - 1).astype(np.float32), np.clip(map_y, 0, h - 1).astype(np.float32), cv2.INTER_LINEAR)
 
     hsv = cv2.cvtColor(result, cv2.COLOR_BGR2HSV).astype(np.float32)
     lip1 = cv2.inRange(hsv.astype(np.uint8), np.array([0, 25, 35]), np.array([18, 195, 255]))
     lip2 = cv2.inRange(hsv.astype(np.uint8), np.array([155, 25, 35]), np.array([180, 195, 255]))
     lip_mask = cv2.GaussianBlur(cv2.bitwise_or(lip1, lip2), (31, 31), 0).astype(np.float32) / 255.0
-    lip_mask = np.clip(lip_mask * 0.22 * intensity, 0, 0.35)
-    hsv[:, :, 1] += lip_mask * 24
-    hsv[:, :, 2] += lip_mask * 6
+    lip_mask = np.clip(lip_mask * 0.72 * intensity, 0, 0.96)
+    hsv[:, :, 1] += lip_mask * 82
+    hsv[:, :, 2] += lip_mask * 12
     result = cv2.cvtColor(np.clip(hsv, 0, 255).astype(np.uint8), cv2.COLOR_HSV2BGR)
     result = gentle_sharpen(result, 0.055)
     save_image(output_path, result)

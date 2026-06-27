@@ -132,6 +132,91 @@ p {
   margin-bottom: 18px;
 }
 
+.dv-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(15, 23, 42, 0.46);
+  backdrop-filter: blur(4px);
+}
+
+.dv-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.dv-dialog[hidden],
+.dv-dialog-backdrop[hidden] {
+  display: none;
+}
+
+.dv-dialog-panel {
+  width: min(420px, 100%);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-white);
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.22);
+  padding: 22px;
+}
+
+.dv-dialog-panel h3 {
+  margin: 0 0 10px;
+  color: var(--color-text);
+  font-size: 1.15rem;
+}
+
+.dv-dialog-panel p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.dv-dialog-input {
+  width: 100%;
+  margin-top: 16px;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 0 12px;
+  font: inherit;
+  outline: none;
+}
+
+.dv-dialog-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.dv-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.dv-dialog-actions button {
+  min-height: 40px;
+  border-radius: 10px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-white);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dv-dialog-actions .dv-dialog-ok {
+  border-color: transparent;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  color: #ffffff;
+}
+
 /* Theme overrides (applied by setting data-theme on <html>) */
 :root[data-theme="light"] {
   --theme: light;

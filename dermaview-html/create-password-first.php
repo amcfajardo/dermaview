@@ -1,10 +1,31 @@
 <?php
 session_start();
 include 'config.php';
+require_once 'password_policy.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: index.html");
     exit();
+}
+
+function show_password_change_message($message, $redirect) {
+    echo "<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"UTF-8\">
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+  <title>DermaView | Change Password</title>
+  <script src=\"app-dialog.js?v=20260627-1\"></script>
+</head>
+<body>
+  <script>
+    (async function () {
+      await DermaViewDialog.alert(" . json_encode($message) . ", { title: 'Change Password' });
+      window.location.href = " . json_encode($redirect) . ";
+    })();
+  </script>
+</body>
+</html>";
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -12,12 +33,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $confirm_password = $_POST['confirm_password'];
 
     if ($new_password !== $confirm_password) {
-        echo "
-        <script>
-            alert('Passwords do not match.');
-            window.location.href = 'create-password-first.php';
-        </script>
-        ";
+        show_password_change_message('Passwords do not match.', 'create-password-first.php');
+        exit();
+    }
+
+    if (!password_policy_is_valid($new_password)) {
+        $message = password_policy_message();
+        show_password_change_message($message, 'create-password-first.php');
         exit();
     }
 
@@ -33,21 +55,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $stmt->bind_param("si", $hashed_password, $user_id);
 
     if ($stmt->execute()) {
-        echo "
-        <script>
-            alert('Password changed successfully. Please login again.');
-            window.location.href = 'index.html';
-        </script>
-        ";
         session_destroy();
+        show_password_change_message('Password changed successfully. Please login again.', 'index.html');
         exit();
     } else {
-        echo "
-        <script>
-            alert('Failed to change password.');
-            window.location.href = 'create-password-first.php';
-        </script>
-        ";
+        show_password_change_message('Failed to change password.', 'create-password-first.php');
         exit();
     }
 }
@@ -163,6 +175,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         name="new_password"
         placeholder="New Password"
         class="auth-input"
+        minlength="8"
+        pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}"
+        title="Password must be at least 8 characters and include uppercase, lowercase, number, and special character."
         required
       >
 
@@ -171,6 +186,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         name="confirm_password"
         placeholder="Confirm New Password"
         class="auth-input"
+        minlength="8"
         required
       >
 
@@ -182,5 +198,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </div>
 
 <script src="system-branding.js?v=20260527-1"></script>
+<script src="app-dialog.js?v=20260627-1"></script>
 </body>
 </html>

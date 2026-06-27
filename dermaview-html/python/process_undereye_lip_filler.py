@@ -48,7 +48,7 @@ def clamp_intensity(value, default=1.0):
         value = float(value)
     except Exception:
         value = default
-    return float(np.clip(value, 0.30, 1.60))
+    return float(np.clip(value, 0.30, 4.00))
 
 def detect_face_bbox(img):
     h, w = img.shape[:2]
@@ -279,10 +279,10 @@ def process_undereye_lip_filler(input_path, output_path, intensity=1.0):
 
     # -------- Apply localized volume/brightening look --------
     smooth_eye = cv2.bilateralFilter(result, d=15, sigmaColor=55, sigmaSpace=55)
-    smooth_eye = enhance_lab(smooth_eye, l_alpha=1.075, l_beta=6, a_smooth=0.06)
+    smooth_eye = enhance_lab(smooth_eye, l_alpha=1.34, l_beta=42, a_smooth=0.24)
     # Also gently lift luminance to mimic brightening.
     bright_eye = cv2.addWeighted(smooth_eye, 1.0, cv2.GaussianBlur(smooth_eye, (0, 0), 2.0), 0.0, 0)
-    result = blend(result, bright_eye, eye_mask, 0.55 * intensity)
+    result = blend(result, bright_eye, eye_mask, 1.65 * intensity)
 
 
     lip_center = (x + int(fw * 0.50), y + int(fh * 0.70))
@@ -290,8 +290,8 @@ def process_undereye_lip_filler(input_path, output_path, intensity=1.0):
     dy = (yy - lip_center[1]) / max(fh * 0.065, 1)
     dist = np.sqrt(dx * dx + dy * dy)
     factor = np.clip(1 - dist, 0, 1)
-    map_x = xx - (xx - lip_center[0]) * factor * 0.035 * intensity
-    map_y = yy - (yy - lip_center[1]) * factor * 0.058 * intensity
+    map_x = xx - (xx - lip_center[0]) * factor * 0.125 * intensity
+    map_y = yy - (yy - lip_center[1]) * factor * 0.190 * intensity
     result = cv2.remap(result, np.clip(map_x, 0, w - 1).astype(np.float32), np.clip(map_y, 0, h - 1).astype(np.float32), cv2.INTER_LINEAR)
 
     hsv = cv2.cvtColor(result, cv2.COLOR_BGR2HSV).astype(np.float32)
@@ -300,9 +300,9 @@ def process_undereye_lip_filler(input_path, output_path, intensity=1.0):
     lip2 = cv2.inRange(hsv_u8, np.array([155, 25, 35]), np.array([180, 195, 255]))
     lip_mask = cv2.morphologyEx(cv2.bitwise_or(lip1, lip2), cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
     lip_mask = cv2.GaussianBlur(lip_mask, (31, 31), 0).astype(np.float32) / 255.0
-    lip_mask = np.clip(lip_mask * 0.28 * intensity, 0, 0.40)
-    hsv[:, :, 1] += lip_mask * 28
-    hsv[:, :, 2] += lip_mask * 10
+    lip_mask = np.clip(lip_mask * 0.82 * intensity, 0, 0.98)
+    hsv[:, :, 1] += lip_mask * 92
+    hsv[:, :, 2] += lip_mask * 36
     result = cv2.cvtColor(np.clip(hsv, 0, 255).astype(np.uint8), cv2.COLOR_HSV2BGR)
     result = gentle_sharpen(result, 0.05)
     save_image(output_path, result)

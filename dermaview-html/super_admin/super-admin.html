@@ -1,3 +1,8 @@
+<?php
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../auth_common.php';
+auth_require_super_admin_page('../index.html');
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -182,6 +187,31 @@
     line-height: 1.45;
   }
 
+  .session-welcome {
+    flex: 0 0 auto;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: var(--color-bg-lighter);
+    color: var(--color-text);
+    font-weight: 900;
+    line-height: 1.15;
+  }
+
+  .session-welcome span {
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+  }
+
+  .session-welcome strong {
+    font-size: 0.98rem;
+  }
+
   .topbar {
     display: flex;
     justify-content: space-between;
@@ -264,6 +294,11 @@
     .super-admin-topbar {
       padding: 16px;
     }
+
+    .session-welcome {
+      width: 100%;
+      align-items: flex-start;
+    }
   }
 </style>
 </head>
@@ -309,6 +344,10 @@
           <h2 class="page-title" id="pageTitle">Super Admin Dashboard</h2>
           <p class="super-admin-context">Govern access, procedures, system settings, privacy controls, reports, and recovery tools.</p>
         </div>
+        <div class="session-welcome" id="sessionWelcome" aria-live="polite">
+          <span>Welcome</span>
+          <strong>Loading...</strong>
+        </div>
       </div>
 
       <div id="pageContent">
@@ -333,9 +372,11 @@
   </div>
 
   <script src="../system-branding.js?v=20260527-1"></script>
-  <script src="../logout-confirm.js?v=20260523-1"></script>
+  <script src="../app-dialog.js?v=20260627-1"></script>
+  <script src="../logout-confirm.js?v=20260626-1"></script>
+  <script src="../password-policy.js?v=20260626-1"></script>
   <script src="admin-dashboard.js?v=20260525-2"></script>
-  <script src="admin-accounts.js?v=20260525-4"></script>
+  <script src="admin-accounts.js?v=20260627-1"></script>
   <script src="admin-appointments.js?v=20260526-1"></script>
   <script src="admin-procedures.js?v=20260525-2"></script>
   <script src="admin-processing-settings.js?v=20260604-2"></script>
@@ -345,6 +386,6 @@
   <script src="admin-patients.js?v=20260604-2"></script>
   <script src="admin-activity.js?v=20260525-2"></script>
   <script src="admin-super-admin.js?v=20260606-1"></script>
-  <script src="admin.js?v=20260606-1"></script>
+  <script src="admin.js?v=20260626-2"></script>
 </body>
 </html>

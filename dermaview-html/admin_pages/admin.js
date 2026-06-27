@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const links = nav.querySelectorAll('a[data-page]');
   const pageTitle = document.getElementById('pageTitle');
   const pageContent = document.getElementById('pageContent');
+  const sessionWelcome = document.getElementById('sessionWelcome');
 
   const titles = {
     dashboard: 'Dashboard',
@@ -90,6 +91,25 @@ document.addEventListener('DOMContentLoaded', function () {
     return pages[key] ? key : (pageAliases[key.toLowerCase()] || 'dashboard');
   }
 
+  function roleLabel(role) {
+    const normalized = String(role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+    if (normalized === 'superadmin') return 'Super Admin';
+    if (normalized === 'admin') return 'Admin';
+    if (normalized === 'staff') return 'Staff';
+    return role || 'User';
+  }
+
+  function renderSessionWelcome(session) {
+    if (!sessionWelcome) return;
+
+    const firstName = String(session.user_name || '').trim().split(/\s+/)[0] || 'User';
+    const employeeNumber = session.employee_number || 'No employee number';
+    sessionWelcome.innerHTML = `
+      <span>${roleLabel(session.role)}</span>
+      <strong>Welcome, ${firstName} - ${employeeNumber}</strong>
+    `;
+  }
+
   function renderRestrictedPage() {
     setActiveNav('');
     pageTitle.textContent = titles.restricted;
@@ -130,6 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
           return false;
         }
 
+        renderSessionWelcome(session);
         return true;
       })
       .catch(() => {

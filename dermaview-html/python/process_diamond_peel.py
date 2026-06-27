@@ -54,7 +54,7 @@ def clamp_intensity(value, default=1.0):
         value = float(value)
     except Exception:
         value = default
-    return float(np.clip(value, 0.30, 1.60))
+    return float(np.clip(value, 0.30, 4.00))
 
 def detect_face_bbox(img):
     h, w = img.shape[:2]
@@ -341,15 +341,30 @@ def process_diamond_peel(input_path, output_path, intensity=1.0):
     intensity = clamp_intensity(intensity)
     original = resize_for_processing(read_image(input_path), 1300)
     skin = skin_mask_bgr(original)
+    x, y, fw, fh = detect_face_bbox(original)
+    face_area = elliptical_mask(original.shape, (x + fw // 2, y + int(fh * 0.52)), (int(fw * 0.48), int(fh * 0.52)), blur=51)
+    skin = face_area
+    gray_skin_guard = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
+    dark_features = cv2.inRange(gray_skin_guard, 0, 82)
+    dark_features = cv2.dilate(dark_features, np.ones((5, 5), np.uint8), iterations=1)
+    dark_features = cv2.GaussianBlur(dark_features, (31, 31), 0)
+    skin = cv2.bitwise_and(skin, cv2.bitwise_not(dark_features))
     protect = protect_features_mask(original)
     usable_skin = (skin.astype(np.float32) * (1 - 0.45 * protect.astype(np.float32) / 255.0)).astype(np.uint8)
 
     smooth = cv2.bilateralFilter(original, d=17, sigmaColor=65, sigmaSpace=65)
     smooth = cv2.bilateralFilter(smooth, d=11, sigmaColor=38, sigmaSpace=38)
-    bright = enhance_lab(smooth, l_alpha=1.065, l_beta=7, a_smooth=0.06)
-    glow = cv2.addWeighted(bright, 0.90, cv2.GaussianBlur(bright, (0, 0), 2.0), 0.10, 0)
-    result = blend(original, glow, usable_skin, 0.66 * intensity)
-    result = gentle_sharpen(result, 0.055)
+    bright = enhance_lab(smooth, l_alpha=1.20, l_beta=24, a_smooth=0.18)
+    glow = cv2.addWeighted(bright, 0.72, cv2.GaussianBlur(bright, (0, 0), 4.5), 0.28, 0)
+    result = blend(original, glow, usable_skin, 1.05 * intensity)
+    hsv_preview = cv2.cvtColor(result, cv2.COLOR_BGR2HSV).astype(np.float32)
+    face_f = (usable_skin.astype(np.float32) / 255.0) * min(1.0, 0.38 * intensity)
+    hsv_preview[:, :, 1] *= (1.0 - 0.24 * face_f)
+    v_channel = hsv_preview[:, :, 2]
+    lifted_v = np.minimum(v_channel + 32, 212)
+    hsv_preview[:, :, 2] = v_channel * (1.0 - face_f) + lifted_v * face_f
+    result = cv2.cvtColor(np.clip(hsv_preview, 0, 255).astype(np.uint8), cv2.COLOR_HSV2BGR)
+    result = gentle_sharpen(result, 0.095)
     save_image(output_path, result)
     print("Diamond Peel Facial educational visualization saved:", output_path)
     print(DISCLAIMER)

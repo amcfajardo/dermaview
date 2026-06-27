@@ -54,7 +54,7 @@ def clamp_intensity(value, default=1.0):
         value = float(value)
     except Exception:
         value = default
-    return float(np.clip(value, 0.30, 1.60))
+    return float(np.clip(value, 0.30, 4.00))
 
 def detect_face_bbox(img):
     h, w = img.shape[:2]
@@ -361,84 +361,151 @@ def severity_from_score(score):
     return "High"
 
 def process_co2_dermapen(input_path, output_path, intensity=1.0):
-    intensity = clamp_intensity(intensity)
+    """Natural but more visible CO2 Fractional Laser + Dermapen visualization.
+
+    Main fix from the previous version:
+    - The old code used the whole face ellipse as the skin mask, which caused a visible white/bright halo
+      around the face/background.
+    - This version uses the detected skin mask INSIDE the face only, then protects eyes, brows, lips,
+      nostrils, hair, and very dark areas.
+    - The result is still intense, but it should look closer to a real aesthetic treatment result.
+    """
+    intensity = clamp_intensity(intensity, default=1.25)
     original = resize_for_processing(read_image(input_path), 1300)
-    skin = skin_mask_bgr(original)
-    protect = protect_features_mask(original)
-    usable_skin = (skin.astype(np.float32) * (1 - protect.astype(np.float32) / 255.0)).astype(np.uint8)
 
-    smooth = cv2.bilateralFilter(original, d=15, sigmaColor=45, sigmaSpace=45)
-    smooth = cv2.bilateralFilter(smooth, d=9, sigmaColor=30, sigmaSpace=30)
-    smooth = cv2.addWeighted(smooth, 0.78, cv2.GaussianBlur(smooth, (0, 0), 1.25), 0.22, 0)
-    smooth = enhance_lab(smooth, l_alpha=1.02, l_beta=2, a_smooth=0.08)
+    h, w = original.shape[:2]
+    x, y, fw, fh = detect_face_bbox(original)
 
-    lab = cv2.cvtColor(original, cv2.COLOR_BGR2LAB)
-    gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
-    _, a, _ = cv2.split(lab)
-    red_marks = cv2.inRange(a, 130, 205)
-    dark_spots = cv2.inRange(gray, 0, int(max(60, cv2.mean(gray, mask=skin)[0] - 20)))
-
-    # Landmark-based facial zones (MediaPipe FaceMesh when available).
-    regions, _ = make_face_region_masks(original)
-
-    # Restrict detection to the facial zones only.
-    zone_mask = np.zeros_like(skin)
-    for rkey in regions:
-        zone_mask = cv2.bitwise_or(zone_mask, regions[rkey])
-
-    # Marks should represent “texture/scar-ish” localized areas.
-    marks = cv2.bitwise_or(
-        cv2.bitwise_and(red_marks, skin),
-        cv2.bitwise_and(dark_spots, skin),
+    # Face boundary only. This prevents the background from being edited.
+    face_area = elliptical_mask(
+        original.shape,
+        (x + fw // 2, y + int(fh * 0.53)),
+        (int(fw * 0.46), int(fh * 0.51)),
+        blur=41,
     )
+
+    # Actual skin-color mask, clipped to the face. This removes the white halo problem.
+    detected_skin = skin_mask_bgr(original)
+    skin = cv2.bitwise_and(detected_skin, face_area)
+
+    # Fallback only if the skin detector fails badly.
+    if cv2.countNonZero(skin) < (fw * fh * 0.15):
+        skin = face_area.copy()
+
+    gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
+
+    # Protect dark facial features and hair so the person does not look artificial.
+    dark_features = cv2.inRange(gray, 0, 72)
+    dark_features = cv2.dilate(dark_features, np.ones((5, 5), np.uint8), iterations=1)
+    dark_features = cv2.GaussianBlur(dark_features, (25, 25), 0)
+
+    protect = protect_features_mask(original)
+    protected = cv2.bitwise_or(protect, dark_features)
+
+    # Final editable skin mask.
+    usable_skin = (skin.astype(np.float32) * (1.0 - protected.astype(np.float32) / 255.0)).astype(np.uint8)
+    usable_skin = cv2.GaussianBlur(usable_skin, (21, 21), 0)
+
+    # ---------- 1. Strong but natural smoothing ----------
+    # Stronger than original, but not plastic.
+    smooth = cv2.bilateralFilter(original, d=17, sigmaColor=75, sigmaSpace=75)
+    smooth = cv2.bilateralFilter(smooth, d=11, sigmaColor=55, sigmaSpace=55)
+    soft_blur = cv2.GaussianBlur(smooth, (0, 0), 1.8)
+    smooth = cv2.addWeighted(smooth, 0.72, soft_blur, 0.28, 0)
+
+    # Brighten and even out the processed version.
+    smooth = enhance_lab(smooth, l_alpha=1.18, l_beta=18, a_smooth=0.25)
+
+    # Base treatment: visible whole-face skin improvement.
+    result = blend(original, smooth, usable_skin, 1.05 * intensity)
+
+    # ---------- 2. Detect red/dark acne marks and texture areas ----------
+    lab = cv2.cvtColor(original, cv2.COLOR_BGR2LAB)
+    L, A, B = cv2.split(lab)
+
+    mean_gray = cv2.mean(gray, mask=skin)[0]
+    red_marks = cv2.inRange(A, 132, 205)
+    dark_spots = cv2.inRange(gray, 0, int(max(62, mean_gray - 16)))
+
+    # Limit marks to facial zones only, so neck/background are not affected.
+    regions, _ = make_face_region_masks(original)
+    zone_mask = np.zeros((h, w), np.uint8)
+    for key in regions:
+        zone_mask = cv2.bitwise_or(zone_mask, regions[key])
+    zone_mask = cv2.bitwise_and(zone_mask, skin)
+
+    marks = cv2.bitwise_or(red_marks, dark_spots)
     marks = cv2.bitwise_and(marks, zone_mask)
-
-    # Make the mask thinner/cleaner so we don't just globally smooth.
+    marks = cv2.bitwise_and(marks, usable_skin)
     marks = cv2.morphologyEx(marks, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8), iterations=1)
-    marks = cv2.morphologyEx(marks, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8), iterations=1)
-    marks = cv2.dilate(marks, np.ones((3, 3), np.uint8), iterations=1)
+    marks = cv2.morphologyEx(marks, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8), iterations=2)
+    marks = cv2.dilate(marks, np.ones((5, 5), np.uint8), iterations=2)
+    marks = cv2.GaussianBlur(marks, (61, 61), 0)
 
-    # Use a distance-like blur to create a soft local “impact” region.
-    marks = cv2.GaussianBlur(marks, (23, 23), 0)
+    # ---------- 3. More intense repair on visible marks ----------
+    marks_f = np.clip(marks.astype(np.float32) / 255.0, 0, 1)
 
-    # --- CO2-style localized enhancement ---
-    # 1) base blend on usable skin
-    result = blend(original, smooth, usable_skin, 0.35 * intensity)
-
-    # 2) within marks, reduce contrast a bit + increase local clarity
-    #    (implemented as a mix of LAB L-channel normalization)
-    marks_f = (marks.astype(np.float32) / 255.0)
-    marks_f = np.clip(marks_f, 0, 1)
-
-    lab_orig = cv2.cvtColor(original, cv2.COLOR_BGR2LAB)
+    lab_result = cv2.cvtColor(result, cv2.COLOR_BGR2LAB)
+    Lr, Ar, Br = cv2.split(lab_result)
     lab_smooth = cv2.cvtColor(smooth, cv2.COLOR_BGR2LAB)
-    L0, A0, B0 = cv2.split(lab_orig)
-    L1, A1, B1 = cv2.split(lab_smooth)
+    Ls, As, Bs = cv2.split(lab_smooth)
 
-    # local “texture soften”: pull L toward the smoothed L
-    L_local = L0.astype(np.float32) * (1 - marks_f) + L1.astype(np.float32) * marks_f
+    # Pull blemish/scar areas closer to the smoothed L channel.
+    L_repair = Lr.astype(np.float32) * (1.0 - marks_f) + Ls.astype(np.float32) * marks_f
 
-    # local “scar/texture brightening”: mild top-hat-like boost on L
-    top_hat = cv2.morphologyEx(gray, cv2.MORPH_TOPHAT, np.ones((9, 9), np.uint8))
-    top_hat = cv2.GaussianBlur(top_hat, (0, 0), 1.2)
-    L_local = L_local + (top_hat.astype(np.float32) * 0.10 * marks_f)
+    # Lift dark pits/marks slightly, but not too much.
+    black_hat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, np.ones((13, 13), np.uint8))
+    black_hat = cv2.GaussianBlur(black_hat, (0, 0), 1.5)
+    L_repair += black_hat.astype(np.float32) * 0.38 * marks_f * intensity
 
-    L_local = np.clip(L_local, 0, 255).astype(np.uint8)
+    L_repair = np.clip(L_repair, 0, 255).astype(np.uint8)
+    repaired = cv2.cvtColor(cv2.merge((L_repair, Ar, Br)), cv2.COLOR_LAB2BGR)
+    result = blend(result, repaired, marks, 1.05 * intensity)
 
-    enhanced_lab = cv2.merge((L_local, A0, B0))
-    enhanced = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
+    # ---------- 4. Reduce redness and add healthier skin tone ----------
+    hsv = cv2.cvtColor(result, cv2.COLOR_BGR2HSV).astype(np.float32)
+    skin_f = np.clip(usable_skin.astype(np.float32) / 255.0, 0, 1)
+    red_f = np.clip(cv2.GaussianBlur(red_marks, (51, 51), 0).astype(np.float32) / 255.0, 0, 1)
+    red_f = np.clip(red_f * skin_f, 0, 1)
 
-    # blend enhanced only where marks are
-    result = blend(result, enhanced, marks, 0.65 * intensity)
+    # Strong redness reduction on red areas, lighter saturation reduction on general skin.
+    hsv[:, :, 1] *= (1.0 - (0.22 * skin_f + 0.38 * red_f) * min(1.0, intensity))
 
-    result = gentle_sharpen(result, 0.035)
+    # Natural brightness lift. Not too white.
+    v = hsv[:, :, 2]
+    lift = 18 + (10 * min(1.0, intensity))
+    target_v = np.minimum(v + lift, 228)
+    hsv[:, :, 2] = v * (1.0 - 0.42 * skin_f) + target_v * (0.42 * skin_f)
+
+    result = cv2.cvtColor(np.clip(hsv, 0, 255).astype(np.uint8), cv2.COLOR_HSV2BGR)
+
+    # ---------- 5. Tone evenness / subtle glow ----------
+    lab_even = cv2.cvtColor(result, cv2.COLOR_BGR2LAB)
+    Le, Ae, Be = cv2.split(lab_even)
+    clahe = cv2.createCLAHE(clipLimit=1.75, tileGridSize=(8, 8))
+    Le2 = clahe.apply(Le)
+    even = cv2.cvtColor(cv2.merge((Le2, Ae, Be)), cv2.COLOR_LAB2BGR)
+    result = blend(result, even, usable_skin, 0.28 * intensity)
+
+    # Slight warmth, closer to clinic after-photo lighting rather than white cast.
+    warm = result.astype(np.float32)
+    warm[:, :, 2] = np.minimum(warm[:, :, 2] * 1.018 + 2, 255)  # red channel
+    warm[:, :, 1] = np.minimum(warm[:, :, 1] * 1.006 + 1, 255)  # green channel
+    warm = warm.astype(np.uint8)
+    result = blend(result, warm, usable_skin, 0.42)
+
+    # Restore eyes, brows, lips, nostrils, hair details for realism.
+    result = blend(result, original, protected, 0.75)
+
+    # Final detail: mild sharpening only.
+    result = gentle_sharpen(result, 0.10)
 
     save_image(output_path, result)
-    print("CO2 Laser + Dermapen educational visualization saved:", output_path)
+    print("CO2 Laser + Dermapen natural intense educational visualization saved:", output_path)
     print(DISCLAIMER)
     sys.exit(0)
 
-if __name__ == "__main__":
+if __name__ == "__main__":  
     if len(sys.argv) < 3:
         fail("Usage: python process_co2_dermapen.py input output [intensity]")
     process_co2_dermapen(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else 1.0)

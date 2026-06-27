@@ -3,7 +3,7 @@
 session_start();
 
 include 'config.php';
-require_once __DIR__ . '/maintenance_common.php';
+require_once __DIR__ . '/auth_common.php';
 
 $identifier = trim($_POST['employee_number'] ?? '');
 $password = $_POST['password'] ?? '';
@@ -40,6 +40,11 @@ if (($account['status'] ?? '') === 'Inactive') {
 
 $account_role = $account['role'];
 
+if (($account['status'] ?? '') === 'Pending' || strtolower((string) $account_role) === 'pending') {
+    echo json_encode(['status' => 'error', 'message' => 'Your registration is pending admin role assignment.']);
+    exit;
+}
+
 if (password_verify($password, $account['password'])) {
     if (maintenance_requires_logout($conn, $account_role)) {
         echo json_encode([
@@ -55,6 +60,7 @@ if (password_verify($password, $account['password'])) {
     $_SESSION['user_name'] = trim(($account['first_name'] ?? '') . ' ' . ($account['last_name'] ?? ''));
     $_SESSION['login_at'] = time();
     $_SESSION['last_activity_at'] = time();
+    auth_create_active_session((int)$account['id']);
 
     // Presence: touch immediately on successful login
     try {

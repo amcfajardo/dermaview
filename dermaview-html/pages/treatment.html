@@ -1,3 +1,8 @@
+<?php
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../auth_common.php';
+auth_require_staff_page('../index.html', '../admin_pages/admin.html', '../super_admin/super-admin.html');
+?>
 <!doctype html>
 <html lang="en">
   <head>
@@ -8,8 +13,8 @@
     <link rel="stylesheet" href="../styles/header.css?v=20260527-1" />
     <link rel="stylesheet" href="../styles/buttons.css?v=20260523-5" />
     <link rel="stylesheet" href="../styles/cards.css?v=20260523-5" />
-    <link rel="stylesheet" href="../styles/upload.css?v=20260606-1" />
-    <link rel="stylesheet" href="../styles/treatment.css?v=20260615-1" />
+    <link rel="stylesheet" href="../styles/upload.css?v=20260627-1" />
+    <link rel="stylesheet" href="../styles/treatment.css?v=20260627-1" />
     <link rel="stylesheet" href="../styles/responsive.css?v=20260523-7" />
   </head>
   <body>
@@ -43,20 +48,20 @@
           <div class="treatment-left-column">
             <div class="panel-card upload-panel">
               <h3>Upload or Capture Image</h3>
-              <label class="upload-box" for="image-upload">
-                <input id="image-upload" type="file" accept="image/*" />
-                <div>
-                  <p>Click to upload an image</p>
-                  <p style="margin-top: 10px; color: #6b7280; font-size: .95rem;">PNG, JPG, or GIF up to 10MB.</p>
+              <div class="camera-capture-box" id="open-camera-button" role="button" tabindex="0">
+                <div class="camera-placeholder">
+                  <span class="camera-placeholder-icon" aria-hidden="true"></span>
+                  <p>Click to capture an image</p>
+                  <p>Use a clear, well-lit camera shot of the treatment area.</p>
                 </div>
-              </label>
+              </div>
               <div id="upload-preview-container"></div>
             </div>
 
             <div class="panel-card info-panel">
               <h4 id="workflow-title">How It Works</h4>
               <ol class="detail-list" id="workflow-list" style="list-style:none;">
-                <li>Upload a clear image of the skin area.</li>
+                <li>Capture a clear image of the skin area.</li>
                 <li>DermaView reviews visible image signals.</li>
                 <li>Use the results as a guide for consultation.</li>
                 <li>Consult with your dermatologist for next steps.</li>
@@ -74,7 +79,7 @@
                     <path d="M12 8v12" />
                     <path d="M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <p>Upload an image to start the skin assessment.</p>
+                  <p>Capture an image to start the skin assessment.</p>
                 </div>
               </div>
             </div>
@@ -84,7 +89,8 @@
     </div>
 
     <script src="../system-branding.js?v=20260527-1"></script>
+    <script src="../app-dialog.js?v=20260627-1"></script>
     <script src="../logout-confirm.js?v=20260523-1"></script>
-    <script src="../app.js?v=20260615-1"></script>
+    <script src="../app.js?v=20260627-1"></script>
   </body>
 </html>

@@ -32,7 +32,7 @@ document
     const result =
       await response.text();
 
-    alert(result);
+    await DermaViewDialog.alert(result, { title: "Verification Code" });
 
     if (result === "Code verified") {
 
@@ -83,7 +83,7 @@ setInterval(updateTimer, 1000);
 resendButton.addEventListener("click", async function () {
   const username = localStorage.getItem("reset_employee");
   if (!username) {
-    alert("No employee number or email to resend to.");
+    await DermaViewDialog.alert("No employee number or email to resend to.", { title: "Verification Code" });
     return;
   }
 
@@ -99,7 +99,7 @@ resendButton.addEventListener("click", async function () {
 
   const response = await fetch("forgot-password.php", { method: "POST", body: formData });
   const result = await response.text();
-  alert(result);
+  await DermaViewDialog.alert(result, { title: "Verification Code" });
 
   if (result === "Code sent") {
     setSentAt(Date.now());

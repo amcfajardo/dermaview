@@ -16,7 +16,7 @@ document
 
     const result = await response.text();
 
-    alert(result);
+    await DermaViewDialog.alert(result, { title: "Password Reset" });
 
     if (result === "Code sent") {
 

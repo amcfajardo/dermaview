@@ -1,4 +1,4 @@
-/* Image Upload Styles */
+/* Image Capture Styles */
 
 .upload-panel {
   margin-bottom: 28px;
@@ -31,10 +31,6 @@
 .upload-box:hover {
   border-color: var(--color-primary);
   background: #fafbff;
-}
-
-.upload-box input[type="file"] {
-  display: none;
 }
 
 .upload-box p {
@@ -84,4 +80,219 @@
   border-top: none;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
+}
+
+.camera-capture-box {
+  display: block;
+  cursor: pointer;
+  outline: none;
+}
+
+.camera-placeholder {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 2px dashed #bfdbfe;
+  border-radius: var(--radius-2xl);
+  background: var(--color-white);
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+}
+
+.camera-capture-box:hover .camera-placeholder,
+.camera-capture-box:focus .camera-placeholder {
+  border-color: var(--color-primary);
+  background: #f8fbff;
+}
+
+.upload-panel.has-captured-image .camera-capture-box {
+  display: none;
+}
+
+.upload-panel.has-captured-image {
+  height: auto;
+  align-self: start;
+  z-index: 20;
+}
+
+.upload-panel.has-captured-image #upload-preview-container {
+  display: block;
+  flex: initial;
+}
+
+.camera-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  padding: 32px;
+  text-align: center;
+}
+
+.camera-placeholder-icon {
+  width: 74px;
+  height: 74px;
+  margin-bottom: 22px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  position: relative;
+  box-shadow: 0 14px 26px rgba(37, 99, 235, 0.18);
+}
+
+.camera-placeholder-icon::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  width: 38px;
+  height: 24px;
+  background: #ffffff;
+  clip-path: polygon(0 100%, 32% 35%, 48% 72%, 65% 42%, 100% 100%);
+}
+
+.camera-placeholder-icon::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.camera-placeholder p {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.camera-placeholder p + p {
+  margin-top: 10px;
+  color: #6b7280;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.camera-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.camera-actions button {
+  width: 100%;
+}
+
+.camera-actions button[hidden] {
+  display: none;
+}
+
+.captured-preview-panel {
+  margin-top: 18px;
+}
+
+.captured-image-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 18px;
+  border: 2px dashed #bfdbfe;
+  border-radius: var(--radius-2xl);
+  background: var(--color-white);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.captured-image-button img {
+  width: min(520px, 100%);
+  max-height: 360px;
+  object-fit: contain;
+  display: block;
+}
+
+@media (max-width: 640px) {
+  .captured-preview-panel {
+    margin-top: 14px;
+  }
+
+  .captured-image-button {
+    padding: 10px;
+  }
+
+  .captured-image-button img {
+    max-height: 220px;
+  }
+}
+
+.camera-capture-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10020;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(4px);
+}
+
+.camera-capture-modal.active {
+  display: flex;
+}
+
+.camera-capture-dialog {
+  width: min(980px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 22px;
+  background: var(--color-white);
+  box-shadow: 0 28px 90px rgba(15, 23, 42, 0.32);
+  padding: 24px;
+}
+
+.camera-capture-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.camera-capture-header h3 {
+  margin: 0;
+}
+
+.camera-modal-close {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-lighter);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.camera-preview {
+  display: block;
+  width: 100%;
+  max-height: 68vh;
+  aspect-ratio: 4 / 3;
+  border-radius: 16px;
+  background: #020617;
+  object-fit: contain;
+  transform: scaleX(-1);
+}
+
+.camera-capture-dialog .camera-actions {
+  margin-top: 16px;
+  grid-template-columns: 1fr;
 }

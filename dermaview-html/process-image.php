@@ -69,12 +69,14 @@ function run_procedure_script(
     string $inputPath,
     string $outputPath,
     string $webOutputPath,
-    float $requestStart
+    float $requestStart,
+    float $intensity = 1.0
 ): void {
     $command =
         "python \"$pythonScript\" " .
         escapeshellarg($inputPath) . " " .
-        escapeshellarg($outputPath) . " 2>&1";
+        escapeshellarg($outputPath) . " " .
+        escapeshellarg((string)$intensity) . " 2>&1";
 
     $scriptStart = microtime(true);
     exec($command, $output, $status);
@@ -303,31 +305,38 @@ if (
 $procedureScripts = [
     "co2-fractional-laser-dermapen" => [
         "script" => "python/process_co2_dermapen.py",
-        "message" => "CO2 Fractional Laser + Dermapen processing failed"
+        "message" => "CO2 Fractional Laser + Dermapen processing failed",
+        "intensity" => 2.25
     ],
     "face_slimming" => [
         "script" => "python/process_face_slimming.py",
-        "message" => "Face slimming processing failed"
+        "message" => "Face slimming processing failed",
+        "intensity" => 2.35
     ],
     "diamond-peel-facial" => [
         "script" => "python/process_diamond_peel.py",
-        "message" => "Diamond Peel processing failed"
+        "message" => "Diamond Peel processing failed",
+        "intensity" => 2.25
     ],
     "undereye-lip-filler" => [
         "script" => "python/process_undereye_lip_filler.py",
-        "message" => "Undereye and Lip Filler processing failed"
+        "message" => "Undereye and Lip Filler processing failed",
+        "intensity" => 2.35
     ],
     "pico-carbon-laser" => [
         "script" => "python/process_pico_carbon_laser.py",
-        "message" => "PICO Carbon Laser processing failed"
+        "message" => "PICO Carbon Laser processing failed",
+        "intensity" => 2.25
     ],
     "lip-chin-jawtox" => [
         "script" => "python/process_lip_chin_jawtox.py",
-        "message" => "Lip, Chin, and Jawtox processing failed"
+        "message" => "Lip, Chin, and Jawtox processing failed",
+        "intensity" => 3.00
     ],
     "general-skin-assessment" => [
         "script" => "python/process_general_skin_assessment.py",
-        "message" => "General Skin Assessment processing failed"
+        "message" => "General Skin Assessment processing failed",
+        "intensity" => 1.0
     ]
 ];
 
@@ -339,7 +348,8 @@ if (isset($procedureScripts[$procedure])) {
         $inputPath,
         $outputPath,
         $webOutputPath,
-        $requestStart
+        $requestStart,
+        (float)($procedureScripts[$procedure]["intensity"] ?? 1.0)
     );
 }
 

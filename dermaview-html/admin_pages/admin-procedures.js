@@ -399,7 +399,7 @@ function ensureProcedureEditModal() {
     });
     if (search) search.addEventListener('input', render);
 
-    body.addEventListener('click', event => {
+    body.addEventListener('click', async event => {
       const button = event.target.closest('button');
       if (!button) return;
 
@@ -431,7 +431,12 @@ function ensureProcedureEditModal() {
           ? `Hide ${item.procedure_name} from the public Procedures tab?`
           : `Show ${item.procedure_name} on the public Procedures tab?`;
 
-        if (!confirm(message)) return;
+        const shouldToggle = await DermaViewDialog.confirm(message, {
+          title: 'Procedures',
+          okText: nextAction === 'hide' ? 'Hide' : 'Show'
+        });
+
+        if (!shouldToggle) return;
 
         const data = new FormData();
         data.append('id', item.id);
@@ -451,7 +456,14 @@ function ensureProcedureEditModal() {
       data.append('id', item.id);
       data.append('action', 'delete');
 
-      if (button.dataset.delete && !confirm(`Delete ${item.procedure_name}?`)) return;
+      if (button.dataset.delete) {
+        const shouldDelete = await DermaViewDialog.confirm(`Delete ${item.procedure_name}?`, {
+          title: 'Procedures',
+          okText: 'Delete'
+        });
+
+        if (!shouldDelete) return;
+      }
 
       fetch('admin-procedures.php', { method: 'POST', body: data })
         .then(response => response.json())
@@ -462,12 +474,17 @@ function ensureProcedureEditModal() {
         .catch(error => alert(error.message || 'Request failed.'));
     });
 
-    form.addEventListener('submit', event => {
+    form.addEventListener('submit', async event => {
       event.preventDefault();
 
       const procedureName = document.getElementById('procedureName').value;
 
-      if (!confirm(`Save changes for "${procedureName}"?`)) {
+      const shouldSave = await DermaViewDialog.confirm(`Save changes for "${procedureName}"?`, {
+        title: 'Procedures',
+        okText: 'Save'
+      });
+
+      if (!shouldSave) {
         return;
       }
 

@@ -48,7 +48,7 @@ def clamp_intensity(value, default=1.0):
         value = float(value)
     except Exception:
         value = default
-    return float(np.clip(value, 0.30, 1.60))
+    return float(np.clip(value, 0.30, 4.00))
 
 def detect_face_bbox(img):
     h, w = img.shape[:2]
@@ -233,16 +233,6 @@ def process_face_slimming(input_path, output_path, intensity=1.0):
 
     if lm is not None and len(lm) >= 468:
         # MediaPipe landmark-based jawline slimming (more localized than old box/ellipse warp)
-        jaw_left_ids = [93, 234, 127, 162, 21, 54, 103, 67, 109, 10]      # around left jaw/cheek
-        jaw_right_ids = [172, 58, 132, 93, 234, 127]                      # around right jaw/cheek (will be used with symmetry)
-
-        def pts(ids):
-            try:
-                return [lm[i] for i in ids]
-            except Exception:
-                return []
-
-        left_jaw = pts(jaw_left_ids)
         # Use symmetry around the face centerline using landmark 10/152 region approx.
         center_x = int((lm[234][0] + lm[93][0]) / 2) if len(lm) > 234 else w // 2
 
@@ -262,7 +252,7 @@ def process_face_slimming(input_path, output_path, intensity=1.0):
         falloff = np.exp(-(distance ** 2) / (2 * (w * 0.18) ** 2))
 
         # Pull side pixels towards center more in the lower half.
-        strength = (0.075 * intensity)
+        strength = (0.175 * intensity)
         direction = np.where(xx < center_x, 1.0, -1.0)  # move both sides inward
         map_x = xx + direction * strength * distance * falloff * lower_face_mask
 
@@ -275,7 +265,7 @@ def process_face_slimming(input_path, output_path, intensity=1.0):
 
         # Gentle post-processing.
         slimmed = cv2.bilateralFilter(slimmed, 7, 30, 30)
-        slimmed = cv2.convertScaleAbs(slimmed, alpha=1.01, beta=2)
+        slimmed = cv2.convertScaleAbs(slimmed, alpha=1.025, beta=4)
         slimmed = gentle_sharpen(slimmed, 0.03)
         save_image(output_path, slimmed)
         print("Face Slimming (FaceMesh jawline warp) educational visualization saved:", output_path)
@@ -293,11 +283,11 @@ def process_face_slimming(input_path, output_path, intensity=1.0):
     distance = np.abs(xx - center_x)
     falloff = np.exp(-(distance ** 2) / (2 * (fw * 0.25) ** 2))
     direction = np.where(xx < center_x, -1.0, 1.0)
-    strength = 0.060 * intensity
+    strength = 0.155 * intensity
     map_x = xx + direction * strength * distance * falloff * lower
     slimmed = cv2.remap(img, np.clip(map_x, 0, w - 1).astype(np.float32), yy.astype(np.float32), cv2.INTER_LINEAR)
     slimmed = cv2.bilateralFilter(slimmed, 5, 28, 28)
-    slimmed = cv2.convertScaleAbs(slimmed, alpha=1.015, beta=2)
+    slimmed = cv2.convertScaleAbs(slimmed, alpha=1.03, beta=4)
     slimmed = gentle_sharpen(slimmed, 0.035)
     save_image(output_path, slimmed)
     print("Face Slimming educational visualization saved:", output_path)

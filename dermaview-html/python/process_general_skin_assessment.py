@@ -249,7 +249,6 @@ def make_face_region_masks_adaptive(img):
         brow_y = int(np.mean([p[1] for p in pts([70, 63, 105, 66, 107, 336, 296, 334, 293, 300])]))
         face_top_y = min(p[1] for p in pts([10, 67, 109, 338, 297]))
         chin_y = P(152)[1]
-        mouth_top_y = min(P(13)[1], P(0)[1], P(267)[1], P(37)[1])
         mouth_bottom_y = max(P(14)[1], P(17)[1], P(18)[1])
         nose_tip = P(1)
         nose_bottom = P(2)
@@ -626,7 +625,6 @@ def severity_from_score(score):
 
 def issue_masks(img):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     skin = (skin_mask_bgr(img) > 35).astype(np.uint8) * 255
 
